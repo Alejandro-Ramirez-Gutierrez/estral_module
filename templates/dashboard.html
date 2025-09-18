@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard - Estral Módulo</title>
+<style>
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f7f9; margin:0; padding:0;}
+header { background-color:#1a73e8; color:white; padding:25px 20px; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+header h1 { margin:0 0 5px; font-size:28px; }
+header p { margin:0; font-size:16px; opacity:0.9; }
+main { padding:40px 20px; max-width:1400px; margin:0 auto;}
+p { font-size:16px; color:#333; }
+
+button { padding:8px 16px; border:none; border-radius:6px; font-size:14px; cursor:pointer; transition:0.2s; margin-right:5px; }
+button.autorizar { background-color:#28a745; color:white; }
+button.autorizar:hover { background-color:#218838; }
+button.cancelar { background-color:#dc3545; color:white; }
+button.cancelar:hover { background-color:#c82333; }
+#btnCerrarSesion { background-color:#007bff; color:white; padding:10px 20px; border:none; border-radius:8px; font-size:16px; cursor:pointer; transition:0.2s; }
+#btnCerrarSesion:hover { background-color:#0056b3; }
+
+table { 
+    width: 100%;
+    max-width: 1400px;
+    min-width: 900px;
+    margin: 20px auto;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 15px;
+}
+
+th, td { 
+    padding: 16px 18px;
+    text-align: left;
+}
+
+th { 
+    background-color: #1a73e8; 
+    color: white; 
+    font-weight: 600; 
+}
+
+tr:nth-child(even) { background-color:#f9f9f9; }
+tr:hover { background-color:#ffe0b2; }
+td { color:#555; }
+td a { text-decoration:none; font-size:18px; }
+td a:hover { color:#1a73e8; }
+
+@media (max-width: 1400px) {
+    table { max-width: 95%; }
+}
+
+@media (max-width: 1024px) {
+    table { min-width: unset; font-size: 14px; }
+}
+
+@media (max-width:768px) {
+    table, thead, tbody, th, td, tr { display:block; }
+    th { position:absolute; top:-9999px; left:-9999px; }
+    tr { margin-bottom:15px; border-bottom:2px solid #eee; }
+    td { padding-left:50%; position:relative; }
+    td:before { 
+        position:absolute; 
+        left:15px; 
+        width:45%; 
+        padding-right:10px; 
+        white-space:nowrap; 
+        font-weight:600; 
+        color:#1a73e8; 
+    }
+    td:nth-of-type(1):before { content:"Orden"; }
+    td:nth-of-type(2):before { content:"Proveedor"; }
+    td:nth-of-type(3):before { content:"Oficina"; }
+    td:nth-of-type(4):before { content:"Total"; }
+    td:nth-of-type(5):before { content:"Moneda"; }
+    td:nth-of-type(6):before { content:"Fecha Generación"; }
+    td:nth-of-type(7):before { content:"Estado"; }
+    td:nth-of-type(8):before { content:"Empleado Autoriza"; }
+    td:nth-of-type(9):before { content:"Generó Orden"; }
+    td:nth-of-type(10):before { content:"PDF"; }
+    td:nth-of-type(11):before { content:"Acción"; }
+}
+
+/* Modales */
+#modalCancelacion, #modalAutorizarConfirm { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; }
+#modalContent { background:white; margin:100px auto; padding:20px; border-radius:10px; width:300px; text-align:center; }
+#modalContent h3 { margin-top:0; color:#1a73e8; }
+#modalContent select { width:100%; padding:8px; margin-bottom:15px; border-radius:5px; }
+
+.botones { display:flex; justify-content:flex-start; }
+</style>
+</head>
+<body>
+<header>
+    <h1>Bienvenido, {{ usuario }}!</h1>
+</header>
+<main>
+<p>Dashboard del módulo de autorización de requisiciones.</p>
+
+{% if ordenes %}
+<table>
+<thead>
+<tr>
+<th>Orden</th>
+<th>Proveedor</th>
+<th>Oficina</th>
+<th>Total</th>
+<th>Moneda</th>
+<th>Fecha Generación</th>
+<th>Estado</th>
+<th>Empleado Autoriza</th>
+<th>Generó Orden</th>
+<th>PDF</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody>
+{% for oc in ordenes %}
+<tr>
+<td>{{ oc.Orden }}</td>
+<td>{{ oc.Proveedor }}</td>
+<td>{{ oc.Oficina or '' }}</td>
+<td>{{ "{:,.2f}".format(oc.Total or 0) }}</td>
+<td>{{ oc.Moneda or '' }}</td>
+<td>{{ oc.Fecha_Generacion or '' }}</td>
+<td>{{ oc.Estatus_OC or '' }}</td>
+<td>{{ oc.Empleado_Autoriza or '' }}</td>
+<td>{{ oc.Genero_Orden or '' }}</td>
+<td>{% if oc.PDF %}<a href="{{ oc.PDF }}" target="_blank">📄</a>{% else %}-{% endif %}</td>
+<td>
+<div class="botones">
+<button class="autorizar" onclick="confirmarAutorizar({{ oc.Orden }})">Autorizar</button>
+<button class="cancelar" onclick="abrirModalCancelacion({{ oc.Orden }})">Cancelar</button>
+</div>
+</td>
+</tr>
+{% endfor %}
+
+</tbody>
+</table>
+{% else %}
+<p>No hay órdenes pendientes de autorización.</p>
+{% endif %}
+
+<div style="margin-top:30px; text-align:center;">
+<button id="btnCerrarSesion" onclick="location.href='/'">Cerrar sesión</button>
+</div>
+</main>
+
+<!-- Modal Cancelación -->
+<div id="modalCancelacion">
+<div id="modalContent">
+<h3>Motivo de Cancelación</h3>
+<select id="selectMotivo"></select>
+<br>
+<button onclick="cancelarOrden()">Confirmar</button>
+<button onclick="cerrarModal()">Cancelar</button>
+</div>
+</div>
+
+<!-- Modal Confirmar Autorizar -->
+<div id="modalAutorizarConfirm">
+<div id="modalContent">
+<h3>Confirmar Autorización</h3>
+<p>¿Seguro que quieres autorizar la orden <span id="ordenAutorizar"></span>?</p>
+<button onclick="autorizarOrdenConfirm()">Sí, Autorizar</button>
+<button onclick="cerrarModalAutorizar()">Cancelar</button>
+</div>
+</div>
+
+<script>
+let ordenAutorizarActual = null;
+
+async function abrirModalCancelacion(k_orden) {
+    window.ordenActual = k_orden;
+    const res = await fetch('/dashboard/motivos_cancelacion');
+    const data = await res.json();
+    const select = document.getElementById('selectMotivo');
+    select.innerHTML = '';
+    data.motivos.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.K_Motivo_Cancelacion_Orden;
+        option.textContent = m.D_Motivo_Cancelacion_Orden;
+        select.appendChild(option);
+    });
+    document.getElementById('modalCancelacion').style.display = 'block';
+}
+
+function cerrarModal() { document.getElementById('modalCancelacion').style.display='none'; }
+function cerrarModalAutorizar() { document.getElementById('modalAutorizarConfirm').style.display='none'; }
+
+async function cancelarOrden() {
+    const motivo = document.getElementById('selectMotivo').value;
+    const k_orden = window.ordenActual;
+    const formData = new FormData();
+    formData.append('k_orden_compra', k_orden);
+    formData.append('k_motivo', motivo);
+    try {
+        const res = await fetch('/dashboard/cancelar_orden', { method:'POST', body:formData });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert('Orden cancelada correctamente');
+            window.location.reload();
+        } else {
+            alert('Error al cancelar la orden: ' + (data.error || 'Desconocido'));
+        }
+    } catch(err){ alert('Error al cancelar la orden: ' + err.message); }
+    cerrarModal();
+}
+
+// Autorizar
+function confirmarAutorizar(k_orden) {
+    ordenAutorizarActual = k_orden;
+    document.getElementById('ordenAutorizar').textContent = k_orden;
+    document.getElementById('modalAutorizarConfirm').style.display='block';
+}
+
+async function autorizarOrdenConfirm() {
+    const k_orden = ordenAutorizarActual;
+    const body = JSON.stringify({ k_orden_compra: k_orden });
+    try {
+        const res = await fetch('/dashboard/autorizar_orden', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json' },
+            body
+        });
+        const data = await res.json();
+        if(res.ok && data.success){
+            alert('Orden autorizada correctamente');
+            window.location.reload();
+        } else {
+            alert('Error al autorizar: '+ (data.Mensaje || data.error || 'Desconocido'));
+        }
+    } catch(err){ alert('Error al autorizar: '+err.message); }
+    cerrarModalAutorizar();
+}
+</script>
+</body>
+</html>

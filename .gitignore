@@ -1,0 +1,12 @@
+# Entorno virtual
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Configuración local / credenciales
+.env
+
+# Archivos temporales
+*.log
+*.sqlite3
