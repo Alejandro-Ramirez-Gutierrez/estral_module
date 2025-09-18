@@ -109,7 +109,6 @@ td a:hover { color:#1a73e8; }
 <th>Total</th>
 <th>Moneda</th>
 <th>Fecha Generación</th>
-<th>Estado</th>
 <th>Empleado Autoriza</th>
 <th>Generó Orden</th>
 <th>PDF</th>
@@ -125,7 +124,6 @@ td a:hover { color:#1a73e8; }
 <td>{{ "{:,.2f}".format(oc.Total or 0) }}</td>
 <td>{{ oc.Moneda or '' }}</td>
 <td>{{ oc.Fecha_Generacion or '' }}</td>
-<td>{{ oc.Estatus_OC or '' }}</td>
 <td>{{ oc.Empleado_Autoriza or '' }}</td>
 <td>{{ oc.Genero_Orden or '' }}</td>
 <td>{% if oc.PDF %}<a href="{{ oc.PDF }}" target="_blank">📄</a>{% else %}-{% endif %}</td>
