@@ -5,146 +5,224 @@
 <title>Dashboard - Estral Módulo</title>
 <style>
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f7f9; margin:0; padding:0;}
-header { background-color:#1a73e8; color:white; padding:25px 20px; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-header h1 { margin:0 0 5px; font-size:28px; }
-header p { margin:0; font-size:16px; opacity:0.9; }
-main { padding:40px 20px; max-width:1400px; margin:0 auto;}
-p { font-size:16px; color:#333; }
 
-button { padding:8px 16px; border:none; border-radius:6px; font-size:14px; cursor:pointer; transition:0.2s; margin-right:5px; }
+/* Navbar */
+nav {
+    display: flex;
+    align-items: center;
+    background-color:#1a73e8;
+    color:white;
+    padding: 15px 20px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+}
+nav .logo { font-size: 26px; font-weight: bold; }
+nav .tabs { display:flex; gap:15px; margin-left:20px; }
+nav .tabs a {
+    display:flex;
+    align-items:center;
+    gap:5px;
+    padding:10px 20px;
+    border-radius:8px;
+    background:rgba(255,255,255,0.2);
+    text-decoration:none;
+    color:white;
+    font-weight:600;
+    transition:0.2s;
+}
+nav .tabs a:hover { background:rgba(255,255,255,0.4); }
+nav .tabs a.active { background:white; color:#1a73e8; font-weight:bold; }
+nav button {
+    margin-left:auto;
+    background:#ff5252; color:white;
+    border:none; border-radius:8px;
+    padding:10px 20px; cursor:pointer; transition:0.2s;
+    font-size:18px; font-weight:bold;
+}
+nav button:hover { background:#e53935; }
+
+header { text-align:center; padding:30px 20px; }
+header h1 { margin:0 0 10px; font-size:32px; color:#333; }
+header p { margin:0; font-size:18px; color:#666; }
+
+/* Main */
+main { padding:40px 20px; max-width:1200px; margin:0 auto; }
+p { font-size:18px; color:#333; }
+
+/* Tarjetas */
+.orden-card {
+    background:white;
+    border-radius:16px;
+    padding:30px;
+    margin:20px auto;
+    box-shadow:0 8px 20px rgba(0,0,0,0.15);
+    transition:0.3s;
+}
+.orden-card:hover {
+    transform:translateY(-5px);
+    box-shadow:0 12px 28px rgba(0,0,0,0.2);
+}
+
+/* Contenedor flex orden + PDF */
+.orden-flex {
+    display:flex;
+    flex-direction:row;
+    gap:30px;
+    align-items:flex-start;
+}
+
+/* PDF grande y visible a la derecha */
+.pdf-icon-container {
+    flex-shrink:0; 
+    flex-direction:column; 
+    align-items:center; 
+    width:180px; 
+    border:2px solid #d32f2f; 
+    border-radius:12px; 
+    padding:20px; 
+    background:#fff8f8;
+    display:flex;
+    justify-content:center;
+    text-align:center;
+}
+.pdf-icon {
+    width:140px;
+    height:140px;
+    font-size:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#d32f2f;
+    color:white;
+    border-radius:12px;
+    text-decoration:none;
+    transition:0.2s;
+}
+.pdf-icon:hover { background:#9a0007; transform:scale(1.1); }
+.pdf-text {
+    font-size:22px;
+    font-weight:bold;
+    color:#d32f2f;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+/* Botones acción gigantes */
+.orden-actions { display:flex; flex-direction:column; gap:25px; margin-top:20px; }
+button.autorizar, button.cancelar {
+    font-size:32px;          
+    padding:30px 0;          
+    border-radius:12px;
+    font-weight:bold;
+    display:flex; 
+    justify-content:center; 
+    align-items:center;
+    width:100%;              
+    gap:15px;
+}
 button.autorizar { background-color:#28a745; color:white; }
 button.autorizar:hover { background-color:#218838; }
 button.cancelar { background-color:#dc3545; color:white; }
 button.cancelar:hover { background-color:#c82333; }
-#btnCerrarSesion { background-color:#007bff; color:white; padding:10px 20px; border:none; border-radius:8px; font-size:16px; cursor:pointer; transition:0.2s; }
-#btnCerrarSesion:hover { background-color:#0056b3; }
 
-table { 
-    width: 100%;
-    max-width: 1400px;
-    min-width: 900px;
-    margin: 20px auto;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    overflow: hidden;
-    font-size: 15px;
+/* Modales ultra gigantes */
+#modalCancelacion, #modalAutorizarConfirm {
+    display:none; 
+    position:fixed; 
+    top:0; left:0;
+    width:100%; height:100%; 
+    background:rgba(0,0,0,0.8); 
+    z-index:2000;
+}
+#modalContent {
+    background:white; 
+    margin:30px auto;
+    padding:40px 30px;
+    border-radius:16px;
+    width:95%;             
+    min-height:550px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:35px;
+}
+#modalContent h3 { margin-top:0; color:#1a73e8; font-size:32px; }
+#modalContent select { width:100%; padding:20px; font-size:24px; border-radius:8px; }
+#modalContent button {
+    font-size:32px; 
+    padding:28px 0;
+    width:100%;               
+    border-radius:12px;
+    font-weight:bold;
+    cursor:pointer;
 }
 
-th, td { 
-    padding: 16px 18px;
-    text-align: left;
+/* Media Query para celulares */
+@media (max-width:480px){
+    .orden-card { padding:25px; flex-direction:column; }
+    .orden-actions { flex-direction:column; gap:25px; }
+    button.autorizar, button.cancelar { font-size:36px; padding:35px 0; }
+    #modalContent { width:98%; min-height:600px; padding:35px 20px; gap:35px; }
+    #modalContent h3 { font-size:36px; }
+    #modalContent button { font-size:36px; padding:35px 0; width:100%; }
+    #modalContent select { font-size:28px; padding:20px; }
+    .pdf-icon-container { width:100%; flex-direction:row; justify-content:center; padding:15px; }
+    .pdf-icon { width:120px; height:120px; font-size:40px; }
+    .pdf-text { font-size:20px; }
 }
-
-th { 
-    background-color: #1a73e8; 
-    color: white; 
-    font-weight: 600; 
-}
-
-tr:nth-child(even) { background-color:#f9f9f9; }
-tr:hover { background-color:#ffe0b2; }
-td { color:#555; }
-td a { text-decoration:none; font-size:18px; }
-td a:hover { color:#1a73e8; }
-
-@media (max-width: 1400px) {
-    table { max-width: 95%; }
-}
-
-@media (max-width: 1024px) {
-    table { min-width: unset; font-size: 14px; }
-}
-
-@media (max-width:768px) {
-    table, thead, tbody, th, td, tr { display:block; }
-    th { position:absolute; top:-9999px; left:-9999px; }
-    tr { margin-bottom:15px; border-bottom:2px solid #eee; }
-    td { padding-left:50%; position:relative; }
-    td:before { 
-        position:absolute; 
-        left:15px; 
-        width:45%; 
-        padding-right:10px; 
-        white-space:nowrap; 
-        font-weight:600; 
-        color:#1a73e8; 
-    }
-    td:nth-of-type(1):before { content:"Orden"; }
-    td:nth-of-type(2):before { content:"Proveedor"; }
-    td:nth-of-type(3):before { content:"Oficina"; }
-    td:nth-of-type(4):before { content:"Total"; }
-    td:nth-of-type(5):before { content:"Moneda"; }
-    td:nth-of-type(6):before { content:"Fecha Generación"; }
-    td:nth-of-type(7):before { content:"Estado"; }
-    td:nth-of-type(8):before { content:"Empleado Autoriza"; }
-    td:nth-of-type(9):before { content:"Generó Orden"; }
-    td:nth-of-type(10):before { content:"PDF"; }
-    td:nth-of-type(11):before { content:"Acción"; }
-}
-
-/* Modales */
-#modalCancelacion, #modalAutorizarConfirm { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; }
-#modalContent { background:white; margin:100px auto; padding:20px; border-radius:10px; width:300px; text-align:center; }
-#modalContent h3 { margin-top:0; color:#1a73e8; }
-#modalContent select { width:100%; padding:8px; margin-bottom:15px; border-radius:5px; }
-
-.botones { display:flex; justify-content:flex-start; }
 </style>
 </head>
 <body>
+
+<!-- Navbar -->
+<nav>
+    <div class="logo">Estral Módulo</div>
+    <div class="tabs">
+        <a href="/dashboard" class="active">🏠 Dashboard</a>
+        <a href="/valance">📊 Valance</a>
+    </div>
+    <button onclick="location.href='/logout'">Cerrar sesión</button>
+</nav>
+
 <header>
     <h1>Bienvenido, {{ usuario }}!</h1>
+    <p>Dashboard del módulo de autorización de requisiciones.</p>
 </header>
+
 <main>
-<p>Dashboard del módulo de autorización de requisiciones.</p>
-
 {% if ordenes %}
-<table>
-<thead>
-<tr>
-<th>Orden</th>
-<th>Proveedor</th>
-<th>Oficina</th>
-<th>Total</th>
-<th>Moneda</th>
-<th>Fecha Generación</th>
-<th>Empleado Autoriza</th>
-<th>Generó Orden</th>
-<th>PDF</th>
-<th>Acción</th>
-</tr>
-</thead>
-<tbody>
-{% for oc in ordenes %}
-<tr>
-<td>{{ oc.Orden }}</td>
-<td>{{ oc.Proveedor }}</td>
-<td>{{ oc.Oficina or '' }}</td>
-<td>{{ "{:,.2f}".format(oc.Total or 0) }}</td>
-<td>{{ oc.Moneda or '' }}</td>
-<td>{{ oc.Fecha_Generacion or '' }}</td>
-<td>{{ oc.Empleado_Autoriza or '' }}</td>
-<td>{{ oc.Genero_Orden or '' }}</td>
-<td>{% if oc.PDF %}<a href="{{ oc.PDF }}" target="_blank">📄</a>{% else %}-{% endif %}</td>
-<td>
-<div class="botones">
-<button class="autorizar" onclick="confirmarAutorizar({{ oc.Orden }})">Autorizar</button>
-<button class="cancelar" onclick="abrirModalCancelacion({{ oc.Orden }})">Cancelar</button>
-</div>
-</td>
-</tr>
-{% endfor %}
-
-</tbody>
-</table>
+    {% for oc in ordenes %}
+    <div class="orden-card">
+        <div class="orden-flex">
+            <div style="flex-grow:1;">
+                <div class="orden-header">
+                    <h2>Orden #{{ oc.Orden }}</h2>
+                </div>
+                <div class="orden-detalle">
+                    <p><strong>Proveedor:</strong> {{ oc.Proveedor }}</p>
+                    <p><strong>Oficina:</strong> {{ oc.Oficina or '' }}</p>
+                    <p><strong>Total:</strong> {{ "{:,.2f}".format(oc.Total or 0) }} {{ oc.Moneda or '' }}</p>
+                    <p><strong>Fecha Generación:</strong> {{ oc.Fecha_Generacion or '' }}</p>
+                    <p><strong>Empleado Autoriza:</strong> {{ oc.Empleado_Autoriza or '' }}</p>
+                    <p><strong>Generó Orden:</strong> {{ oc.Genero_Orden or '' }}</p>
+                </div>
+                <div class="orden-actions">
+                    <button class="autorizar" onclick="confirmarAutorizar({{ oc.Orden }})">✅ Autorizar</button>
+                    <button class="cancelar" onclick="abrirModalCancelacion({{ oc.Orden }})">❌ Cancelar</button>
+                </div>
+            </div>
+            {% if oc.PDF %}
+            <div class="pdf-icon-container">
+                <a href="{{ oc.PDF }}" target="_blank" class="pdf-icon">📄</a>
+                <span class="pdf-text" onclick="window.open('{{ oc.PDF }}', '_blank')">Ver PDF</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
 {% else %}
 <p>No hay órdenes pendientes de autorización.</p>
 {% endif %}
-
-<div style="margin-top:30px; text-align:center;">
-<button id="btnCerrarSesion" onclick="location.href='/'">Cerrar sesión</button>
-</div>
 </main>
 
 <!-- Modal Cancelación -->
@@ -152,7 +230,6 @@ td a:hover { color:#1a73e8; }
 <div id="modalContent">
 <h3>Motivo de Cancelación</h3>
 <select id="selectMotivo"></select>
-<br>
 <button onclick="cancelarOrden()">Confirmar</button>
 <button onclick="cerrarModal()">Cancelar</button>
 </div>
@@ -185,7 +262,6 @@ async function abrirModalCancelacion(k_orden) {
     });
     document.getElementById('modalCancelacion').style.display = 'block';
 }
-
 function cerrarModal() { document.getElementById('modalCancelacion').style.display='none'; }
 function cerrarModalAutorizar() { document.getElementById('modalAutorizarConfirm').style.display='none'; }
 
@@ -208,13 +284,11 @@ async function cancelarOrden() {
     cerrarModal();
 }
 
-// Autorizar
 function confirmarAutorizar(k_orden) {
     ordenAutorizarActual = k_orden;
     document.getElementById('ordenAutorizar').textContent = k_orden;
     document.getElementById('modalAutorizarConfirm').style.display='block';
 }
-
 async function autorizarOrdenConfirm() {
     const k_orden = ordenAutorizarActual;
     const body = JSON.stringify({ k_orden_compra: k_orden });

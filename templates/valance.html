@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Valance - Estadísticas</title>
+<style>
+/* === Paleta Estral ===
+#ffffff - fondo general
+#0d47a1 - azul principal
+#ff6d00 - naranja principal
+#e3f2fd - azul claro
+#fbe9e7 - naranja claro
+#212121 - texto oscuro
+*/
+
+/* Body */
+body {
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:#ffffff;
+    margin:0;
+    padding:0;
+    color:#212121;
+}
+
+/* Navbar */
+nav {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:#0d47a1;
+    color:white;
+    padding:12px 30px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+    position:sticky;
+    top:0;
+    z-index:999;
+}
+nav .logo { font-size:24px; font-weight:bold; }
+nav button {
+    background:#ff6d00;
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:10px 18px;
+    cursor:pointer;
+    transition:0.3s;
+    font-size:16px;
+    font-weight:bold;
+}
+nav button:hover { background:#e65c00; transform:translateY(-2px); }
+
+/* Header */
+header { text-align:center; padding:30px 20px; }
+header h1 { margin:0 0 8px; font-size:32px; color:#0d47a1; }
+header h2 { margin:0 0 15px; font-size:20px; color:#555; }
+header select {
+    font-size:16px; padding:8px; margin-left:10px;
+    border-radius:6px; border:1px solid #0d47a1;
+    background:#e3f2fd; color:#0d47a1;
+}
+
+/* Tarjetas resumen */
+.cards {
+    display:flex;
+    flex-wrap:wrap;
+    gap:25px;
+    justify-content:center;
+    margin:30px 0;
+}
+.card {
+    background:#fbe9e7;
+    border-radius:16px;
+    padding:30px;
+    min-width:200px;
+    max-width:260px;
+    text-align:center;
+    box-shadow:0 8px 20px rgba(0,0,0,0.1);
+    transition:0.3s;
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+}
+.card:hover { transform:translateY(-5px); box-shadow:0 12px 28px rgba(0,0,0,0.2); }
+.card h3 { margin:0 0 12px; color:#0d47a1; font-size:18px; font-weight:bold; }
+.card p { font-size:20px; font-weight:bold; color:#ff6d00; margin:0; }
+
+/* Contenedores gráficos y tablas */
+#grafica-container, #grafica-frecuencia-container, #tabla-frecuencia-container, #tabla-gasto-container {
+    max-width:950px;
+    margin:40px auto;
+    background:#e3f2fd;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* Tablas */
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+    border-radius:12px;
+    overflow:hidden;
+    background:#ffffff;
+    color:#212121;
+}
+table th, table td { padding:12px; text-align:left; font-size:16px; }
+table th { background:#0d47a1; color:white; font-weight:700; }
+table tr:nth-child(even) { background:#f3f3f3; }
+table tr:hover { background:#ff6d00; color:white; }
+table button {
+    padding:8px 16px; border:none; border-radius:8px;
+    background:#0d47a1; color:white; cursor:pointer;
+    font-size:14px; font-weight:bold; transition:0.3s;
+}
+table button:hover { background:#0b3d91; }
+
+/* Modal */
+.modal {
+    display:none;
+    position:fixed;
+    z-index:9999;
+    left:0; top:0;
+    width:100%; height:100%;
+    overflow:auto;
+    background-color:rgba(0,0,0,0.6);
+}
+.modal-content {
+    background:#ffffff;
+    margin:5% auto;
+    padding:30px;
+    border-radius:16px;
+    max-width:850px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.3);
+    position:relative;
+}
+.close {
+    color:#ff6d00;
+    position:absolute;
+    top:15px;
+    right:20px;
+    font-size:28px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.3s;
+}
+.close:hover { color:#e65c00; }
+
+/* Responsive */
+@media(max-width:768px){ .cards { flex-direction:column; align-items:center; } }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav>
+    <div class="logo">Valance</div>
+    <button onclick="location.href='/dashboard'">⬅️ Regresar al Dashboard</button>
+</nav>
+
+<!-- Header -->
+<header>
+    <h1>Bienvenido, {{ usuario }}</h1>
+    <h2>Panel de Estadísticas</h2>
+    <label for="mesSelect">Selecciona Mes:</label>
+    <select id="mesSelect">
+        {% for m in meses %}
+            <option value="{{ m.value }}" {% if m.value == mes_actual %}selected{% endif %}>{{ m.name }}</option>
+        {% endfor %}
+    </select>
+</header>
+
+<!-- Tarjetas resumen -->
+<div class="cards" id="resumenOrdenes">
+    <div class="card"><h3>Total</h3><p id="total">{{ data.Total_Ordenes }}</p></div>
+    <div class="card"><h3>Cerradas</h3><p id="cerradas">{{ data.Cerradas }}</p></div>
+    <div class="card"><h3>Sin Autorizar</h3><p id="sinAutorizar">{{ data.Sin_Autorizar }}</p></div>
+    <div class="card"><h3>Canceladas</h3><p id="canceladas">{{ data.Canceladas }}</p></div>
+    <div class="card"><h3>Recepcionadas Completas</h3><p id="recepcionadasCompletas">{{ data.Recepcionadas_Completas }}</p></div>
+    <div class="card"><h3>Recepcionadas Parciales</h3><p id="recepcionadasParciales">{{ data.Recepcionadas_Parciales }}</p></div>
+    <div class="card"><h3>Sin Recepción</h3><p id="sinRecepcion">{{ data.Sin_Recepcion }}</p></div>
+</div>
+
+<!-- Gráficos -->
+<div id="grafica-container"><canvas id="grafica" width="400" height="200"></canvas></div>
+<div id="grafica-frecuencia-container"><canvas id="graficaFrecuencia" width="400" height="200"></canvas></div>
+
+<!-- Tabla gasto total -->
+<div id="tabla-gasto-container">
+    <h3>Top 10 Proveedores - Gasto Total (Cerradas)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th>Gasto Total</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="tablaGastos"></tbody>
+    </table>
+</div>
+
+<!-- Tabla frecuencia -->
+<div id="tabla-frecuencia-container">
+    <h3>Top 10 Proveedores - Veces Comprado</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Proveedor</th>
+                <th>Veces Comprado</th>
+                <th>Gasto Total</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="tablaProveedores"></tbody>
+    </table>
+</div>
+
+<!-- Modal detalle proveedor -->
+<div id="modalProveedor" class="modal">
+    <div class="modal-content">
+        <span class="close" id="cerrarModal">&times;</span>
+        <h3 id="modalProveedorNombre"></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Orden</th>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="modalDetalleBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const modal = document.getElementById('modalProveedor');
+document.getElementById('cerrarModal').onclick = () => modal.style.display = 'none';
+window.onclick = e => { if(e.target==modal) modal.style.display='none'; }
+
+async function actualizarDatos(mes){
+    const res = await fetch(`/valance/datos?mes=${mes}`);
+    const data = await res.json();
+
+    const resumen = data.resumen;
+    document.getElementById('total').textContent = resumen.Total_Ordenes;
+    document.getElementById('cerradas').textContent = resumen.Cerradas;
+    document.getElementById('sinAutorizar').textContent = resumen.Sin_Autorizar;
+    document.getElementById('canceladas').textContent = resumen.Canceladas;
+    document.getElementById('recepcionadasCompletas').textContent = resumen.Recepcionadas_Completas;
+    document.getElementById('recepcionadasParciales').textContent = resumen.Recepcionadas_Parciales;
+    document.getElementById('sinRecepcion').textContent = resumen.Sin_Recepcion;
+
+    const topGasto = data.top_proveedores.slice(0,10);
+    chartMonto.data.labels = topGasto.map(p=>p.Nombre_Proveedor);
+    chartMonto.data.datasets[0].data = topGasto.map(p=>p.Monto_Total);
+    chartMonto.update();
+
+    const tbodyGasto = document.getElementById('tablaGastos');
+    tbodyGasto.innerHTML = '';
+    topGasto.forEach(p=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.Nombre_Proveedor}</td>
+                        <td>${p.Monto_Total.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
+                        <td><button data-prov="${p.Nombre_Proveedor}" class="btnDetalle">Ver detalle</button></td>`;
+        tbodyGasto.appendChild(tr);
+    });
+
+    const resFreq = await fetch(`/valance/frecuencia?mes=${mes}`);
+    const dataFreq = await resFreq.json();
+    const topFreq = dataFreq.top_proveedores.slice(0,10);
+    const montosMap = {};
+    data.top_proveedores.forEach(p=>{ montosMap[p.Nombre_Proveedor] = p.Monto_Total; });
+
+    chartFrecuencia.data.labels = topFreq.map(p=>p.Nombre_Proveedor);
+    chartFrecuencia.data.datasets[0].data = topFreq.map(p=>p.Cantidad_Compras);
+    chartFrecuencia.data.datasets[0].extraData = topFreq.map(p=>montosMap[p.Nombre_Proveedor]||0);
+    chartFrecuencia.update();
+
+    const tbodyFreq = document.getElementById('tablaProveedores');
+    tbodyFreq.innerHTML = '';
+    topFreq.forEach(p=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.Nombre_Proveedor}</td>
+                        <td>${p.Cantidad_Compras}</td>
+                        <td>${(montosMap[p.Nombre_Proveedor]||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
+                        <td><button data-prov="${p.Nombre_Proveedor}" class="btnDetalle">Ver detalle</button></td>`;
+        tbodyFreq.appendChild(tr);
+    });
+
+    document.querySelectorAll('.btnDetalle').forEach(btn=>{
+        btn.onclick = async ()=>{
+            const prov = btn.dataset.prov;
+            document.getElementById('modalProveedorNombre').textContent = prov;
+            const detalle = await fetchDetalleProveedor(prov, mes);
+            const tbodyModal = document.getElementById('modalDetalleBody');
+            tbodyModal.innerHTML = '';
+            detalle.forEach(d=>{
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${d.K_Orden_Compra}</td>
+                                <td>${d.F_Generacion}</td>
+                                <td>${d.Monto.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}</td>
+                                <td>${d.Estado}</td>`;
+                tbodyModal.appendChild(tr);
+            });
+            modal.style.display='block';
+        }
+    });
+}
+
+async function fetchDetalleProveedor(prov, mes){
+    const res = await fetch(`/valance/detalle_proveedor?proveedor=${encodeURIComponent(prov)}&mes=${mes}`);
+    return await res.json();
+}
+
+document.getElementById('mesSelect').addEventListener('change', e => actualizarDatos(e.target.value));
+
+// === Gráficas con ejes en negrita ===
+const ctxMonto = document.getElementById('grafica');
+const chartMonto = new Chart(ctxMonto, {
+    type:'bar',
+    data:{ labels:[], datasets:[{ label:'Top 10 Proveedores (Monto)', data:[], backgroundColor:'#ff6d00' }] },
+    options:{
+        responsive:true,
+        plugins:{ legend:{display:false} },
+        scales:{
+            y:{ beginAtZero:true, ticks:{ font:{ weight:'bold', size:14 } } },
+            x:{ ticks:{ font:{ weight:'bold', size:14 } } }
+        }
+    }
+});
+
+const ctxFrecuencia = document.getElementById('graficaFrecuencia');
+const chartFrecuencia = new Chart(ctxFrecuencia, {
+    type:'bar',
+    data:{ labels:[], datasets:[{ label:'Top 10 Veces Comprado', data:[], backgroundColor:'#0d47a1', extraData:[] }] },
+    options:{
+        responsive:true,
+        plugins:{
+            legend:{display:false},
+            tooltip:{
+                callbacks:{
+                    label:function(context){
+                        const cantidad = context.raw;
+                        const monto = context.dataset.extraData[context.dataIndex];
+                        return `Veces: ${cantidad} - Gasto: ${monto.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}`;
+                    }
+                }
+            }
+        },
+        scales:{
+            y:{ beginAtZero:true, ticks:{ font:{ weight:'bold', size:14 } } },
+            x:{ ticks:{ font:{ weight:'bold', size:14 } } }
+        }
+    }
+});
+
+actualizarDatos('{{ mes_actual }}');
+</script>
+</body>
+</html>
