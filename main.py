@@ -288,6 +288,42 @@ def detalle_proveedor(proveedor: str = Query(...), mes: str = Query("", descript
         } for d in detalle
     ]
 
+# -------- Grafica de pastel
+@app.get("/valance/familia")
+def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
+    if not access_token:
+        return JSONResponse(status_code=401, content={"error": "No autorizado"})
+    token = access_token.replace("Bearer ", "")
+    payload = verificar_access_token(token)
+    if not payload or not validar_acceso_valance(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+    
+    if not mes:
+        mes = datetime.now().strftime("%Y-%m")
+    fecha_inicio = datetime.strptime(f"{mes}-01","%Y-%m-%d")
+    fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
+                 if fecha_inicio.month < 12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
+
+    query = f"""
+    SELECT T.D_Familia_Articulo AS Familia, SUM(T.Total) AS Total
+    FROM (
+        SELECT O.K_Orden_Compra, SUM(D.Total) AS Total, T.D_Familia_Articulo
+        FROM Ordenes_Compra O
+        JOIN Detalle_Ordenes_Compra D ON O.K_Orden_Compra = D.K_Orden_Compra
+        JOIN VW_Articulos_Todos T ON D.SKU = T.SKU
+        WHERE ISNULL(O.B_Cancelada,0)=0
+          AND ISNULL(O.B_Completa,0)=0
+          AND O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
+        GROUP BY O.K_Orden_Compra, T.D_Familia_Articulo
+    ) T
+    GROUP BY T.D_Familia_Articulo
+    ORDER BY T.D_Familia_Articulo;
+    """
+
+    data = ejecutar_consulta_sql(query, fetchall=True)
+    result = [{"Familia": d["Familia"].strip(), "Total": float(d["Total"])} for d in data]
+    return result
+
 
 # ------------------- LOGOUT -------------------
 @app.get("/logout")

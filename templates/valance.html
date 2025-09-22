@@ -4,125 +4,33 @@
 <meta charset="UTF-8">
 <title>Valance - Estadísticas</title>
 <style>
-/* === Paleta Estral === */
-body {
-    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background:#ffffff;
-    margin:0;
-    padding:0;
-    color:#212121;
-}
-nav {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:#0d47a1;
-    color:white;
-    padding:12px 30px;
-    box-shadow:0 3px 8px rgba(0,0,0,0.15);
-    position:sticky;
-    top:0;
-    z-index:999;
-}
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#fff; margin:0; padding:0; color:#212121; }
+nav { display:flex; align-items:center; justify-content:space-between; background:#0d47a1; color:white; padding:12px 30px; box-shadow:0 3px 8px rgba(0,0,0,0.15); position:sticky; top:0; z-index:999; }
 nav .logo { font-size:24px; font-weight:bold; }
-nav button {
-    background:#ff6d00;
-    color:white;
-    border:none;
-    border-radius:8px;
-    padding:10px 18px;
-    cursor:pointer;
-    transition:0.3s;
-    font-size:16px;
-    font-weight:bold;
-}
+nav button { background:#ff6d00; color:white; border:none; border-radius:8px; padding:10px 18px; cursor:pointer; transition:0.3s; font-size:16px; font-weight:bold; }
 nav button:hover { background:#e65c00; transform:translateY(-2px); }
 header { text-align:center; padding:30px 20px; }
 header h1 { margin:0 0 8px; font-size:32px; color:#0d47a1; }
 header h2 { margin:0 0 15px; font-size:20px; color:#555; }
-header select {
-    font-size:16px; padding:8px; margin-left:10px;
-    border-radius:6px; border:1px solid #0d47a1;
-    background:#e3f2fd; color:#0d47a1;
-}
-.cards {
-    display:flex;
-    flex-wrap:wrap;
-    gap:25px;
-    justify-content:center;
-    margin:30px 0;
-}
-.card {
-    border-radius:16px;
-    padding:30px;
-    min-width:200px;
-    max-width:260px;
-    text-align:center;
-    box-shadow:0 8px 20px rgba(0,0,0,0.1);
-    transition:0.3s;
-    position:relative;
-    overflow:hidden;
-}
+header select { font-size:16px; padding:8px; margin-left:10px; border-radius:6px; border:1px solid #0d47a1; background:#e3f2fd; color:#0d47a1; }
+.cards { display:flex; flex-wrap:wrap; gap:25px; justify-content:center; margin:30px 0; }
+.card { border-radius:16px; padding:30px; min-width:200px; max-width:260px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.1); transition:0.3s; position:relative; overflow:hidden; }
 .card:hover { transform:translateY(-5px); box-shadow:0 12px 28px rgba(0,0,0,0.2); }
 .card h3 { margin:0 0 12px; font-size:18px; font-weight:bold; }
 .card p { font-size:20px; font-weight:bold; margin:0; }
 #totalesMonedas .card { background:#e3f2fd; color:#0d47a1; }
 #resumenOrdenes .card { background:#fbe9e7; color:#0d47a1; }
-#grafica-container, #grafica-frecuencia-container, #tabla-frecuencia-container, #tabla-gasto-container {
-    max-width:950px;
-    margin:40px auto;
-    background:#e3f2fd;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.1);
-}
-table {
-    width:100%;
-    border-collapse:collapse;
-    margin-top:15px;
-    border-radius:12px;
-    overflow:hidden;
-    background:#ffffff;
-    color:#212121;
-}
+#grafica-container, #grafica-frecuencia-container, #grafica-familia-container, #grafica-familia-bar-container, #tabla-frecuencia-container, #tabla-gasto-container { max-width:950px; margin:40px auto; background:#e3f2fd; padding:30px; border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,0.1); }
+table { width:100%; border-collapse:collapse; margin-top:15px; border-radius:12px; overflow:hidden; background:#fff; color:#212121; }
 table th, table td { padding:12px; text-align:left; font-size:16px; }
 table th { background:#0d47a1; color:white; font-weight:700; }
 table tr:nth-child(even) { background:#f3f3f3; }
 table tr:hover { background:#ff6d00; color:white; }
-table button {
-    padding:8px 16px; border:none; border-radius:8px;
-    background:#0d47a1; color:white; cursor:pointer;
-    font-size:14px; font-weight:bold; transition:0.3s;
-}
+table button { padding:8px 16px; border:none; border-radius:8px; background:#0d47a1; color:white; cursor:pointer; font-size:14px; font-weight:bold; transition:0.3s; }
 table button:hover { background:#0b3d91; }
-.modal {
-    display:none;
-    position:fixed;
-    z-index:9999;
-    left:0; top:0;
-    width:100%; height:100%;
-    overflow:auto;
-    background-color:rgba(0,0,0,0.6);
-}
-.modal-content {
-    background:#ffffff;
-    margin:5% auto;
-    padding:30px;
-    border-radius:16px;
-    max-width:850px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.3);
-    position:relative;
-}
-.close {
-    color:#ff6d00;
-    position:absolute;
-    top:15px;
-    right:20px;
-    font-size:28px;
-    font-weight:bold;
-    cursor:pointer;
-    transition:0.3s;
-}
+.modal { display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.6); }
+.modal-content { background:#fff; margin:5% auto; padding:30px; border-radius:16px; max-width:850px; box-shadow:0 8px 20px rgba(0,0,0,0.3); position:relative; }
+.close { color:#ff6d00; position:absolute; top:15px; right:20px; font-size:28px; font-weight:bold; cursor:pointer; transition:0.3s; }
 .close:hover { color:#e65c00; }
 @media(max-width:768px){ .cards { flex-direction:column; align-items:center; } }
 </style>
@@ -165,15 +73,21 @@ table button:hover { background:#0b3d91; }
 <div id="grafica-container"><canvas id="grafica" width="400" height="200"></canvas></div>
 <div id="grafica-frecuencia-container"><canvas id="graficaFrecuencia" width="400" height="200"></canvas></div>
 
+<div id="grafica-familia-container">
+    <h3>Distribución de gasto por Familia de Artículos</h3>
+    <canvas id="graficaFamilia" width="400" height="200"></canvas>
+</div>
+
+<div id="grafica-familia-bar-container">
+    <h3>Distribución de gasto por Familia - Barra Horizontal</h3>
+    <canvas id="graficaFamiliaBar" width="400" height="300"></canvas>
+</div>
+
 <div id="tabla-gasto-container">
     <h3>Top 10 Proveedores - Gasto Total (Aprobadas)</h3>
     <table>
         <thead>
-            <tr>
-                <th>Proveedor</th>
-                <th>Gasto Total</th>
-                <th>Acción</th>
-            </tr>
+            <tr><th>Proveedor</th><th>Gasto Total</th><th>Acción</th></tr>
         </thead>
         <tbody id="tablaGastos"></tbody>
     </table>
@@ -183,12 +97,7 @@ table button:hover { background:#0b3d91; }
     <h3>Top 10 Proveedores - Veces Comprado</h3>
     <table>
         <thead>
-            <tr>
-                <th>Proveedor</th>
-                <th>Veces Comprado</th>
-                <th>Gasto Total</th>
-                <th>Acción</th>
-            </tr>
+            <tr><th>Proveedor</th><th>Veces Comprado</th><th>Gasto Total</th><th>Acción</th></tr>
         </thead>
         <tbody id="tablaProveedores"></tbody>
     </table>
@@ -199,36 +108,30 @@ table button:hover { background:#0b3d91; }
         <span class="close" id="cerrarModal">&times;</span>
         <h3 id="modalProveedorNombre"></h3>
         <table>
-            <thead>
-                <tr>
-                    <th>Orden</th>
-                    <th>Fecha</th>
-                    <th>Monto</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Orden</th><th>Fecha</th><th>Monto</th><th>Estado</th></tr></thead>
             <tbody id="modalDetalleBody"></tbody>
         </table>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 <script>
+// === Modal ===
 const modal = document.getElementById('modalProveedor');
 document.getElementById('cerrarModal').onclick = () => modal.style.display = 'none';
 window.onclick = e => { if(e.target==modal) modal.style.display='none'; }
 
+// === Datos y Gráficas ===
 async function actualizarDatos(mes){
     const res = await fetch(`/valance/datos?mes=${mes}`);
     const data = await res.json();
 
-    // --- Totales por moneda ---
     document.getElementById('totalPesos').textContent = data.totales_monedas.pesos.toLocaleString('es-MX',{style:'currency',currency:'MXN'});
     document.getElementById('totalDolares').textContent = data.totales_monedas.dolares.toLocaleString('es-MX',{style:'currency',currency:'USD'});
     document.getElementById('totalEuros').textContent = data.totales_monedas.euros.toLocaleString('es-MX',{style:'currency',currency:'EUR'});
     document.getElementById('totalGeneral').textContent = data.totales_monedas.total_general.toLocaleString('es-MX',{style:'currency',currency:'MXN'});
 
-    // --- Resumen ---
     const resumen = data.resumen;
     document.getElementById('total').textContent = resumen.Total_Ordenes;
     document.getElementById('cerradas').textContent = resumen.Cerradas;
@@ -238,7 +141,6 @@ async function actualizarDatos(mes){
     document.getElementById('recepcionadasParciales').textContent = resumen.Recepcionadas_Parciales;
     document.getElementById('sinRecepcion').textContent = resumen.Sin_Recepcion;
 
-    // --- Gráficas ---
     const topGasto = data.top_proveedores.slice(0,10);
     chartMonto.data.labels = topGasto.map(p=>p.Nombre_Proveedor);
     chartMonto.data.datasets[0].data = topGasto.map(p=>p.Monto_Total);
@@ -301,48 +203,83 @@ async function fetchDetalleProveedor(prov, mes){
     return await res.json();
 }
 
-document.getElementById('mesSelect').addEventListener('change', e => actualizarDatos(e.target.value));
+document.getElementById('mesSelect').addEventListener('change', e => {
+    actualizarDatos(e.target.value);
+    actualizarGraficaFamilia(e.target.value);
+});
 
+// === Charts ===
 const ctxMonto = document.getElementById('grafica');
 const chartMonto = new Chart(ctxMonto, {
     type:'bar',
     data:{ labels:[], datasets:[{ label:'Top 10 Proveedores (Monto)', data:[], backgroundColor:'#ff6d00' }] },
-    options:{
-        responsive:true,
-        plugins:{ legend:{display:false} },
-        scales:{
-            y:{ beginAtZero:true, ticks:{ font:{ weight:'bold', size:14 } } },
-            x:{ ticks:{ font:{ weight:'bold', size:14 } } }
-        }
-    }
+    options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true, ticks:{ font:{ weight:'bold', size:14 } } }, x:{ ticks:{ font:{ weight:'bold', size:14 } } } } }
 });
 
 const ctxFrecuencia = document.getElementById('graficaFrecuencia');
 const chartFrecuencia = new Chart(ctxFrecuencia, {
     type:'bar',
     data:{ labels:[], datasets:[{ label:'Top 10 Veces Comprado', data:[], backgroundColor:'#0d47a1', extraData:[] }] },
+    options:{ responsive:true, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:function(context){ const cantidad = context.raw; const monto = context.dataset.extraData[context.dataIndex]; return `Veces: ${cantidad} - Gasto: ${monto.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}`; } } } }, scales:{ y:{ beginAtZero:true, ticks:{ font:{ weight:'bold', size:14 } } }, x:{ ticks:{ font:{ weight:'bold', size:14 } } } } }
+});
+
+// Pie por Familia
+const ctxFamilia = document.getElementById('graficaFamilia');
+const chartFamilia = new Chart(ctxFamilia, {
+    type: 'pie',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+    options:{ responsive:true, plugins:{ legend:{ position:'right', labels:{ font:{ size:14, weight:'bold' } } }, tooltip:{ callbacks:{ label: ctx => ctx.raw.toLocaleString('es-MX',{style:'currency',currency:'MXN'}) } } } }
+});
+
+// Barra Horizontal por Familia con DataLabels
+const ctxFamiliaBar = document.getElementById('graficaFamiliaBar');
+const chartFamiliaBar = new Chart(ctxFamiliaBar, {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label:'Gasto por Familia', data: [], backgroundColor: [] }] },
     options:{
+        indexAxis:'y',
         responsive:true,
         plugins:{
             legend:{display:false},
-            tooltip:{
-                callbacks:{
-                    label:function(context){
-                        const cantidad = context.raw;
-                        const monto = context.dataset.extraData[context.dataIndex];
-                        return `Veces: ${cantidad} - Gasto: ${monto.toLocaleString('es-MX',{style:'currency',currency:'MXN'})}`;
-                    }
-                }
+            tooltip:{ callbacks:{ label: ctx => ctx.raw.toLocaleString('es-MX',{style:'currency',currency:'MXN'}) } },
+            datalabels: {
+                anchor: 'end',
+                align: 'right',
+                color: '#212121',
+                font: { weight:'bold', size:12 },
+                formatter: value => value.toLocaleString('es-MX',{style:'currency',currency:'MXN'})
             }
         },
-        scales:{
-            y:{ beginAtZero:true, ticks:{ font:{ weight:'bold', size:14 } } },
-            x:{ ticks:{ font:{ weight:'bold', size:14 } } }
-        }
-    }
+        scales:{ x:{ ticks:{ font:{ weight:'bold', size:14 } } }, y:{ ticks:{ font:{ weight:'bold', size:14 } } } }
+    },
+    plugins: [ChartDataLabels]
 });
 
-actualizarDatos('{{ mes_actual }}');
+async function actualizarGraficaFamilia(mes){
+    const res = await fetch(`/valance/familia?mes=${mes}`);
+    const data = await res.json();
+    const totals = data.map(d=>d.Total);
+    const labels = data.map(d=>d.Familia);
+    const colors = ['#ff5722','#03a9f4','#4caf50','#ffc107','#9c27b0','#e91e63','#00bcd4','#8bc34a','#ff9800','#673ab7','#795548'];
+
+    chartFamilia.data.labels = labels.map((l,i)=>`${l} (${totals[i].toLocaleString('es-MX',{style:'currency',currency:'MXN'})})`);
+    chartFamilia.data.datasets[0].data = totals;
+    chartFamilia.data.datasets[0].backgroundColor = colors.slice(0, data.length);
+    chartFamilia.update();
+
+        chartFamiliaBar.data.labels = labels;
+    chartFamiliaBar.data.datasets[0].data = totals;
+    chartFamiliaBar.data.datasets[0].backgroundColor = colors.slice(0, data.length);
+    chartFamiliaBar.update();
+}
+
+// Inicializar con el mes actual
+document.addEventListener('DOMContentLoaded', () => {
+    const mesActual = document.getElementById('mesSelect').value;
+    actualizarDatos(mesActual);
+    actualizarGraficaFamilia(mesActual);
+});
 </script>
+
 </body>
 </html>
