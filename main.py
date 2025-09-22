@@ -107,7 +107,7 @@ def validar_acceso_valance(payload):
     k_empleado = payload.get("K_Empleado")
     k_area = payload.get("K_Area")
     AREAS_PERMITIDAS = [99, 20, 22, 23]
-    EMPLEADOS_PERMITIDOS = [8811, 8870, 8740,4]
+    EMPLEADOS_PERMITIDOS = [8811, 8870, 8740,4,5]
     return (k_area in AREAS_PERMITIDAS) or (k_empleado in EMPLEADOS_PERMITIDOS)
 
 @app.get("/valance", response_class=HTMLResponse)
