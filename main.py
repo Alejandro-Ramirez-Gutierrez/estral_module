@@ -143,13 +143,15 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     if not payload or not validar_acceso_valance(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
+    # Fecha por defecto si no se envía mes
     if not mes:
         mes = datetime.now().strftime("%Y-%m")
+    
     fecha_inicio = datetime.strptime(f"{mes}-01","%Y-%m-%d")
     fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
-                 if fecha_inicio.month<12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
+                 if fecha_inicio.month < 12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
 
-    # Totales por moneda y total general en pesos
+    # Totales por moneda y total general en pesos (igual que antes)
     query_totales = f"""
     SELECT 
         SUM(CASE WHEN K_Tipo_Moneda = 1 THEN precio_total_orden_compra ELSE 0 END) AS total_pesos,
@@ -168,31 +170,23 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     """
     totales = ejecutar_consulta_sql(query_totales, fetchone=True)
 
-    # Resumen de ordenes (igual que antes)
-    query_resumen = f"""
-    WITH RParciales AS (
-        SELECT O.K_Orden_Compra, COUNT(1) AS Recepciones
-        FROM Ordenes_compra O
-        INNER JOIN Recepcion_Articulos R ON R.K_Orden_Compra = O.K_Orden_Compra
-        WHERE O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
-          AND O.B_Completa = 0
-          AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
-        GROUP BY O.K_Orden_Compra
-    )
-    SELECT COUNT(*) AS Total_Ordenes,
-           SUM(CASE WHEN O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0) THEN 1 ELSE 0 END) AS Cerradas,
-           SUM(CASE WHEN (O.B_Cerrada = 0 OR O.B_Cerrada IS NULL) AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0) THEN 1 ELSE 0 END) AS Sin_Autorizar,
-           SUM(CASE WHEN O.B_Cancelada = 1 THEN 1 ELSE 0 END) AS Canceladas,
-           SUM(CASE WHEN O.B_Completa = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0) THEN 1 ELSE 0 END) AS Recepcionadas_Completas,
-           COUNT(RP.K_Orden_Compra) AS Recepcionadas_Parciales,
-           SUM(CASE WHEN O.B_Completa = 0 AND RP.K_Orden_Compra IS NULL THEN 1 ELSE 0 END) AS Sin_Recepcion
-    FROM Ordenes_compra O
-    LEFT JOIN RParciales RP ON RP.K_Orden_Compra = O.K_Orden_Compra
-    WHERE O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}';
-    """
-    resumen = ejecutar_consulta_sql(query_resumen, fetchone=True)
+    # Resumen de ordenes usando el stored procedure
+    anio, mes_num = map(int, mes.split("-"))
+    query_resumen_sp = f"EXEC SK_Reporte_Ordenes_Compra_Resumen @Anio={anio}, @Mes={mes_num}"
+    resumen_sp = ejecutar_consulta_sql(query_resumen_sp, fetchone=True)
 
-    # Top proveedores en pesos
+    # Mapea resultado para mantener compatibilidad con JSON anterior
+    resumen = {
+        "Total_Ordenes": resumen_sp["Todas"],
+        "Cerradas": resumen_sp["Autorizadas"],
+        "Sin_Autorizar": resumen_sp["SinAutorizar"],
+        "Canceladas": resumen_sp["Canceladas"],
+        "Recepcionadas_Completas": resumen_sp["Completas"],
+        "Recepcionadas_Parciales": resumen_sp["Parciales"],
+        "Sin_Recepcion": resumen_sp["SinRecepcion"]
+    }
+
+    # Top proveedores en pesos (igual que antes)
     query_top_prov = f"""
     SELECT P.D_Proveedor,
            SUM(O.precio_total_orden_compra *
@@ -211,7 +205,10 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     ORDER BY Monto_Total DESC;
     """
     top_proveedores = ejecutar_consulta_sql(query_top_prov, fetchall=True)
-    top_proveedores_json = [{"Nombre_Proveedor":p["D_Proveedor"],"Monto_Total":float(p["Monto_Total"]),"Cantidad_Compras":int(p["Cantidad_Compras"])} for p in top_proveedores]
+    top_proveedores_json = [{"Nombre_Proveedor":p["D_Proveedor"],
+                             "Monto_Total":float(p["Monto_Total"]),
+                             "Cantidad_Compras":int(p["Cantidad_Compras"])} 
+                            for p in top_proveedores]
 
     return {
         "resumen": resumen,
