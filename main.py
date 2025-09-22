@@ -149,7 +149,26 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
                  if fecha_inicio.month<12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
 
-    # Resumen
+    # Totales por moneda y total general en pesos
+    query_totales = f"""
+    SELECT 
+        SUM(CASE WHEN K_Tipo_Moneda = 1 THEN precio_total_orden_compra ELSE 0 END) AS total_pesos,
+        SUM(CASE WHEN K_Tipo_Moneda = 2 THEN precio_total_orden_compra ELSE 0 END) AS total_dolares,
+        SUM(CASE WHEN K_Tipo_Moneda = 3 THEN precio_total_orden_compra ELSE 0 END) AS total_euros,
+        SUM(precio_total_orden_compra *
+            CASE K_Tipo_Moneda
+                WHEN 1 THEN 1
+                WHEN 2 THEN 20
+                WHEN 3 THEN 24
+            END
+        ) AS total_general_en_pesos
+    FROM Ordenes_compra
+    WHERE F_Generacion >= '{fecha_inicio}' AND F_Generacion < '{fecha_fin}'
+      AND B_Cerrada = 1 AND (B_Cancelada IS NULL OR B_Cancelada = 0);
+    """
+    totales = ejecutar_consulta_sql(query_totales, fetchone=True)
+
+    # Resumen de ordenes (igual que antes)
     query_resumen = f"""
     WITH RParciales AS (
         SELECT O.K_Orden_Compra, COUNT(1) AS Recepciones
@@ -158,7 +177,6 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
         WHERE O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
           AND O.B_Completa = 0
           AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
-          AND R.F_Recepcion >= '{fecha_inicio}' AND R.F_Recepcion < '{fecha_fin}'
         GROUP BY O.K_Orden_Compra
     )
     SELECT COUNT(*) AS Total_Ordenes,
@@ -174,9 +192,17 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     """
     resumen = ejecutar_consulta_sql(query_resumen, fetchone=True)
 
-    # Top proveedores (solo cerradas)
+    # Top proveedores en pesos
     query_top_prov = f"""
-    SELECT P.D_Proveedor, SUM(O.precio_total_orden_compra) AS Monto_Total, COUNT(O.K_Orden_Compra) AS Cantidad_Compras
+    SELECT P.D_Proveedor,
+           SUM(O.precio_total_orden_compra *
+               CASE O.K_Tipo_Moneda
+                   WHEN 1 THEN 1
+                   WHEN 2 THEN 20
+                   WHEN 3 THEN 24
+               END
+           ) AS Monto_Total,
+           COUNT(O.K_Orden_Compra) AS Cantidad_Compras
     FROM Ordenes_compra O
     INNER JOIN Proveedores P ON O.K_Proveedor = P.K_Proveedor
     WHERE O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
@@ -187,7 +213,16 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     top_proveedores = ejecutar_consulta_sql(query_top_prov, fetchall=True)
     top_proveedores_json = [{"Nombre_Proveedor":p["D_Proveedor"],"Monto_Total":float(p["Monto_Total"]),"Cantidad_Compras":int(p["Cantidad_Compras"])} for p in top_proveedores]
 
-    return {"resumen": resumen, "top_proveedores": top_proveedores_json}
+    return {
+        "resumen": resumen,
+        "totales_monedas": {
+            "pesos": float(totales["total_pesos"]),
+            "dolares": float(totales["total_dolares"]),
+            "euros": float(totales["total_euros"]),
+            "total_general": float(totales["total_general_en_pesos"])
+        },
+        "top_proveedores": top_proveedores_json
+    }
 
 # ------------------- FRECUENCIA -------------------
 @app.get("/valance/frecuencia")

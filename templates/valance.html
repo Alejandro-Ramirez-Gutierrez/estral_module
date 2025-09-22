@@ -4,16 +4,7 @@
 <meta charset="UTF-8">
 <title>Valance - Estadísticas</title>
 <style>
-/* === Paleta Estral ===
-#ffffff - fondo general
-#0d47a1 - azul principal
-#ff6d00 - naranja principal
-#e3f2fd - azul claro
-#fbe9e7 - naranja claro
-#212121 - texto oscuro
-*/
-
-/* Body */
+/* === Paleta Estral === */
 body {
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background:#ffffff;
@@ -21,8 +12,6 @@ body {
     padding:0;
     color:#212121;
 }
-
-/* Navbar */
 nav {
     display:flex;
     align-items:center;
@@ -48,8 +37,6 @@ nav button {
     font-weight:bold;
 }
 nav button:hover { background:#e65c00; transform:translateY(-2px); }
-
-/* Header */
 header { text-align:center; padding:30px 20px; }
 header h1 { margin:0 0 8px; font-size:32px; color:#0d47a1; }
 header h2 { margin:0 0 15px; font-size:20px; color:#555; }
@@ -58,8 +45,6 @@ header select {
     border-radius:6px; border:1px solid #0d47a1;
     background:#e3f2fd; color:#0d47a1;
 }
-
-/* Tarjetas resumen */
 .cards {
     display:flex;
     flex-wrap:wrap;
@@ -68,7 +53,6 @@ header select {
     margin:30px 0;
 }
 .card {
-    background:#fbe9e7;
     border-radius:16px;
     padding:30px;
     min-width:200px;
@@ -76,15 +60,14 @@ header select {
     text-align:center;
     box-shadow:0 8px 20px rgba(0,0,0,0.1);
     transition:0.3s;
-    cursor:pointer;
     position:relative;
     overflow:hidden;
 }
 .card:hover { transform:translateY(-5px); box-shadow:0 12px 28px rgba(0,0,0,0.2); }
-.card h3 { margin:0 0 12px; color:#0d47a1; font-size:18px; font-weight:bold; }
-.card p { font-size:20px; font-weight:bold; color:#ff6d00; margin:0; }
-
-/* Contenedores gráficos y tablas */
+.card h3 { margin:0 0 12px; font-size:18px; font-weight:bold; }
+.card p { font-size:20px; font-weight:bold; margin:0; }
+#totalesMonedas .card { background:#e3f2fd; color:#0d47a1; }
+#resumenOrdenes .card { background:#fbe9e7; color:#0d47a1; }
 #grafica-container, #grafica-frecuencia-container, #tabla-frecuencia-container, #tabla-gasto-container {
     max-width:950px;
     margin:40px auto;
@@ -93,8 +76,6 @@ header select {
     border-radius:16px;
     box-shadow:0 8px 20px rgba(0,0,0,0.1);
 }
-
-/* Tablas */
 table {
     width:100%;
     border-collapse:collapse;
@@ -114,8 +95,6 @@ table button {
     font-size:14px; font-weight:bold; transition:0.3s;
 }
 table button:hover { background:#0b3d91; }
-
-/* Modal */
 .modal {
     display:none;
     position:fixed;
@@ -145,20 +124,16 @@ table button:hover { background:#0b3d91; }
     transition:0.3s;
 }
 .close:hover { color:#e65c00; }
-
-/* Responsive */
 @media(max-width:768px){ .cards { flex-direction:column; align-items:center; } }
 </style>
 </head>
 <body>
 
-<!-- Navbar -->
 <nav>
     <div class="logo">Valance</div>
     <button onclick="location.href='/dashboard'">⬅️ Regresar al Dashboard</button>
 </nav>
 
-<!-- Header -->
 <header>
     <h1>Bienvenido, {{ usuario }}</h1>
     <h2>Panel de Estadísticas</h2>
@@ -170,10 +145,16 @@ table button:hover { background:#0b3d91; }
     </select>
 </header>
 
-<!-- Tarjetas resumen -->
+<div class="cards" id="totalesMonedas">
+    <div class="card"><h3>Pesos</h3><p id="totalPesos">0</p></div>
+    <div class="card"><h3>Dólares</h3><p id="totalDolares">0</p></div>
+    <div class="card"><h3>Euros</h3><p id="totalEuros">0</p></div>
+    <div class="card"><h3>Total General (MXN)</h3><p id="totalGeneral">0</p></div>
+</div>
+
 <div class="cards" id="resumenOrdenes">
-    <div class="card"><h3>Total</h3><p id="total">{{ data.Total_Ordenes }}</p></div>
-    <div class="card"><h3>Cerradas</h3><p id="cerradas">{{ data.Cerradas }}</p></div>
+    <div class="card"><h3>Total de requisiciones</h3><p id="total">{{ data.Total_Ordenes }}</p></div>
+    <div class="card"><h3>Aprobadas</h3><p id="cerradas">{{ data.Cerradas }}</p></div>
     <div class="card"><h3>Sin Autorizar</h3><p id="sinAutorizar">{{ data.Sin_Autorizar }}</p></div>
     <div class="card"><h3>Canceladas</h3><p id="canceladas">{{ data.Canceladas }}</p></div>
     <div class="card"><h3>Recepcionadas Completas</h3><p id="recepcionadasCompletas">{{ data.Recepcionadas_Completas }}</p></div>
@@ -181,13 +162,11 @@ table button:hover { background:#0b3d91; }
     <div class="card"><h3>Sin Recepción</h3><p id="sinRecepcion">{{ data.Sin_Recepcion }}</p></div>
 </div>
 
-<!-- Gráficos -->
 <div id="grafica-container"><canvas id="grafica" width="400" height="200"></canvas></div>
 <div id="grafica-frecuencia-container"><canvas id="graficaFrecuencia" width="400" height="200"></canvas></div>
 
-<!-- Tabla gasto total -->
 <div id="tabla-gasto-container">
-    <h3>Top 10 Proveedores - Gasto Total (Cerradas)</h3>
+    <h3>Top 10 Proveedores - Gasto Total (Aprobadas)</h3>
     <table>
         <thead>
             <tr>
@@ -200,7 +179,6 @@ table button:hover { background:#0b3d91; }
     </table>
 </div>
 
-<!-- Tabla frecuencia -->
 <div id="tabla-frecuencia-container">
     <h3>Top 10 Proveedores - Veces Comprado</h3>
     <table>
@@ -216,7 +194,6 @@ table button:hover { background:#0b3d91; }
     </table>
 </div>
 
-<!-- Modal detalle proveedor -->
 <div id="modalProveedor" class="modal">
     <div class="modal-content">
         <span class="close" id="cerrarModal">&times;</span>
@@ -235,7 +212,6 @@ table button:hover { background:#0b3d91; }
     </div>
 </div>
 
-<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const modal = document.getElementById('modalProveedor');
@@ -246,6 +222,13 @@ async function actualizarDatos(mes){
     const res = await fetch(`/valance/datos?mes=${mes}`);
     const data = await res.json();
 
+    // --- Totales por moneda ---
+    document.getElementById('totalPesos').textContent = data.totales_monedas.pesos.toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+    document.getElementById('totalDolares').textContent = data.totales_monedas.dolares.toLocaleString('es-MX',{style:'currency',currency:'USD'});
+    document.getElementById('totalEuros').textContent = data.totales_monedas.euros.toLocaleString('es-MX',{style:'currency',currency:'EUR'});
+    document.getElementById('totalGeneral').textContent = data.totales_monedas.total_general.toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+
+    // --- Resumen ---
     const resumen = data.resumen;
     document.getElementById('total').textContent = resumen.Total_Ordenes;
     document.getElementById('cerradas').textContent = resumen.Cerradas;
@@ -255,6 +238,7 @@ async function actualizarDatos(mes){
     document.getElementById('recepcionadasParciales').textContent = resumen.Recepcionadas_Parciales;
     document.getElementById('sinRecepcion').textContent = resumen.Sin_Recepcion;
 
+    // --- Gráficas ---
     const topGasto = data.top_proveedores.slice(0,10);
     chartMonto.data.labels = topGasto.map(p=>p.Nombre_Proveedor);
     chartMonto.data.datasets[0].data = topGasto.map(p=>p.Monto_Total);
@@ -319,7 +303,6 @@ async function fetchDetalleProveedor(prov, mes){
 
 document.getElementById('mesSelect').addEventListener('change', e => actualizarDatos(e.target.value));
 
-// === Gráficas con ejes en negrita ===
 const ctxMonto = document.getElementById('grafica');
 const chartMonto = new Chart(ctxMonto, {
     type:'bar',
