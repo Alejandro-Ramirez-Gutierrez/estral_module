@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Valance - Estadísticas</title>
+<title>KPI - Compras</title>
 <style>
 body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#fff; margin:0; padding:0; color:#212121; }
 nav { display:flex; align-items:center; justify-content:space-between; background:#0d47a1; color:white; padding:12px 30px; box-shadow:0 3px 8px rgba(0,0,0,0.15); position:sticky; top:0; z-index:999; }
@@ -38,8 +38,8 @@ table button:hover { background:#0b3d91; }
 <body>
 
 <nav>
-    <div class="logo">Valance</div>
-    <button onclick="location.href='/dashboard'">⬅️ Regresar al Dashboard</button>
+    <div class="logo">KPI - Compras</div>
+    <button onclick="location.href='/dashboard'">⬅️ Regresar a Ordenes de compra</button>
 </nav>
 
 <header>
@@ -61,7 +61,7 @@ table button:hover { background:#0b3d91; }
 </div>
 
 <div class="cards" id="resumenOrdenes">
-    <div class="card"><h3>Total de requisiciones</h3><p id="total">{{ data.Total_Ordenes }}</p></div>
+    <div class="card"><h3>Total de Ordenes de Compras</h3><p id="total">{{ data.Total_Ordenes }}</p></div>
     <div class="card"><h3>Aprobadas</h3><p id="cerradas">{{ data.Cerradas }}</p></div>
     <div class="card"><h3>Sin Autorizar</h3><p id="sinAutorizar">{{ data.Sin_Autorizar }}</p></div>
     <div class="card"><h3>Canceladas</h3><p id="canceladas">{{ data.Canceladas }}</p></div>
@@ -84,7 +84,7 @@ table button:hover { background:#0b3d91; }
 </div>
 
 <div id="tabla-gasto-container">
-    <h3>Top 10 Proveedores - Gasto Total (Aprobadas)</h3>
+    <h3>Top 10 Proveedores - Gasto Total</h3>
     <table>
         <thead>
             <tr><th>Proveedor</th><th>Gasto Total</th><th>Acción</th></tr>

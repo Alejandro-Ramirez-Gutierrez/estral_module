@@ -107,7 +107,7 @@ def validar_acceso_valance(payload):
     k_empleado = payload.get("K_Empleado")
     k_area = payload.get("K_Area")
     AREAS_PERMITIDAS = [99, 20, 22, 23]
-    EMPLEADOS_PERMITIDOS = [8811, 8870, 8740,4,5]
+    EMPLEADOS_PERMITIDOS = [8811, 8661, 8870, 8740,4,5]
     return (k_area in AREAS_PERMITIDAS) or (k_empleado in EMPLEADOS_PERMITIDOS)
 
 @app.get("/valance", response_class=HTMLResponse)
@@ -186,7 +186,7 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
         "Sin_Recepcion": resumen_sp["SinRecepcion"]
     }
 
-    # Top proveedores en pesos (igual que antes)
+    # Top proveedores en pesos
     query_top_prov = f"""
     SELECT P.D_Proveedor,
            SUM(O.precio_total_orden_compra *
