@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Planeación - Estral</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background:#f4f7f9; margin:0; padding:0;
+    }
+    nav {
+      display:flex; align-items:center;
+      background-color:#1a73e8; color:white;
+      padding:15px 20px; box-shadow:0 3px 8px rgba(0,0,0,0.15);
+    }
+    nav .logo { font-size:24px; font-weight:bold; }
+
+    main { padding:20px; max-width:1400px; margin:0 auto; }
+    h1 { color:#333; text-align:center; margin-bottom:10px; }
+
+    #total-kgs {
+      text-align:center; font-size:20px; font-weight:bold; margin-bottom:15px;
+      color:#1a73e8;
+    }
+
+    /* Botón regresar */
+    #btn-regresar {
+      background:#555; color:white; border:none;
+      border-radius:8px; padding:8px 15px;
+      cursor:pointer; font-weight:bold; margin-bottom:15px;
+      transition:0.2s;
+    }
+    #btn-regresar:hover { background:#333; }
+
+    /* Formulario */
+    #add-form {
+      display:flex; gap:10px; justify-content:center; margin-bottom:20px;
+      flex-wrap: wrap;
+    }
+    #add-form input {
+      padding:10px; font-size:16px;
+      border:2px solid #1a73e8; border-radius:8px; width:250px;
+    }
+    #add-form button {
+      background:#ff9800; color:white; border:none;
+      border-radius:8px; padding:10px 18px;
+      font-size:16px; font-weight:bold; cursor:pointer; transition:0.2s;
+    }
+    #add-form button:hover { background:#e68900; }
+
+    /* Tabla */
+    table {
+      width:100%; border-collapse:collapse; margin-top:20px; background:white;
+      border-radius:12px; overflow:hidden; box-shadow:0 6px 15px rgba(0,0,0,0.1);
+      table-layout: fixed;
+    }
+    th, td { padding:10px 8px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    th { background:#1a73e8; color:white; font-weight:bold; }
+    tr:nth-child(even) { background:#f9f9f9; }
+    tr:hover { background:#f1f1f1; }
+
+    /* Barra de progreso */
+    .barra-progreso {
+      position: relative;
+      background: #ddd;
+      border-radius: 8px;
+      height: 18px;
+      width: 100%;
+      margin: auto;
+    }
+    .barra-progreso-inner {
+      background: #4caf50;
+      height: 100%;
+      border-radius: 8px;
+      text-align: center;
+      color: white;
+      font-size: 12px;
+      line-height: 18px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Botones eliminar */
+    .btn-delete {
+      background:#dc3545; color:white; border:none;
+      border-radius:8px; padding:6px 12px;
+      cursor:pointer; transition:0.2s; font-weight:bold;
+    }
+    .btn-delete:hover { background:#c82333; }
+
+    /* Mensajes */
+    #mensaje {
+      text-align:center; margin:15px 0;
+      font-weight:bold; font-size:16px;
+    }
+    .ok { color:green; }
+    .error { color:red; }
+
+    /* Responsive */
+    @media (max-width:1024px){
+      th, td { font-size:14px; padding:6px 5px; }
+      .barra-progreso { height:14px; }
+      .barra-progreso-inner { font-size:10px; line-height:14px; }
+    }
+    @media (max-width:768px){
+      #add-form { flex-direction:column; align-items:center; }
+      #add-form input { width:100%; max-width:300px; }
+      table { font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">📊 Planeación Estral</div>
+  </nav>
+  <main>
+    <button id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar a Dashboard</button>
+    <h1>Dashboard de Planeación</h1>
+
+    <div id="total-kgs">Total KGS Producidos: 0</div>
+
+    <form id="add-form">
+      <input type="text" id="pedido" placeholder="Ingresa pedido..." required>
+      <button type="submit">Agregar Pedido</button>
+    </form>
+
+    <div id="mensaje"></div>
+
+    <table id="tabla-planeacion">
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Cliente</th>
+          <th>Sistema</th>
+          <th>KGS</th>
+          <th>Ensamble %</th>
+          <th>Pintura %</th>
+          <th>Embarque %</th>
+          <th>Status</th>
+          <th>KGS Faltantes</th>
+          <th>Entrega</th>
+          <th>Cierre</th>
+          <th>Usuario</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+
+  <script>
+    function crearBarra(porcentaje){
+      porcentaje = Math.min(Math.max(porcentaje||0,0),100);
+      return `
+        <div class="barra-progreso">
+          <div class="barra-progreso-inner" style="width:${porcentaje}%">${porcentaje}%</div>
+        </div>
+      `;
+    }
+
+    async function cargarPlaneacion(){
+      const res = await fetch("/planeacion/list");
+      const data = await res.json();
+      const tbody = document.querySelector("#tabla-planeacion tbody");
+      tbody.innerHTML = "";
+
+      let totalProducido = 0;
+
+      if(data.planeacion){
+        data.planeacion.forEach(row => {
+          const kgs = parseFloat(row.KGS || 0);
+          const kgsFaltantes = parseFloat(row.KGS_Faltantes || 0);
+          totalProducido += Math.max(kgs - kgsFaltantes, 0);
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td title="${row.Pedido || ''}">${row.Pedido || ""}</td>
+            <td title="${row.Cliente || ''}">${row.Cliente || ""}</td>
+            <td title="${row.Sistema || ''}">${row.Sistema || ""}</td>
+            <td>${kgs}</td>
+            <td>${crearBarra(row.ENSAMBLE)}</td>
+            <td>${crearBarra(row.PINTURA)}</td>
+            <td>${crearBarra(row.EMBARQUE)}</td>
+            <td>${row.Status || ""}</td>
+            <td>${kgsFaltantes}</td>
+            <td>${row.Fecha_Entrega || ""}</td>
+            <td>${row.Fecha_Cierre || ""}</td>
+            <td>${row.Usuario_Agrego || ""}</td>
+            <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      document.getElementById("total-kgs").textContent = `Total KGS Producidos: ${totalProducido.toLocaleString()}`;
+    }
+
+    async function agregarPedido(pedido){
+      const formData = new FormData();
+      formData.append("pedido", pedido);
+      try{
+        const res = await fetch("/planeacion/add", {method:"POST", body:formData});
+        const data = await res.json();
+        if(res.ok){
+          mostrarMensaje("Pedido agregado correctamente ✅","ok");
+          cargarPlaneacion();
+        }else{
+          mostrarMensaje(data.error || "Error al agregar pedido ❌","error");
+        }
+      }catch(err){
+        mostrarMensaje("Error de conexión ❌","error");
+      }
+    }
+
+    async function borrarPedido(pedido){
+      if(!confirm("¿Seguro de eliminar el pedido "+pedido+"?")) return;
+      try{
+        const res = await fetch("/planeacion/"+pedido, {method:"DELETE"});
+        const data = await res.json();
+        if(res.ok){
+          mostrarMensaje("Pedido eliminado ✅","ok");
+          cargarPlaneacion();
+        }else{
+          mostrarMensaje(data.error || "Error al eliminar ❌","error");
+        }
+      }catch(err){
+        mostrarMensaje("Error de conexión ❌","error");
+      }
+    }
+
+    function mostrarMensaje(msg, tipo){
+      const div = document.getElementById("mensaje");
+      div.textContent = msg;
+      div.className = tipo;
+      setTimeout(()=>{ div.textContent=""; div.className=""; }, 3000);
+    }
+
+    document.getElementById("add-form").addEventListener("submit", e=>{
+      e.preventDefault();
+      const pedido = document.getElementById("pedido").value.trim();
+      if(pedido) agregarPedido(pedido);
+      e.target.reset();
+    });
+
+    // inicial
+    cargarPlaneacion();
+  </script>
+</body>
+</html>

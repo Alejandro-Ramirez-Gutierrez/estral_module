@@ -15,6 +15,7 @@ from services.db_service import (
     autorizar_orden,
     ejecutar_consulta_sql
 )
+from routers import auth_requisiciones, planeacion
 from datetime import datetime
 from calendar import month_name
 
@@ -22,6 +23,8 @@ app = FastAPI(title="Estral Módulo - Autorización Requisiciones")
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(auth_requisiciones.router, prefix="/auth", tags=["Autenticación"])
+app.include_router(auth_requisiciones.router, prefix="/auth", tags=["Autenticación"])
+app.include_router(planeacion.router, prefix="/planeacion", tags=["Planeación"])
 
 # ------------------- LOGIN -------------------
 @app.get("/", response_class=HTMLResponse)
