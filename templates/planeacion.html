@@ -140,7 +140,6 @@
           <th>KGS Faltantes</th>
           <th>Entrega</th>
           <th>Cierre</th>
-          <th>Usuario</th>
           <th>Acción</th>
         </tr>
       </thead>
@@ -185,7 +184,6 @@
             <td>${kgsFaltantes}</td>
             <td>${row.Fecha_Entrega || ""}</td>
             <td>${row.Fecha_Cierre || ""}</td>
-            <td>${row.Usuario_Agrego || ""}</td>
             <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>
           `;
           tbody.appendChild(tr);
