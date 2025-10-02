@@ -3,8 +3,19 @@ from config import get_connection
 import requests
 import pyodbc
 import os
+import traceback
 
-def login_user(username: str, password: str, aplicacion: str = "EstralWeb", version: str = "1.1.5.18", b_web: int = 1):
+# -------------------- Helpers --------------------
+def safe_fetch(cursor):
+    """Obtiene un row de cursor devolviendo None si falla."""
+    try:
+        return cursor.fetchone()
+    except Exception:
+        return None
+
+# -------------------- Login --------------------
+def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
+               version: str = "1.1.5.18", b_web: int = 1):
     """
     Valida el login del usuario usando el procedure Gp_Valida_Usuario_Nuevo.
     Devuelve un diccionario con 'user' si es correcto o 'error' si falla.
@@ -24,24 +35,24 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb", vers
             SELECT @pmsMsg AS pmsMsg;
         """, username, password, aplicacion, version, b_web)
 
-        user_row = cursor.fetchone()
+        user_row = safe_fetch(cursor)
         if cursor.nextset():
-            output_row = cursor.fetchone()
-            if output_row and output_row.pmsMsg:
+            output_row = safe_fetch(cursor)
+            if output_row and getattr(output_row, "pmsMsg", None):
                 return {"error": "Usuario o contraseña incorrectos"}
 
         if not user_row:
             return {"error": "Usuario o contraseña incorrectos"}
 
         user_data = {
-            "K_Usuario": user_row.K_Usuario,
-            "D_Usuario": user_row.D_Usuario,
-            "K_Empleado": user_row.K_Empleado,
-            "D_Empleado": user_row.D_Empleado,
-            "K_Oficina": user_row.K_Oficina,
-            "D_Oficina": user_row.D_Oficina,
-            "K_Empresa": user_row.K_Empresa,
-            "D_Empresa": user_row.D_Empresa,
+            "K_Usuario": getattr(user_row, "K_Usuario", None),
+            "D_Usuario": getattr(user_row, "D_Usuario", None),
+            "K_Empleado": getattr(user_row, "K_Empleado", None),
+            "D_Empleado": getattr(user_row, "D_Empleado", None),
+            "K_Oficina": getattr(user_row, "K_Oficina", None),
+            "D_Oficina": getattr(user_row, "D_Oficina", None),
+            "K_Empresa": getattr(user_row, "K_Empresa", None),
+            "D_Empresa": getattr(user_row, "D_Empresa", None),
             "K_Area": getattr(user_row, "K_Area", None),
             "D_Area": getattr(user_row, "D_Area", None),
             "K_Departamento": getattr(user_row, "K_Departamento", None),
@@ -50,19 +61,20 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb", vers
 
         return {"user": user_data}
 
-    except Exception:
-        return {"error": "Usuario o contraseña incorrectos"}
+    except Exception as e:
+        print("ERROR LOGIN_USER:", e)
+        traceback.print_exc()
+        return {"error": str(e)}
 
     finally:
         cursor.close()
         conn.close()
 
-
 def valida_usuario(username: str, password: str):
     result = login_user(username, password)
     return "user" in result
 
-
+# -------------------- Órdenes --------------------
 def obtener_ordenes_para_autorizar(k_empleado: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -76,24 +88,22 @@ def obtener_ordenes_para_autorizar(k_empleado: int):
             code = getattr(r, "Code", "") or ""
             tipo = "001"
 
-            payload = {
-                "K_Orden_Compra": orden,
-                "Tipo": tipo,
-                "Code": code
-            }
-
-            response = requests.post(
-                "https://dev.altisconsultores.com.mx/wsEstral/getOrdenCompra",
-                json=payload
-            )
-
+            payload = {"K_Orden_Compra": orden, "Tipo": tipo, "Code": code}
             pdf_path = ""
-            if response.status_code == 200:
-                pdf_dir = "static/pdfs"
-                os.makedirs(pdf_dir, exist_ok=True)
-                pdf_path = os.path.join(pdf_dir, f"orden_{orden}.pdf")
-                with open(pdf_path, "wb") as f:
-                    f.write(response.content)
+
+            try:
+                response = requests.post(
+                    "https://dev.altisconsultores.com.mx/wsEstral/getOrdenCompra",
+                    json=payload
+                )
+                if response.status_code == 200:
+                    pdf_dir = "static/pdfs"
+                    os.makedirs(pdf_dir, exist_ok=True)
+                    pdf_path = os.path.join(pdf_dir, f"orden_{orden}.pdf")
+                    with open(pdf_path, "wb") as f:
+                        f.write(response.content)
+            except Exception as e:
+                print(f"ERROR descargando PDF orden {orden}: {e}")
 
             result.append({
                 "Orden": orden,
@@ -114,7 +124,7 @@ def obtener_ordenes_para_autorizar(k_empleado: int):
         cursor.close()
         conn.close()
 
-
+# -------------------- Motivos --------------------
 def obtener_motivos_cancelacion(k_motivo: int = None, activo: int = 1):
     conn = get_connection()
     cursor = conn.cursor()
@@ -127,9 +137,9 @@ def obtener_motivos_cancelacion(k_motivo: int = None, activo: int = 1):
         rows = cursor.fetchall()
         return [
             {
-                "K_Motivo_Cancelacion_Orden": r.K_Motivo_Cancelacion_Orden,
-                "D_Motivo_Cancelacion_Orden": r.D_Motivo_Cancelacion_Orden,
-                "B_Activo": r.B_Activo
+                "K_Motivo_Cancelacion_Orden": getattr(r, "K_Motivo_Cancelacion_Orden", None),
+                "D_Motivo_Cancelacion_Orden": getattr(r, "D_Motivo_Cancelacion_Orden", None),
+                "B_Activo": getattr(r, "B_Activo", None)
             }
             for r in rows
         ]
@@ -137,44 +147,42 @@ def obtener_motivos_cancelacion(k_motivo: int = None, activo: int = 1):
         cursor.close()
         conn.close()
 
-
+# -------------------- Cancelar / Autorizar --------------------
 def cancelar_orden_compra(k_orden_compra: int, k_empleado: int, k_motivo: int = None):
+    conn = get_connection()
+    cursor = conn.cursor()
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-
         cursor.execute("""
             DECLARE @rc INT;
             DECLARE @pmsMsg VARCHAR(200);
-            
             EXEC @rc = Gp_Libera_Orden_Compras
                 @K_Orden_Compra=?,
                 @K_Empleado_Cancela=?,
                 @Pmsmsg=@pmsMsg OUTPUT;
-            
             SELECT @pmsMsg AS pmsMsg, @rc AS return_code;
         """, k_orden_compra, k_empleado)
 
-        cursor.nextset()
-        output_row = cursor.fetchone()
-        
-        pmsmsg = output_row.pmsMsg if output_row else None
-        return_code = output_row.return_code if output_row else None
+        if cursor.nextset():
+            output_row = safe_fetch(cursor)
+            pmsmsg = getattr(output_row, "pmsMsg", None)
+            return_code = getattr(output_row, "return_code", None)
+        else:
+            pmsmsg = None
+            return_code = None
 
+        conn.commit()
         if return_code == 0:
             return {"ok": pmsmsg}
         else:
             return {"error": pmsmsg}
 
     except Exception as e:
+        print("ERROR cancelar_orden_compra:", e)
+        traceback.print_exc()
         return {"error": str(e)}
     finally:
-        cursor.commit()
-        if 'cursor' in locals() and cursor:
-            cursor.close()
-        if 'conn' in locals() and conn:
-            conn.close()
-
+        cursor.close()
+        conn.close()
 
 def autorizar_orden(k_orden, k_empleado):
     conn = get_connection()
@@ -189,39 +197,38 @@ def autorizar_orden(k_orden, k_empleado):
                 @Pmsmsg=@Pmsmsg OUTPUT;
             SELECT @B_Notificacion AS B_Notificacion, @Pmsmsg AS Mensaje;
         """, k_orden, k_empleado)
-        row = cursor.fetchone()
+        row = safe_fetch(cursor)
         b_notificacion = getattr(row, "B_Notificacion", 0)
         mensaje = getattr(row, "Mensaje", "")
+        conn.commit()
         return b_notificacion, mensaje
 
     except Exception as e:
+        print("ERROR autorizar_orden:", e)
+        traceback.print_exc()
         return 0, str(e)
-
     finally:
-        cursor.commit()
         cursor.close()
         conn.close()
 
-
+# -------------------- Consulta SQL genérica --------------------
 def ejecutar_consulta_sql(query: str, fetchone: bool = False, fetchall: bool = False):
-    """
-    Ejecuta cualquier consulta SQL y devuelve resultados como diccionarios.
-    - fetchone=True -> devuelve un solo registro como dict
-    - fetchall=True -> devuelve lista de dicts
-    - si no se indica -> solo ejecuta y hace commit
-    """
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(query)
         columns = [col[0] for col in cursor.description] if cursor.description else []
         if fetchone:
-            row = cursor.fetchone()
+            row = safe_fetch(cursor)
             return dict(zip(columns, row)) if row else {}
         if fetchall:
             rows = cursor.fetchall()
             return [dict(zip(columns, r)) for r in rows]
         conn.commit()
+        return {}
+    except Exception as e:
+        print("ERROR ejecutar_consulta_sql:", e)
+        traceback.print_exc()
         return {}
     finally:
         cursor.close()

@@ -1,11 +1,14 @@
-#-------------------- Encender entorno virtual : source venv/bin/activate macos
-#-------------------- Levantar servidor virtual: uvicorn main:app --reload
 # estral_modulo/main.py
+# -------------------- Encender entorno virtual --------------------
+# macOS: source venv/bin/activate
+# Windows PS: .\venv\Scripts\Activate.ps1
+# Levantar servidor: uvicorn main:app --reload
+
 from fastapi import FastAPI, Request, Form, Cookie, Body, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from routers import auth_requisiciones
+from routers import auth_requisiciones, planeacion
 from utils.auth import crear_access_token, verificar_access_token
 from services.db_service import (
     login_user,
@@ -15,18 +18,19 @@ from services.db_service import (
     autorizar_orden,
     ejecutar_consulta_sql
 )
-from routers import auth_requisiciones, planeacion
 from datetime import datetime
 from calendar import month_name
 
+# -------------------- APP --------------------
 app = FastAPI(title="Estral Módulo - Autorización Requisiciones")
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.include_router(auth_requisiciones.router, prefix="/auth", tags=["Autenticación"])
+
+# -------------------- ROUTERS --------------------
 app.include_router(auth_requisiciones.router, prefix="/auth", tags=["Autenticación"])
 app.include_router(planeacion.router, prefix="/planeacion", tags=["Planeación"])
 
-# ------------------- LOGIN -------------------
+# -------------------- LOGIN --------------------
 @app.get("/", response_class=HTMLResponse)
 def get_login(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -41,9 +45,12 @@ def post_login(request: Request, login: str = Form(...), contrasenia: str = Form
         response = RedirectResponse(url="/dashboard", status_code=303)
         response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
         return response
-    return templates.TemplateResponse("login.html", {"request": request, "error": resultado.get("error", "Usuario o contraseña incorrectos")})
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": resultado.get("error", "Usuario o contraseña incorrectos")}
+    )
 
-# ------------------- DASHBOARD -------------------
+# -------------------- DASHBOARD --------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, access_token: str = Cookie(None)):
     if not access_token:
@@ -52,12 +59,15 @@ def dashboard(request: Request, access_token: str = Cookie(None)):
     payload = verificar_access_token(token)
     if not payload:
         return RedirectResponse(url="/", status_code=303)
-    usuario = payload.get("sub", "Usuario")
+
     k_empleado = payload.get("K_Empleado")
     ordenes = obtener_ordenes_para_autorizar(k_empleado) if k_empleado else []
-    return templates.TemplateResponse("dashboard.html", {"request": request, "usuario": usuario, "K_Empleado": k_empleado, "ordenes": ordenes})
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "usuario": payload.get("sub", "Usuario"), "K_Empleado": k_empleado, "ordenes": ordenes}
+    )
 
-# ------------------- MOTIVOS CANCELACIÓN -------------------
+# -------------------- API: MOTIVOS CANCELACIÓN --------------------
 @app.get("/dashboard/motivos_cancelacion")
 def api_motivos_cancelacion(access_token: str = Cookie(None)):
     if not access_token:
@@ -68,7 +78,7 @@ def api_motivos_cancelacion(access_token: str = Cookie(None)):
         return JSONResponse(status_code=401, content={"error": "No autorizado"})
     return {"motivos": obtener_motivos_cancelacion()}
 
-# ------------------- CANCELAR ORDEN -------------------
+# -------------------- API: CANCELAR ORDEN --------------------
 @app.post("/dashboard/cancelar_orden")
 def api_cancelar_orden(k_orden_compra: int = Form(...), k_motivo: int = Form(1), access_token: str = Cookie(None)):
     if not access_token:
@@ -77,16 +87,19 @@ def api_cancelar_orden(k_orden_compra: int = Form(...), k_motivo: int = Form(1),
     payload = verificar_access_token(token)
     if not payload:
         return JSONResponse(status_code=401, content={"error": "Token inválido"})
+
     k_empleado = payload.get("K_Empleado")
     if not k_empleado:
         return JSONResponse(status_code=400, content={"error": "No se encontró el número de empleado"})
+
     result = cancelar_orden_compra(k_orden_compra, k_empleado, k_motivo)
     if "error" in result:
         return JSONResponse(status_code=400, content=result)
+
     ordenes = obtener_ordenes_para_autorizar(k_empleado)
     return {"success": True, "ordenes": ordenes}
 
-# ------------------- AUTORIZAR ORDEN -------------------
+# -------------------- API: AUTORIZAR ORDEN --------------------
 @app.post("/dashboard/autorizar_orden")
 def api_autorizar_orden(k_orden_compra: int = Body(..., embed=True), access_token: str = Cookie(None)):
     if not access_token:
@@ -95,9 +108,11 @@ def api_autorizar_orden(k_orden_compra: int = Body(..., embed=True), access_toke
     payload = verificar_access_token(token)
     if not payload:
         return JSONResponse(status_code=401, content={"error": "Token inválido"})
+
     k_empleado = payload.get("K_Empleado")
     if not k_empleado:
         return JSONResponse(status_code=400, content={"error": "No se encontró el número de empleado"})
+
     try:
         b_notificacion, mensaje = autorizar_orden(k_orden_compra, k_empleado)
         ordenes = obtener_ordenes_para_autorizar(k_empleado)
@@ -105,13 +120,22 @@ def api_autorizar_orden(k_orden_compra: int = Body(..., embed=True), access_toke
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# ------------------- VALANCE -------------------
+# -------------------- VALANCE --------------------
 def validar_acceso_valance(payload):
     k_empleado = payload.get("K_Empleado")
     k_area = payload.get("K_Area")
     AREAS_PERMITIDAS = [99, 20, 22, 23]
-    EMPLEADOS_PERMITIDOS = [8811, 8661, 8870, 8740,4,5]
+    EMPLEADOS_PERMITIDOS = [8811, 8661, 8870, 8740, 4, 5]
     return (k_area in AREAS_PERMITIDAS) or (k_empleado in EMPLEADOS_PERMITIDOS)
+
+def calcular_rango_mes(mes: str):
+    """Devuelve fecha_inicio y fecha_fin para un mes dado (YYYY-MM)"""
+    fecha_inicio = datetime.strptime(f"{mes}-01", "%Y-%m-%d")
+    if fecha_inicio.month < 12:
+        fecha_fin = fecha_inicio.replace(month=fecha_inicio.month+1, day=1)
+    else:
+        fecha_fin = fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1)
+    return fecha_inicio, fecha_fin
 
 @app.get("/valance", response_class=HTMLResponse)
 def valance(request: Request, access_token: str = Cookie(None)):
@@ -121,22 +145,24 @@ def valance(request: Request, access_token: str = Cookie(None)):
     payload = verificar_access_token(token)
     if not payload or not validar_acceso_valance(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
-    usuario = payload.get("sub", "Usuario")
-    k_empleado = payload.get("K_Empleado")
+
     today = datetime.today()
     meses = [{"value": f"{today.year}-{str(m).zfill(2)}", "name": f"{month_name[m]} {today.year}"} for m in range(1, today.month+1)]
-    return templates.TemplateResponse("valance.html", {
-        "request": request,
-        "usuario": usuario,
-        "K_Empleado": k_empleado,
-        "K_Area": payload.get("K_Area"),
-        "meses": meses,
-        "mes_actual": f"{today.year}-{str(today.month).zfill(2)}",
-        "data": {"Total_Ordenes":0,"Cerradas":0,"Sin_Autorizar":0,"Canceladas":0,"Recepcionadas_Completas":0,"Recepcionadas_Parciales":0,"Sin_Recepcion":0},
-        "top_proveedores": []
-    })
+    return templates.TemplateResponse(
+        "valance.html",
+        {
+            "request": request,
+            "usuario": payload.get("sub", "Usuario"),
+            "K_Empleado": payload.get("K_Empleado"),
+            "K_Area": payload.get("K_Area"),
+            "meses": meses,
+            "mes_actual": f"{today.year}-{str(today.month).zfill(2)}",
+            "data": {"Total_Ordenes":0,"Cerradas":0,"Sin_Autorizar":0,"Canceladas":0,"Recepcionadas_Completas":0,"Recepcionadas_Parciales":0,"Sin_Recepcion":0},
+            "top_proveedores": []
+        }
+    )
 
-# ------------------- DATOS VALANCE -------------------
+# -------------------- DATOS VALANCE --------------------
 @app.get("/valance/datos")
 def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
     if not access_token:
@@ -146,15 +172,11 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     if not payload or not validar_acceso_valance(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
-    # Fecha por defecto si no se envía mes
     if not mes:
         mes = datetime.now().strftime("%Y-%m")
-    
-    fecha_inicio = datetime.strptime(f"{mes}-01","%Y-%m-%d")
-    fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
-                 if fecha_inicio.month < 12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
+    fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
-    # Totales por moneda y total general en pesos (igual que antes)
+    # Totales por moneda
     query_totales = f"""
     SELECT 
         SUM(CASE WHEN K_Tipo_Moneda = 1 THEN precio_total_orden_compra ELSE 0 END) AS total_pesos,
@@ -173,12 +195,9 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     """
     totales = ejecutar_consulta_sql(query_totales, fetchone=True)
 
-    # Resumen de ordenes usando el stored procedure
+    # Resumen
     anio, mes_num = map(int, mes.split("-"))
-    query_resumen_sp = f"EXEC SK_Reporte_Ordenes_Compra_Resumen @Anio={anio}, @Mes={mes_num}"
-    resumen_sp = ejecutar_consulta_sql(query_resumen_sp, fetchone=True)
-
-    # Mapea resultado para mantener compatibilidad con JSON anterior
+    resumen_sp = ejecutar_consulta_sql(f"EXEC SK_Reporte_Ordenes_Compra_Resumen @Anio={anio}, @Mes={mes_num}", fetchone=True)
     resumen = {
         "Total_Ordenes": resumen_sp["Todas"],
         "Cerradas": resumen_sp["Autorizadas"],
@@ -189,7 +208,7 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
         "Sin_Recepcion": resumen_sp["SinRecepcion"]
     }
 
-    # Top proveedores en pesos
+    # Top proveedores
     query_top_prov = f"""
     SELECT P.D_Proveedor,
            SUM(O.precio_total_orden_compra *
@@ -208,10 +227,7 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
     ORDER BY Monto_Total DESC;
     """
     top_proveedores = ejecutar_consulta_sql(query_top_prov, fetchall=True)
-    top_proveedores_json = [{"Nombre_Proveedor":p["D_Proveedor"],
-                             "Monto_Total":float(p["Monto_Total"]),
-                             "Cantidad_Compras":int(p["Cantidad_Compras"])} 
-                            for p in top_proveedores]
+    top_proveedores_json = [{"Nombre_Proveedor":p["D_Proveedor"], "Monto_Total":float(p["Monto_Total"]), "Cantidad_Compras":int(p["Cantidad_Compras"])} for p in top_proveedores]
 
     return {
         "resumen": resumen,
@@ -224,7 +240,7 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
         "top_proveedores": top_proveedores_json
     }
 
-# ------------------- FRECUENCIA -------------------
+# -------------------- FRECUENCIA --------------------
 @app.get("/valance/frecuencia")
 def valance_frecuencia(mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
     if not access_token:
@@ -236,9 +252,7 @@ def valance_frecuencia(mes: str = Query("", description="Mes en formato YYYY-MM"
 
     if not mes:
         mes = datetime.now().strftime("%Y-%m")
-    fecha_inicio = datetime.strptime(f"{mes}-01","%Y-%m-%d")
-    fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
-                 if fecha_inicio.month<12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
+    fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
     query_frecuencia = f"""
     SELECT TOP 10 P.D_Proveedor, COUNT(O.K_Orden_Compra) AS Cantidad_Compras, SUM(O.precio_total_orden_compra) AS Monto_Total
@@ -252,7 +266,7 @@ def valance_frecuencia(mes: str = Query("", description="Mes en formato YYYY-MM"
     top_proveedores = ejecutar_consulta_sql(query_frecuencia, fetchall=True)
     return {"top_proveedores":[{"Nombre_Proveedor":p["D_Proveedor"],"Cantidad_Compras":int(p["Cantidad_Compras"]),"Monto_Total":float(p["Monto_Total"])} for p in top_proveedores]}
 
-# ------------------- DETALLE PROVEEDOR -------------------
+# -------------------- DETALLE PROVEEDOR --------------------
 @app.get("/valance/detalle_proveedor")
 def detalle_proveedor(proveedor: str = Query(...), mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
     if not access_token:
@@ -264,16 +278,11 @@ def detalle_proveedor(proveedor: str = Query(...), mes: str = Query("", descript
 
     if not mes:
         mes = datetime.now().strftime("%Y-%m")
-    fecha_inicio = datetime.strptime(f"{mes}-01","%Y-%m-%d")
-    fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
-                 if fecha_inicio.month<12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
+    fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
     query = f"""
     SELECT O.K_Orden_Compra, O.F_Generacion, O.precio_total_orden_compra AS Monto,
-           CASE 
-               WHEN O.B_Cerrada = 1 THEN 'Cerrada'
-               ELSE 'Sin Autorizar'
-           END AS Estado
+           CASE WHEN O.B_Cerrada = 1 THEN 'Cerrada' ELSE 'Sin Autorizar' END AS Estado
     FROM Ordenes_compra O
     INNER JOIN Proveedores P ON O.K_Proveedor = P.K_Proveedor
     WHERE P.D_Proveedor = '{proveedor}'
@@ -291,7 +300,7 @@ def detalle_proveedor(proveedor: str = Query(...), mes: str = Query("", descript
         } for d in detalle
     ]
 
-# -------- Grafica de pastel
+# -------------------- GRAFICA FAMILIA --------------------
 @app.get("/valance/familia")
 def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
     if not access_token:
@@ -300,12 +309,10 @@ def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), 
     payload = verificar_access_token(token)
     if not payload or not validar_acceso_valance(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
-    
+
     if not mes:
         mes = datetime.now().strftime("%Y-%m")
-    fecha_inicio = datetime.strptime(f"{mes}-01","%Y-%m-%d")
-    fecha_fin = (fecha_inicio.replace(month=fecha_inicio.month+1, day=1) 
-                 if fecha_inicio.month < 12 else fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1))
+    fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
     query = f"""
     SELECT T.D_Familia_Articulo AS Familia, SUM(T.Total) AS Total
@@ -314,21 +321,17 @@ def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), 
         FROM Ordenes_Compra O
         JOIN Detalle_Ordenes_Compra D ON O.K_Orden_Compra = D.K_Orden_Compra
         JOIN VW_Articulos_Todos T ON D.SKU = T.SKU
-        WHERE ISNULL(O.B_Cancelada,0)=0
-          AND ISNULL(O.B_Completa,0)=0
+        WHERE ISNULL(O.B_Cancelada,0)=0 AND ISNULL(O.B_Completa,0)=0
           AND O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
         GROUP BY O.K_Orden_Compra, T.D_Familia_Articulo
     ) T
     GROUP BY T.D_Familia_Articulo
     ORDER BY T.D_Familia_Articulo;
     """
-
     data = ejecutar_consulta_sql(query, fetchall=True)
-    result = [{"Familia": d["Familia"].strip(), "Total": float(d["Total"])} for d in data]
-    return result
+    return [{"Familia": d["Familia"].strip(), "Total": float(d["Total"])} for d in data]
 
-
-# ------------------- LOGOUT -------------------
+# -------------------- LOGOUT --------------------
 @app.get("/logout")
 def logout():
     response = RedirectResponse(url="/", status_code=303)
