@@ -4,115 +4,37 @@
   <meta charset="UTF-8">
   <title>Planeación - Estral</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background:#f4f7f9; margin:0; padding:0;
-    }
-    nav {
-      display:flex; align-items:center;
-      background-color:#1a73e8; color:white;
-      padding:15px 20px; box-shadow:0 3px 8px rgba(0,0,0,0.15);
-    }
+    body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f7f9; margin:0; padding:0; }
+    nav { display:flex; align-items:center; background-color:#1a73e8; color:white; padding:15px 20px; box-shadow:0 3px 8px rgba(0,0,0,0.15); }
     nav .logo { font-size:24px; font-weight:bold; }
-
     main { padding:20px; max-width:1400px; margin:0 auto; }
-    h1 { color:#333; text-align:center; margin-bottom:10px; }
-
-    #total-kgs {
-      text-align:center; font-size:20px; font-weight:bold; margin-bottom:15px;
-      color:#1a73e8;
-    }
-
-    /* Botón regresar */
-    #btn-regresar {
-      background:#555; color:white; border:none;
-      border-radius:8px; padding:8px 15px;
-      cursor:pointer; font-weight:bold; margin-bottom:15px;
-      transition:0.2s;
-    }
+    h1, h2 { color:#333; text-align:center; margin-bottom:10px; }
+    #total-kgs, #total-kgs-np { text-align:center; font-size:20px; font-weight:bold; margin-bottom:15px; color:#1a73e8; }
+    #btn-regresar { background:#555; color:white; border:none; border-radius:8px; padding:8px 15px; cursor:pointer; font-weight:bold; margin-bottom:15px; transition:0.2s; }
     #btn-regresar:hover { background:#333; }
-
-    /* Formulario */
-    #add-form {
-      display:flex; gap:10px; justify-content:center; margin-bottom:20px;
-      flex-wrap: wrap;
-    }
-    #add-form input {
-      padding:10px; font-size:16px;
-      border:2px solid #1a73e8; border-radius:8px; width:250px;
-    }
-    #add-form button {
-      background:#ff9800; color:white; border:none;
-      border-radius:8px; padding:10px 18px;
-      font-size:16px; font-weight:bold; cursor:pointer; transition:0.2s;
-    }
-    #add-form button:hover { background:#e68900; }
-
-    /* Tabla */
-    table {
-      width:100%; border-collapse:collapse; margin-top:20px; background:white;
-      border-radius:12px; overflow:hidden; box-shadow:0 6px 15px rgba(0,0,0,0.1);
-      table-layout: fixed;
-    }
+    #add-form, #filtro-no-programados { display:flex; gap:10px; justify-content:center; margin-bottom:20px; flex-wrap: wrap; }
+    #add-form input, #filtro-no-programados select { padding:10px; font-size:16px; border:2px solid #1a73e8; border-radius:8px; width:200px; }
+    #add-form button, #filtro-no-programados button { background:#ff9800; color:white; border:none; border-radius:8px; padding:10px 18px; font-size:16px; font-weight:bold; cursor:pointer; transition:0.2s; }
+    #add-form button:hover, #filtro-no-programados button:hover { background:#e68900; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; background:white; border-radius:12px; overflow:hidden; box-shadow:0 6px 15px rgba(0,0,0,0.1); table-layout: fixed; }
     th, td { padding:10px 8px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     th { background:#1a73e8; color:white; font-weight:bold; }
     tr:nth-child(even) { background:#f9f9f9; }
     tr:hover { background:#f1f1f1; }
-
-    /* Barra de progreso */
-    .barra-progreso {
-      position: relative;
-      background: #ddd;
-      border-radius: 8px;
-      height: 18px;
-      width: 100%;
-      margin: auto;
-    }
-    .barra-progreso-inner {
-      background: #4caf50;
-      height: 100%;
-      border-radius: 8px;
-      text-align: center;
-      color: white;
-      font-size: 12px;
-      line-height: 18px;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-
-    /* Botones eliminar */
-    .btn-delete {
-      background:#dc3545; color:white; border:none;
-      border-radius:8px; padding:6px 12px;
-      cursor:pointer; transition:0.2s; font-weight:bold;
-    }
+    .barra-progreso { position: relative; background:#ddd; border-radius:8px; height:18px; width:100%; margin:auto; }
+    .barra-progreso-inner { background:#4caf50; height:100%; border-radius:8px; text-align:center; color:white; font-size:12px; line-height:18px; white-space:nowrap; overflow:hidden; }
+    .btn-delete { background:#dc3545; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
     .btn-delete:hover { background:#c82333; }
-
-    /* Mensajes */
-    #mensaje {
-      text-align:center; margin:15px 0;
-      font-weight:bold; font-size:16px;
-    }
-    .ok { color:green; }
-    .error { color:red; }
-
-    /* Responsive */
-    @media (max-width:1024px){
-      th, td { font-size:14px; padding:6px 5px; }
-      .barra-progreso { height:14px; }
-      .barra-progreso-inner { font-size:10px; line-height:14px; }
-    }
-    @media (max-width:768px){
-      #add-form { flex-direction:column; align-items:center; }
-      #add-form input { width:100%; max-width:300px; }
-      table { font-size:12px; }
-    }
+    #mensaje { text-align:center; margin:15px 0; font-weight:bold; font-size:16px; }
+    .ok { color:green; } .error { color:red; }
+    .estado-pendiente { background:red; color:white; border-radius:6px; padding:2px 6px; display:inline-block; }
+    .estado-completado { background:green; color:white; border-radius:6px; padding:2px 6px; display:inline-block; }
+    @media (max-width:1024px){ th, td { font-size:14px; padding:6px 5px; } .barra-progreso{height:14px;} .barra-progreso-inner{font-size:10px; line-height:14px;} }
+    @media (max-width:768px){ #add-form, #filtro-no-programados { flex-direction:column; align-items:center; } #add-form input, #filtro-no-programados select { width:100%; max-width:300px; } table{font-size:12px;} }
   </style>
 </head>
 <body>
-  <nav>
-    <div class="logo">📊 Planeación Estral</div>
-  </nav>
+  <nav><div class="logo">📊 Planeación Estral</div></nav>
   <main>
     <button id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar a Dashboard</button>
     <h1>Dashboard de Planeación</h1>
@@ -123,24 +45,41 @@
       <input type="text" id="pedido" placeholder="Ingresa pedido..." required>
       <button type="submit">Agregar Pedido</button>
     </form>
-
     <div id="mensaje"></div>
 
+    <!-- Tabla de planeación normal -->
     <table id="tabla-planeacion">
       <thead>
         <tr>
-          <th>Pedido</th>
-          <th>Cliente</th>
-          <th>Sistema</th>
-          <th>KGS</th>
-          <th>Ensamble %</th>
-          <th>Pintura %</th>
-          <th>Embarque %</th>
-          <th>Status</th>
-          <th>KGS Faltantes</th>
-          <th>Entrega</th>
-          <th>Cierre</th>
-          <th>Acción</th>
+          <th>Pedido</th><th>Cliente</th><th>Sistema</th><th>KGS</th>
+          <th>Ensamble %</th><th>Pintura %</th><th>Embarque %</th>
+          <th>Status</th><th>KGS Faltantes</th><th>Entrega</th><th>Cierre</th><th>Acción</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- Apartado pedidos fabricados sin programar -->
+    <h2>🚨 Pedidos Fabricados SIN Programar</h2>
+    <div style="text-align:center; margin-bottom:10px;">
+      <button id="btn-pendientes">Ver Pendientes</button>
+      <button id="btn-completados">Ver Completados</button>
+      <button id="btn-todos">Ver Todos</button>
+    </div>
+    <div id="total-kgs-np">Total KGS Detectados: 0</div>
+
+    <form id="filtro-no-programados">
+      <select id="mes"></select>
+      <select id="anio"></select>
+      <button type="submit">Filtrar</button>
+    </form>
+
+    <table id="tabla-no-programados">
+      <thead>
+        <tr>
+          <th>Pedido</th><th>Cliente</th><th>Sistema</th>
+          <th>KGS Total</th><th>Kg Ensamble</th><th>Kg Pintura</th><th>Kg Embarque</th>
+          <th>Última Fecha</th><th>Estado</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -150,62 +89,106 @@
   <script>
     function crearBarra(porcentaje){
       porcentaje = Math.min(Math.max(porcentaje||0,0),100);
-      return `
-        <div class="barra-progreso">
-          <div class="barra-progreso-inner" style="width:${porcentaje}%">${porcentaje}%</div>
-        </div>
-      `;
+      return `<div class="barra-progreso"><div class="barra-progreso-inner" style="width:${porcentaje}%">${porcentaje}%</div></div>`;
     }
+
+    let noProgramadosGlobal = [];
 
     async function cargarPlaneacion(){
       const res = await fetch("/planeacion/list");
       const data = await res.json();
       const tbody = document.querySelector("#tabla-planeacion tbody");
       tbody.innerHTML = "";
-
       let totalProducido = 0;
-
       if(data.planeacion){
         data.planeacion.forEach(row => {
           const kgs = parseFloat(row.KGS || 0);
           const kgsFaltantes = parseFloat(row.KGS_Faltantes || 0);
           totalProducido += Math.max(kgs - kgsFaltantes, 0);
 
+          const ensamble = parseFloat(row.ENSAMBLE || 0);
+          const pintura = parseFloat(row.PINTURA || 0);
+          const embarque = parseFloat(row.EMBARQUE || 0);
+
+          let statusLabel = (ensamble === 100 && pintura === 100 && embarque === 100) ?
+            `<span class="estado-completado">Completado</span>` :
+            `<span class="estado-pendiente">Producción</span>`;
+
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td title="${row.Pedido || ''}">${row.Pedido || ""}</td>
-            <td title="${row.Cliente || ''}">${row.Cliente || ""}</td>
-            <td title="${row.Sistema || ''}">${row.Sistema || ""}</td>
-            <td>${kgs}</td>
-            <td>${crearBarra(row.ENSAMBLE)}</td>
-            <td>${crearBarra(row.PINTURA)}</td>
-            <td>${crearBarra(row.EMBARQUE)}</td>
-            <td>${row.Status || ""}</td>
-            <td>${kgsFaltantes}</td>
-            <td>${row.Fecha_Entrega || ""}</td>
-            <td>${row.Fecha_Cierre || ""}</td>
-            <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>
-          `;
+            <td>${row.Pedido||""}</td><td>${row.Cliente||""}</td><td>${row.Sistema||""}</td>
+            <td>${kgs.toFixed(2)}</td><td>${crearBarra(ensamble)}</td>
+            <td>${crearBarra(pintura)}</td><td>${crearBarra(embarque)}</td>
+            <td>${statusLabel}</td><td>${kgsFaltantes.toFixed(2)}</td>
+            <td>${row.Fecha_Entrega||""}</td><td>${row.Fecha_Cierre||""}</td>
+            <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>`;
           tbody.appendChild(tr);
+
+          noProgramadosGlobal = noProgramadosGlobal.filter(r=>r.Pedido!==row.Pedido);
         });
       }
-
-      document.getElementById("total-kgs").textContent = `Total KGS Producidos: ${totalProducido.toLocaleString()}`;
+      mostrarNoProgramados(noProgramadosGlobal);
+      document.getElementById("total-kgs").textContent = `Total KGS Producidos: ${totalProducido.toFixed(2)}`;
     }
+
+    async function cargarNoProgramados(mes, anio){
+      const url = `/planeacion/list_noprogramados?mes=${mes}&anio=${anio}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      noProgramadosGlobal = data.pedidos || [];
+
+      // Quitar los que ya están en planeación
+      const planeacionTbody = document.querySelectorAll("#tabla-planeacion tbody tr td:first-child");
+      planeacionTbody.forEach(td=> {
+        noProgramadosGlobal = noProgramadosGlobal.filter(r=>r.Pedido!==td.textContent);
+      });
+
+      mostrarNoProgramados(noProgramadosGlobal);
+    }
+
+    function mostrarNoProgramados(pedidos){
+      const tbody = document.querySelector("#tabla-no-programados tbody");
+      tbody.innerHTML = "";
+      let totalNP = 0;
+      pedidos.forEach(row => {
+        const kgs = parseFloat(row.KgTotal || 0);
+        totalNP += kgs;
+        const statusLabel = row.Estado==="Completado" ? 
+          `<span class="estado-completado">Completado</span>` : 
+          `<span class="estado-pendiente">Pendiente</span>`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.Pedido||""}</td>
+          <td>${row.Cliente||""}</td>
+          <td>${row.Sistema||""}</td>
+          <td>${kgs.toFixed(2)}</td>
+          <td>${(row.Kg_Ensamble||0).toFixed(2)}</td>
+          <td>${(row.Kg_Pintura||0).toFixed(2)}</td>
+          <td>${(row.Kg_Embarque||0).toFixed(2)}</td>
+          <td>${row.Ultima_Fecha||""}</td>
+          <td>${statusLabel}</td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById("total-kgs-np").textContent = `Total KGS Detectados: ${totalNP.toFixed(2)}`;
+    }
+
+    document.getElementById("btn-pendientes").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Pendiente")); });
+    document.getElementById("btn-completados").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Completado")); });
+    document.getElementById("btn-todos").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal); });
 
     async function agregarPedido(pedido){
       const formData = new FormData();
       formData.append("pedido", pedido);
       try{
-        const res = await fetch("/planeacion/add", {method:"POST", body:formData});
+        const res = await fetch("/planeacion/add",{method:"POST",body:formData});
         const data = await res.json();
         if(res.ok){
-          mostrarMensaje("Pedido agregado correctamente ✅","ok");
+          mostrarMensaje("Pedido agregado ✅","ok");
           cargarPlaneacion();
-        }else{
-          mostrarMensaje(data.error || "Error al agregar pedido ❌","error");
+        } else {
+          mostrarMensaje(data.error||"Error al agregar ❌","error");
         }
-      }catch(err){
+      }catch{
         mostrarMensaje("Error de conexión ❌","error");
       }
     }
@@ -213,35 +196,56 @@
     async function borrarPedido(pedido){
       if(!confirm("¿Seguro de eliminar el pedido "+pedido+"?")) return;
       try{
-        const res = await fetch("/planeacion/"+pedido, {method:"DELETE"});
+        const res = await fetch("/planeacion/"+pedido,{method:"DELETE"});
         const data = await res.json();
         if(res.ok){
           mostrarMensaje("Pedido eliminado ✅","ok");
           cargarPlaneacion();
-        }else{
-          mostrarMensaje(data.error || "Error al eliminar ❌","error");
+        } else {
+          mostrarMensaje(data.error||"Error al eliminar ❌","error");
         }
-      }catch(err){
+      }catch{
         mostrarMensaje("Error de conexión ❌","error");
       }
     }
 
-    function mostrarMensaje(msg, tipo){
-      const div = document.getElementById("mensaje");
-      div.textContent = msg;
-      div.className = tipo;
-      setTimeout(()=>{ div.textContent=""; div.className=""; }, 3000);
+    function mostrarMensaje(msg,tipo){
+      const div=document.getElementById("mensaje");
+      div.textContent=msg; div.className=tipo;
+      setTimeout(()=>{div.textContent="";div.className="";},3000);
     }
 
     document.getElementById("add-form").addEventListener("submit", e=>{
       e.preventDefault();
-      const pedido = document.getElementById("pedido").value.trim();
+      const pedido=document.getElementById("pedido").value.trim();
       if(pedido) agregarPedido(pedido);
       e.target.reset();
     });
 
-    // inicial
+    document.getElementById("filtro-no-programados").addEventListener("submit", e=>{
+      e.preventDefault();
+      const mes=document.getElementById("mes").value;
+      const anio=document.getElementById("anio").value;
+      if(mes && anio){ cargarNoProgramados(mes, anio); }
+    });
+
+    const hoy=new Date();
+    const selMes=document.getElementById("mes");
+    const selAnio=document.getElementById("anio");
+    const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    meses.forEach((m,i)=>{
+      const opt=document.createElement("option");
+      opt.value=i+1; opt.text=m; if(i===hoy.getMonth()) opt.selected=true;
+      selMes.appendChild(opt);
+    });
+    for(let y=hoy.getFullYear(); y>=hoy.getFullYear()-5; y--){
+      const opt=document.createElement("option");
+      opt.value=y; opt.text=y; if(y===hoy.getFullYear()) opt.selected=true;
+      selAnio.appendChild(opt);
+    }
+
     cargarPlaneacion();
+    cargarNoProgramados(hoy.getMonth()+1, hoy.getFullYear());
   </script>
 </body>
 </html>

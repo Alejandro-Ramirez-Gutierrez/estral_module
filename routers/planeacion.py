@@ -290,3 +290,110 @@ def borrar_pedido(pedido: str, access_token: str = Cookie(None)):
         return JSONResponse(status_code=500, content={"error": f"Error al eliminar pedido: {str(ex)}"})
 
     return {"message": f"Pedido {pedido} eliminado de planeación"}
+
+
+# API: Listar pedidos de producción con estado de completado
+@router.get("/list_noprogramados")
+def listar_no_programados(mes: int = None, anio: int = None, access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    hoy = datetime.today()
+    if not mes:
+        mes = hoy.month - 1 if hoy.month > 1 else 12
+    if not anio:
+        anio = hoy.year if mes != 12 else hoy.year - 1
+
+    query = f"""
+    ;WITH ProduccionMes AS (
+        SELECT 
+            Pedido,
+            SUM(KgTotal) AS KgTotal,
+            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
+            SUM(CASE WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
+                     OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%')) 
+                     THEN KgTotal ELSE 0 END) AS Kg_Pintura,
+            SUM(CASE WHEN Area LIKE '%EMBARQUE%' THEN KgTotal ELSE 0 END) AS Kg_Embarque
+        FROM db_Estral.dbo.Produccion
+        WHERE YEAR(Fecha) = {anio} AND MONTH(Fecha) = {mes}
+        GROUP BY Pedido
+    ),
+    PedidosHistorico AS (
+        SELECT
+            p.Pedido_Estral AS Pedido,
+            SUM(m.cantidad * m.pesoUnitario) AS Kg_Programados
+        FROM db_Estral.dbo.Pedidos p
+        LEFT JOIN db_Estral.dbo.Mostrar m ON p.Pedido_Estral = m.pedido
+        GROUP BY p.Pedido_Estral
+    ),
+    ProduccionHist AS (
+        SELECT
+            Pedido,
+            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
+            SUM(CASE WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
+                     OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%' OR Color='SIN'))
+                     THEN KgTotal ELSE 0 END) AS Kg_Pintura
+        FROM db_Estral.dbo.Produccion
+        GROUP BY Pedido
+    ),
+    EmbarquesHist AS (
+        SELECT
+            Pedido,
+            SUM(KgTotal) AS Kg_Embarque
+        FROM (
+            SELECT Pedido, KgTotal FROM db_Estral.dbo.embarques
+            UNION ALL
+            SELECT Pedido, KgTotal FROM db_Estral.dbo.CIMSAEMBARQUES
+        ) x
+        GROUP BY Pedido
+    )
+    SELECT 
+        pm.Pedido,
+        p.Pedido_Estral AS Pedido_Estral,
+        d.Destinatario AS Cliente,
+        ts.D_Tipo_Sistema AS Sistema,
+        pm.KgTotal,
+        pm.Kg_Ensamble,
+        pm.Kg_Pintura,
+        pm.Kg_Embarque,
+        MAX(pr.Fecha) AS Ultima_Fecha,
+        CASE
+            WHEN wp.ENSAMBLE = 100 AND wp.PINTURA = 100 AND wp.EMBARQUE = 100 THEN 'Completado'
+            WHEN ROUND(ISNULL(ph.Kg_Ensamble,0)/NULLIF(h.Kg_Programados,0)*100,1) >= 99.9
+             AND ROUND(ISNULL(ph.Kg_Pintura,0)/NULLIF(h.Kg_Programados,0)*100,1) >= 99.9
+             AND ROUND(ISNULL(e.Kg_Embarque,0)/NULLIF(h.Kg_Programados,0)*100,1) >= 99.9 THEN 'Completado'
+            ELSE 'Pendiente'
+        END AS Estado
+    FROM ProduccionMes pm
+    INNER JOIN db_Estral.dbo.Pedidos p ON pm.Pedido = p.Pedido_Estral
+    LEFT JOIN db_Estral.dbo.Domicilio_Pedido d ON p.K_Pedido = d.K_Pedido
+    LEFT JOIN db_Estral.dbo.Tipo_Sistema ts ON p.K_Tipo_Sistema = ts.K_Tipo_Sistema
+    LEFT JOIN db_Estral.dbo.Produccion pr ON pm.Pedido = pr.Pedido
+    LEFT JOIN WS_Planeacion wp ON pm.Pedido = wp.Pedido
+    LEFT JOIN PedidosHistorico h ON pm.Pedido = h.Pedido
+    LEFT JOIN ProduccionHist ph ON pm.Pedido = ph.Pedido
+    LEFT JOIN EmbarquesHist e ON pm.Pedido = e.Pedido
+    GROUP BY pm.Pedido, p.Pedido_Estral, d.Destinatario, ts.D_Tipo_Sistema,
+             pm.KgTotal, pm.Kg_Ensamble, pm.Kg_Pintura, pm.Kg_Embarque,
+             wp.ENSAMBLE, wp.PINTURA, wp.EMBARQUE, ph.Kg_Ensamble, ph.Kg_Pintura, e.Kg_Embarque, h.Kg_Programados
+    ORDER BY Estado DESC, Ultima_Fecha DESC;
+    """
+
+    rows = ejecutar_consulta_sql(query, fetchall=True) or []
+
+    out = []
+    for r in rows:
+        item = dict(r)
+        for fld in ("KgTotal", "Kg_Ensamble", "Kg_Pintura", "Kg_Embarque"):
+            if item.get(fld) is not None:
+                item[fld] = float(item[fld])
+        if isinstance(item.get("Ultima_Fecha"), (datetime, date)):
+            item["Ultima_Fecha"] = item["Ultima_Fecha"].strftime("%Y-%m-%d")
+        out.append(item)
+
+    return {
+        "anio": anio,
+        "mes": mes,
+        "pedidos": out
+    }
