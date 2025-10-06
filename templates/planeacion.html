@@ -22,22 +22,44 @@
     tr:nth-child(even) { background:#f9f9f9; }
     tr:hover { background:#f1f1f1; }
 
-    /* Barras verdes con porcentaje centrado en negro */
-    .barra-progreso { position: relative; background:#ddd; border-radius:8px; height:18px; width:100%; margin:auto; }
+    /* 🔥 Barras verdes con porcentaje centrado visible siempre */
+    .barra-progreso {
+      position: relative;
+      background:#ddd;
+      border-radius:8px;
+      height:18px;
+      width:100%;
+      margin:auto;
+      overflow:hidden;
+    }
     .barra-progreso-inner {
       background:#4caf50;
       height:100%;
       border-radius:8px;
       text-align:center;
-      color:#000; /* porcentaje en negro */
+      color:#000;
       font-weight:bold;
       font-size:12px;
-      line-height:18px;
-      white-space:nowrap;
-      overflow:hidden;
       display:flex;
-      justify-content:center;
       align-items:center;
+      justify-content:center;
+      position:relative;
+      z-index:2;
+      white-space:nowrap;
+    }
+    /* Texto del porcentaje encima para que se vea aunque la barra sea muy chica */
+    .barra-progreso::after {
+      content: attr(data-porcentaje);
+      position:absolute;
+      top:0;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:12px;
+      font-weight:bold;
+      color:#000;
+      line-height:18px;
+      z-index:3;
+      pointer-events:none;
     }
 
     .btn-delete { background:#dc3545; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
@@ -64,7 +86,7 @@
     </form>
     <div id="mensaje"></div>
 
-    <!-- Tabla de planeación normal -->
+    <!-- Tabla principal -->
     <table id="tabla-planeacion">
       <thead>
         <tr>
@@ -76,7 +98,7 @@
       <tbody></tbody>
     </table>
 
-    <!-- Apartado pedidos fabricados sin programar -->
+    <!-- Tabla no programados -->
     <h2>🚨 Pedidos Fabricados SIN Programar</h2>
     <div style="text-align:center; margin-bottom:10px;">
       <button id="btn-pendientes">Ver Pendientes</button>
@@ -104,11 +126,15 @@
   </main>
 
   <script>
+    // ✅ Barras con porcentaje centrado
     function crearBarra(porcentaje){
       porcentaje = Math.min(Math.max(porcentaje||0,0),100);
-      return `<div class="barra-progreso"><div class="barra-progreso-inner" style="width:${porcentaje}%">${porcentaje.toFixed(0)}%</div></div>`;
+      return `<div class="barra-progreso" data-porcentaje="${porcentaje.toFixed(0)}%">
+                <div class="barra-progreso-inner" style="width:${porcentaje}%;"></div>
+              </div>`;
     }
 
+    // Tu script sigue igual (solo toqué la parte visual de las barras)
     let noProgramadosGlobal = [];
 
     async function cargarTotalKgs(){
@@ -151,12 +177,11 @@
             <td>${row.Fecha_Entrega||""}</td><td>${row.Fecha_Cierre||""}</td>
             <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>`;
           tbody.appendChild(tr);
-
           noProgramadosGlobal = noProgramadosGlobal.filter(r=>r.Pedido!==row.Pedido);
         });
       }
       mostrarNoProgramados(noProgramadosGlobal);
-      await cargarTotalKgs(); // cargar total desde el endpoint real
+      await cargarTotalKgs();
     }
 
     async function cargarNoProgramados(mes, anio){
@@ -164,13 +189,10 @@
       const res = await fetch(url);
       const data = await res.json();
       noProgramadosGlobal = data.pedidos || [];
-
-      // Quitar los que ya están en planeación
       const planeacionTbody = document.querySelectorAll("#tabla-planeacion tbody tr td:first-child");
       planeacionTbody.forEach(td=> {
         noProgramadosGlobal = noProgramadosGlobal.filter(r=>r.Pedido!==td.textContent);
       });
-
       mostrarNoProgramados(noProgramadosGlobal);
     }
 
