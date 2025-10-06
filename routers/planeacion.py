@@ -316,6 +316,39 @@ def total_kgs(mes: int = None, anio: int = None, access_token: str = Cookie(None
     return {"mes": mes, "anio": anio, "total_kgs": total}
 
 
+# API: Historial por pedido
+@router.get("/historial")
+def historial_pedido(pedido: str, access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    query = f"""
+    SELECT 
+        Fecha,
+        Area,
+        Color,
+        KgTotal
+    FROM db_Estral.dbo.Produccion
+    WHERE Pedido = '{pedido}'
+    ORDER BY Fecha DESC;
+    """
+    try:
+        rows = ejecutar_consulta_sql(query, fetchall=True) or []
+    except Exception as ex:
+        return JSONResponse(status_code=500, content={"error": f"Error al consultar historial: {str(ex)}"})
+
+    out = []
+    for r in rows:
+        item = dict(r)
+        if isinstance(item.get("Fecha"), (datetime, date)):
+            item["Fecha"] = item["Fecha"].strftime("%Y-%m-%d")
+        out.append(item)
+
+    return {"pedido": pedido, "historial": out}
+
+
+
 
 # API: Listar pedidos de producción con estado de completado
 @router.get("/list_noprogramados")

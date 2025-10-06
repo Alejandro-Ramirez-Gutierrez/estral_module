@@ -22,7 +22,6 @@
     tr:nth-child(even) { background:#f9f9f9; }
     tr:hover { background:#f1f1f1; }
 
-    /* 🔥 Barras verdes con porcentaje centrado visible siempre */
     .barra-progreso {
       position: relative;
       background:#ddd;
@@ -47,7 +46,6 @@
       z-index:2;
       white-space:nowrap;
     }
-    /* Texto del porcentaje encima para que se vea aunque la barra sea muy chica */
     .barra-progreso::after {
       content: attr(data-porcentaje);
       position:absolute;
@@ -64,12 +62,22 @@
 
     .btn-delete { background:#dc3545; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
     .btn-delete:hover { background:#c82333; }
+    .btn-detalle { background:#1a73e8; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
+    .btn-detalle:hover { background:#155ab6; }
+
     #mensaje { text-align:center; margin:15px 0; font-weight:bold; font-size:16px; }
     .ok { color:green; } .error { color:red; }
     .estado-pendiente { background:red; color:white; border-radius:6px; padding:2px 6px; display:inline-block; }
     .estado-completado { background:green; color:white; border-radius:6px; padding:2px 6px; display:inline-block; }
+
     @media (max-width:1024px){ th, td { font-size:14px; padding:6px 5px; } .barra-progreso{height:14px;} .barra-progreso-inner{font-size:10px; line-height:14px;} }
     @media (max-width:768px){ #add-form, #filtro-no-programados { flex-direction:column; align-items:center; } #add-form input, #filtro-no-programados select { width:100%; max-width:300px; } table{font-size:12px;} }
+
+    /* Modal */
+    #modalHistorial { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:9999; }
+    #modalHistorial > div { background:white; width:90%; max-width:800px; border-radius:12px; padding:20px; max-height:80%; overflow-y:auto; position:relative; }
+    #modalHistorial h2 { margin-top:0; }
+    #modalHistorial button.cerrar { position:absolute; top:10px; right:15px; background:#dc3545; color:white; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -77,7 +85,6 @@
   <main>
     <button id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar a Dashboard</button>
     <h1>Dashboard de Planeación</h1>
-
     <div id="total-kgs">Total KGS Producidos: 0</div>
 
     <form id="add-form">
@@ -117,16 +124,32 @@
       <thead>
         <tr>
           <th>Pedido</th><th>Cliente</th><th>Sistema</th>
-          <th>KGS Total</th><th>Kg Ensamble</th><th>Kg Pintura</th><th>Kg Embarque</th>
-          <th>Última Fecha</th><th>Estado</th>
+          <th>Kg Ensamble</th><th>Kg Pintura</th><th>Kg Embarque</th>
+          <th>Última Fecha</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
+
+    <!-- Modal historial -->
+    <div id="modalHistorial">
+      <div>
+        <h2>Historial Pedido <span id="histPedido"></span></h2>
+        <button class="cerrar" onclick="cerrarModalHistorial()">Cerrar</button>
+        <table style="width:100%; border-collapse:collapse; margin-top:15px;">
+          <thead>
+            <tr style="background:#1a73e8; color:white;">
+              <th>Fecha</th><th>Area</th><th>Color</th><th>Kg Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyHistorial"></tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 
   <script>
-    // ✅ Barras con porcentaje centrado
     function crearBarra(porcentaje){
       porcentaje = Math.min(Math.max(porcentaje||0,0),100);
       return `<div class="barra-progreso" data-porcentaje="${porcentaje.toFixed(0)}%">
@@ -134,8 +157,8 @@
               </div>`;
     }
 
-    // Tu script sigue igual (solo toqué la parte visual de las barras)
     let noProgramadosGlobal = [];
+    let pedidosProgramados = [];
 
     async function cargarTotalKgs(){
       const hoy = new Date();
@@ -145,7 +168,7 @@
       const data = await res.json();
       const total = parseFloat(data.total_kgs || 0);
       document.getElementById("total-kgs").textContent = 
-        `Total KGS Producidos: ${total.toLocaleString("es-MX", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        `Total KGS Producidos: ${total.toLocaleString("es-MX",{minimumFractionDigits:2, maximumFractionDigits:2})}`;
     }
 
     async function cargarPlaneacion(){
@@ -153,6 +176,7 @@
       const data = await res.json();
       const tbody = document.querySelector("#tabla-planeacion tbody");
       tbody.innerHTML = "";
+      pedidosProgramados = [];
       if(data.planeacion){
         data.planeacion.forEach(row => {
           const kgs = parseFloat(row.KGS || 0);
@@ -167,7 +191,8 @@
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td>${row.Pedido||""}</td><td>${row.Cliente||""}</td><td>${row.Sistema||""}</td>
+            <td>${row.Pedido} <br><button class="btn-detalle" onclick="mostrarHistorial('${row.Pedido}')">Ver Detalle</button></td>
+            <td>${row.Cliente||""}</td><td>${row.Sistema||""}</td>
             <td>${kgs.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
             <td>${crearBarra(ensamble)}</td>
             <td>${crearBarra(pintura)}</td>
@@ -177,22 +202,17 @@
             <td>${row.Fecha_Entrega||""}</td><td>${row.Fecha_Cierre||""}</td>
             <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>`;
           tbody.appendChild(tr);
-          noProgramadosGlobal = noProgramadosGlobal.filter(r=>r.Pedido!==row.Pedido);
+          pedidosProgramados.push(row.Pedido);
         });
       }
-      mostrarNoProgramados(noProgramadosGlobal);
+      await cargarNoProgramados(new Date().getMonth()+1, new Date().getFullYear());
       await cargarTotalKgs();
     }
 
     async function cargarNoProgramados(mes, anio){
-      const url = `/planeacion/list_noprogramados?mes=${mes}&anio=${anio}`;
-      const res = await fetch(url);
+      const res = await fetch(`/planeacion/list_noprogramados?mes=${mes}&anio=${anio}`);
       const data = await res.json();
-      noProgramadosGlobal = data.pedidos || [];
-      const planeacionTbody = document.querySelectorAll("#tabla-planeacion tbody tr td:first-child");
-      planeacionTbody.forEach(td=> {
-        noProgramadosGlobal = noProgramadosGlobal.filter(r=>r.Pedido!==td.textContent);
-      });
+      noProgramadosGlobal = (data.pedidos || []).filter(p => !pedidosProgramados.includes(p.Pedido));
       mostrarNoProgramados(noProgramadosGlobal);
     }
 
@@ -201,22 +221,20 @@
       tbody.innerHTML = "";
       let totalNP = 0;
       pedidos.forEach(row => {
-        const kgs = parseFloat(row.KgTotal || 0);
-        totalNP += kgs;
-        const statusLabel = row.Estado==="Completado" ? 
-          `<span class="estado-completado">Completado</span>` : 
-          `<span class="estado-pendiente">Pendiente</span>`;
+        const kgEnsamble = parseFloat(row.Kg_Ensamble || 0);
+        const kgPintura = parseFloat(row.Kg_Pintura || 0);
+        const kgEmbarque = parseFloat(row.Kg_Embarque || 0);
+        totalNP += kgEnsamble;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${row.Pedido||""}</td>
           <td>${row.Cliente||""}</td>
           <td>${row.Sistema||""}</td>
-          <td>${kgs.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${(row.Kg_Ensamble||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${(row.Kg_Pintura||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${(row.Kg_Embarque||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${row.Ultima_Fecha||""}</td>
-          <td>${statusLabel}</td>`;
+          <td>${kgEnsamble.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td>${kgPintura.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td>${kgEmbarque.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td>${row.Ultima_Fecha||""}</td>`;
         tbody.appendChild(tr);
       });
       document.getElementById("total-kgs-np").textContent = 
@@ -235,6 +253,7 @@
         const data = await res.json();
         if(res.ok){
           mostrarMensaje("Pedido agregado ✅","ok");
+          pedidosProgramados.push(pedido);
           await cargarPlaneacion();
         } else {
           mostrarMensaje(data.error||"Error al agregar ❌","error");
@@ -293,6 +312,40 @@
       const opt=document.createElement("option");
       opt.value=y; opt.text=y; if(y===hoy.getFullYear()) opt.selected=true;
       selAnio.appendChild(opt);
+    }
+
+    // Modal historial
+    function cerrarModalHistorial(){
+      document.getElementById("modalHistorial").style.display="none";
+      document.getElementById("tbodyHistorial").innerHTML="";
+    }
+
+    async function mostrarHistorial(pedido){
+      const tbody = document.getElementById("tbodyHistorial");
+      tbody.innerHTML = "<tr><td colspan='4'>Cargando...</td></tr>";
+      document.getElementById("histPedido").textContent = pedido;
+      document.getElementById("modalHistorial").style.display="flex";
+
+      try{
+        const res = await fetch(`/planeacion/historial?pedido=${pedido}`);
+        const data = await res.json();
+        tbody.innerHTML = "";
+        if(data.historial && data.historial.length){
+          data.historial.forEach(r=>{
+            const tr=document.createElement("tr");
+            tr.innerHTML=`
+              <td>${r.Fecha||""}</td>
+              <td>${r.Area||""}</td>
+              <td>${r.Color||""}</td>
+              <td>${(r.KgTotal||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML="<tr><td colspan='4'>No hay historial disponible</td></tr>";
+        }
+      }catch(err){
+        tbody.innerHTML="<tr><td colspan='4'>Error al cargar historial</td></tr>";
+      }
     }
 
     cargarPlaneacion();
