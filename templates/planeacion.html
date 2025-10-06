@@ -21,8 +21,25 @@
     th { background:#1a73e8; color:white; font-weight:bold; }
     tr:nth-child(even) { background:#f9f9f9; }
     tr:hover { background:#f1f1f1; }
+
+    /* Barras verdes con porcentaje centrado en negro */
     .barra-progreso { position: relative; background:#ddd; border-radius:8px; height:18px; width:100%; margin:auto; }
-    .barra-progreso-inner { background:#4caf50; height:100%; border-radius:8px; text-align:center; color:white; font-size:12px; line-height:18px; white-space:nowrap; overflow:hidden; }
+    .barra-progreso-inner {
+      background:#4caf50;
+      height:100%;
+      border-radius:8px;
+      text-align:center;
+      color:#000; /* porcentaje en negro */
+      font-weight:bold;
+      font-size:12px;
+      line-height:18px;
+      white-space:nowrap;
+      overflow:hidden;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
     .btn-delete { background:#dc3545; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
     .btn-delete:hover { background:#c82333; }
     #mensaje { text-align:center; margin:15px 0; font-weight:bold; font-size:16px; }
@@ -89,23 +106,31 @@
   <script>
     function crearBarra(porcentaje){
       porcentaje = Math.min(Math.max(porcentaje||0,0),100);
-      return `<div class="barra-progreso"><div class="barra-progreso-inner" style="width:${porcentaje}%">${porcentaje}%</div></div>`;
+      return `<div class="barra-progreso"><div class="barra-progreso-inner" style="width:${porcentaje}%">${porcentaje.toFixed(0)}%</div></div>`;
     }
 
     let noProgramadosGlobal = [];
+
+    async function cargarTotalKgs(){
+      const hoy = new Date();
+      const mes = hoy.getMonth() + 1;
+      const anio = hoy.getFullYear();
+      const res = await fetch(`/planeacion/total_kgs?mes=${mes}&anio=${anio}`);
+      const data = await res.json();
+      const total = parseFloat(data.total_kgs || 0);
+      document.getElementById("total-kgs").textContent = 
+        `Total KGS Producidos: ${total.toLocaleString("es-MX", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    }
 
     async function cargarPlaneacion(){
       const res = await fetch("/planeacion/list");
       const data = await res.json();
       const tbody = document.querySelector("#tabla-planeacion tbody");
       tbody.innerHTML = "";
-      let totalProducido = 0;
       if(data.planeacion){
         data.planeacion.forEach(row => {
           const kgs = parseFloat(row.KGS || 0);
           const kgsFaltantes = parseFloat(row.KGS_Faltantes || 0);
-          totalProducido += Math.max(kgs - kgsFaltantes, 0);
-
           const ensamble = parseFloat(row.ENSAMBLE || 0);
           const pintura = parseFloat(row.PINTURA || 0);
           const embarque = parseFloat(row.EMBARQUE || 0);
@@ -117,9 +142,12 @@
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${row.Pedido||""}</td><td>${row.Cliente||""}</td><td>${row.Sistema||""}</td>
-            <td>${kgs.toFixed(2)}</td><td>${crearBarra(ensamble)}</td>
-            <td>${crearBarra(pintura)}</td><td>${crearBarra(embarque)}</td>
-            <td>${statusLabel}</td><td>${kgsFaltantes.toFixed(2)}</td>
+            <td>${kgs.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+            <td>${crearBarra(ensamble)}</td>
+            <td>${crearBarra(pintura)}</td>
+            <td>${crearBarra(embarque)}</td>
+            <td>${statusLabel}</td>
+            <td>${kgsFaltantes.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
             <td>${row.Fecha_Entrega||""}</td><td>${row.Fecha_Cierre||""}</td>
             <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>`;
           tbody.appendChild(tr);
@@ -128,7 +156,7 @@
         });
       }
       mostrarNoProgramados(noProgramadosGlobal);
-      document.getElementById("total-kgs").textContent = `Total KGS Producidos: ${totalProducido.toFixed(2)}`;
+      await cargarTotalKgs(); // cargar total desde el endpoint real
     }
 
     async function cargarNoProgramados(mes, anio){
@@ -161,15 +189,16 @@
           <td>${row.Pedido||""}</td>
           <td>${row.Cliente||""}</td>
           <td>${row.Sistema||""}</td>
-          <td>${kgs.toFixed(2)}</td>
-          <td>${(row.Kg_Ensamble||0).toFixed(2)}</td>
-          <td>${(row.Kg_Pintura||0).toFixed(2)}</td>
-          <td>${(row.Kg_Embarque||0).toFixed(2)}</td>
+          <td>${kgs.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td>${(row.Kg_Ensamble||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td>${(row.Kg_Pintura||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td>${(row.Kg_Embarque||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           <td>${row.Ultima_Fecha||""}</td>
           <td>${statusLabel}</td>`;
         tbody.appendChild(tr);
       });
-      document.getElementById("total-kgs-np").textContent = `Total KGS Detectados: ${totalNP.toFixed(2)}`;
+      document.getElementById("total-kgs-np").textContent = 
+        `Total KGS Detectados: ${totalNP.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     }
 
     document.getElementById("btn-pendientes").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Pendiente")); });
@@ -184,7 +213,7 @@
         const data = await res.json();
         if(res.ok){
           mostrarMensaje("Pedido agregado ✅","ok");
-          cargarPlaneacion();
+          await cargarPlaneacion();
         } else {
           mostrarMensaje(data.error||"Error al agregar ❌","error");
         }
@@ -200,7 +229,7 @@
         const data = await res.json();
         if(res.ok){
           mostrarMensaje("Pedido eliminado ✅","ok");
-          cargarPlaneacion();
+          await cargarPlaneacion();
         } else {
           mostrarMensaje(data.error||"Error al eliminar ❌","error");
         }
@@ -215,10 +244,10 @@
       setTimeout(()=>{div.textContent="";div.className="";},3000);
     }
 
-    document.getElementById("add-form").addEventListener("submit", e=>{
+    document.getElementById("add-form").addEventListener("submit", async e=>{
       e.preventDefault();
       const pedido=document.getElementById("pedido").value.trim();
-      if(pedido) agregarPedido(pedido);
+      if(pedido) await agregarPedido(pedido);
       e.target.reset();
     });
 

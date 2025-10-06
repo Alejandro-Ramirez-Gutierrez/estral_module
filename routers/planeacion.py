@@ -65,14 +65,14 @@ def listar_planeacion(access_token: str = Cookie(None)):
         out.append(item)
     return {"planeacion": out}
 
-# API: Agregar un pedido (solo 1) - valida que exista con tu query y lo inserta en WS_Planeacion
+# API: Agregar un pedido valida que exista en query y lo inserta en WS_Planeacion
 @router.post("/add")
 def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
     payload = get_payload_from_cookie(access_token)
     if not validar_acceso_planeacion(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
-    # Validación simple del formato del pedido (evita inyección básica)
+    # Validación simple del formato del pedido
     if not re.match(r'^[A-Za-z0-9\-]+$', pedido):
         return JSONResponse(status_code=400, content={"error": "Formato de pedido inválido"})
 
@@ -291,6 +291,31 @@ def borrar_pedido(pedido: str, access_token: str = Cookie(None)):
 
     return {"message": f"Pedido {pedido} eliminado de planeación"}
 
+@router.get("/total_kgs")
+def total_kgs(mes: int = None, anio: int = None, access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    from datetime import datetime
+
+    hoy = datetime.today()
+    if not mes:
+        mes = hoy.month
+    if not anio:
+        anio = hoy.year
+
+    query = f"""
+    SELECT SUM(KgTotal) AS Total_Kilos
+    FROM db_Estral.dbo.Produccion
+    WHERE Area IN ('ENSAMBLE', 'CIMSA/ ENSAMBLE', 'PERFILADO', 'HABILITADO')
+      AND YEAR(Fecha) = {anio} AND MONTH(Fecha) = {mes};
+    """
+    resultado = ejecutar_consulta_sql(query, fetchone=True)
+    total = float(resultado.get("Total_Kilos") or 0)
+    return {"mes": mes, "anio": anio, "total_kgs": total}
+
+
 
 # API: Listar pedidos de producción con estado de completado
 @router.get("/list_noprogramados")
@@ -299,6 +324,8 @@ def listar_no_programados(mes: int = None, anio: int = None, access_token: str =
     if not validar_acceso_planeacion(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
+    from datetime import datetime, date
+
     hoy = datetime.today()
     if not mes:
         mes = hoy.month - 1 if hoy.month > 1 else 12
@@ -306,45 +333,34 @@ def listar_no_programados(mes: int = None, anio: int = None, access_token: str =
         anio = hoy.year if mes != 12 else hoy.year - 1
 
     query = f"""
+    DECLARE @mes INT = {mes};
+    DECLARE @anio INT = {anio};
+
     ;WITH ProduccionMes AS (
         SELECT 
             Pedido,
-            SUM(KgTotal) AS KgTotal,
-            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
+            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
+                     THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
             SUM(CASE WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
-                     OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%')) 
+                     OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
+                         AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%')) 
                      THEN KgTotal ELSE 0 END) AS Kg_Pintura,
-            SUM(CASE WHEN Area LIKE '%EMBARQUE%' THEN KgTotal ELSE 0 END) AS Kg_Embarque
+            MAX(Fecha) AS Ultima_Fecha
         FROM db_Estral.dbo.Produccion
-        WHERE YEAR(Fecha) = {anio} AND MONTH(Fecha) = {mes}
+        WHERE YEAR(Fecha) = @anio
+          AND MONTH(Fecha) = @mes
         GROUP BY Pedido
     ),
-    PedidosHistorico AS (
-        SELECT
-            p.Pedido_Estral AS Pedido,
-            SUM(m.cantidad * m.pesoUnitario) AS Kg_Programados
-        FROM db_Estral.dbo.Pedidos p
-        LEFT JOIN db_Estral.dbo.Mostrar m ON p.Pedido_Estral = m.pedido
-        GROUP BY p.Pedido_Estral
-    ),
-    ProduccionHist AS (
-        SELECT
-            Pedido,
-            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
-            SUM(CASE WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
-                     OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%' OR Color='SIN'))
-                     THEN KgTotal ELSE 0 END) AS Kg_Pintura
-        FROM db_Estral.dbo.Produccion
-        GROUP BY Pedido
-    ),
-    EmbarquesHist AS (
-        SELECT
-            Pedido,
-            SUM(KgTotal) AS Kg_Embarque
+    EmbarquesMes AS (
+        SELECT Pedido, SUM(KgTotal) AS Kg_Embarque
         FROM (
-            SELECT Pedido, KgTotal FROM db_Estral.dbo.embarques
+            SELECT Pedido, KgTotal, Fecha 
+            FROM db_Estral.dbo.embarques
+            WHERE Fecha BETWEEN DATEFROMPARTS(@anio,@mes,1) AND EOMONTH(DATEFROMPARTS(@anio,@mes,1))
             UNION ALL
-            SELECT Pedido, KgTotal FROM db_Estral.dbo.CIMSAEMBARQUES
+            SELECT Pedido, KgTotal, Fecha 
+            FROM db_Estral.dbo.CIMSAEMBARQUES
+            WHERE Fecha BETWEEN DATEFROMPARTS(@anio,@mes,1) AND EOMONTH(DATEFROMPARTS(@anio,@mes,1))
         ) x
         GROUP BY Pedido
     )
@@ -353,31 +369,16 @@ def listar_no_programados(mes: int = None, anio: int = None, access_token: str =
         p.Pedido_Estral AS Pedido_Estral,
         d.Destinatario AS Cliente,
         ts.D_Tipo_Sistema AS Sistema,
-        pm.KgTotal,
-        pm.Kg_Ensamble,
-        pm.Kg_Pintura,
-        pm.Kg_Embarque,
-        MAX(pr.Fecha) AS Ultima_Fecha,
-        CASE
-            WHEN wp.ENSAMBLE = 100 AND wp.PINTURA = 100 AND wp.EMBARQUE = 100 THEN 'Completado'
-            WHEN ROUND(ISNULL(ph.Kg_Ensamble,0)/NULLIF(h.Kg_Programados,0)*100,1) >= 99.9
-             AND ROUND(ISNULL(ph.Kg_Pintura,0)/NULLIF(h.Kg_Programados,0)*100,1) >= 99.9
-             AND ROUND(ISNULL(e.Kg_Embarque,0)/NULLIF(h.Kg_Programados,0)*100,1) >= 99.9 THEN 'Completado'
-            ELSE 'Pendiente'
-        END AS Estado
+        ISNULL(pm.Kg_Ensamble,0) AS Kg_Ensamble,
+        ISNULL(pm.Kg_Pintura,0) AS Kg_Pintura,
+        ISNULL(em.Kg_Embarque,0) AS Kg_Embarque,
+        pm.Ultima_Fecha
     FROM ProduccionMes pm
+    LEFT JOIN EmbarquesMes em ON pm.Pedido = em.Pedido
     INNER JOIN db_Estral.dbo.Pedidos p ON pm.Pedido = p.Pedido_Estral
     LEFT JOIN db_Estral.dbo.Domicilio_Pedido d ON p.K_Pedido = d.K_Pedido
     LEFT JOIN db_Estral.dbo.Tipo_Sistema ts ON p.K_Tipo_Sistema = ts.K_Tipo_Sistema
-    LEFT JOIN db_Estral.dbo.Produccion pr ON pm.Pedido = pr.Pedido
-    LEFT JOIN WS_Planeacion wp ON pm.Pedido = wp.Pedido
-    LEFT JOIN PedidosHistorico h ON pm.Pedido = h.Pedido
-    LEFT JOIN ProduccionHist ph ON pm.Pedido = ph.Pedido
-    LEFT JOIN EmbarquesHist e ON pm.Pedido = e.Pedido
-    GROUP BY pm.Pedido, p.Pedido_Estral, d.Destinatario, ts.D_Tipo_Sistema,
-             pm.KgTotal, pm.Kg_Ensamble, pm.Kg_Pintura, pm.Kg_Embarque,
-             wp.ENSAMBLE, wp.PINTURA, wp.EMBARQUE, ph.Kg_Ensamble, ph.Kg_Pintura, e.Kg_Embarque, h.Kg_Programados
-    ORDER BY Estado DESC, Ultima_Fecha DESC;
+    ORDER BY pm.Ultima_Fecha DESC;
     """
 
     rows = ejecutar_consulta_sql(query, fetchall=True) or []
@@ -385,7 +386,7 @@ def listar_no_programados(mes: int = None, anio: int = None, access_token: str =
     out = []
     for r in rows:
         item = dict(r)
-        for fld in ("KgTotal", "Kg_Ensamble", "Kg_Pintura", "Kg_Embarque"):
+        for fld in ("Kg_Ensamble", "Kg_Pintura", "Kg_Embarque"):
             if item.get(fld) is not None:
                 item[fld] = float(item[fld])
         if isinstance(item.get("Ultima_Fecha"), (datetime, date)):
