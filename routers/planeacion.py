@@ -37,6 +37,59 @@ def planeacion_page(request: Request, access_token: str = Cookie(None)):
     usuario = payload.get("sub", "Usuario")
     return templates.TemplateResponse("planeacion.html", {"request": request, "usuario": usuario})
 
+
+# API: Totales por grupo (Estral, CIMSA, Global)
+@router.get("/totales_por_grupo")
+def totales_por_grupo(access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+    
+    query = """
+    SELECT 
+        'Fabricación Estral' AS Grupo,
+        ROUND(SUM(KgTotal) / 1000, 2) AS Total_Tons
+    FROM Produccion
+    WHERE Area IN ('ENSAMBLE','PERFILADO','HABILITADO')
+      AND YEAR(Fecha) = YEAR(GETDATE())
+      AND MONTH(Fecha) = MONTH(GETDATE())
+
+    UNION ALL
+
+    SELECT 
+        'Fabricación CIMSA' AS Grupo,
+        ROUND(SUM(KgTotal) / 1000, 2) AS Total_Tons
+    FROM Produccion
+    WHERE Area IN ('CIMSA/ ENSAMBLE')
+      AND YEAR(Fecha) = YEAR(GETDATE())
+      AND MONTH(Fecha) = MONTH(GETDATE())
+
+    UNION ALL
+
+    SELECT 
+        'Fabricación Global' AS Grupo,
+        ROUND(SUM(KgTotal) / 1000, 2) AS Total_Tons
+    FROM Produccion
+    WHERE Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+      AND YEAR(Fecha) = YEAR(GETDATE())
+      AND MONTH(Fecha) = MONTH(GETDATE());
+    """
+    
+    try:
+        rows = ejecutar_consulta_sql(query, fetchall=True) or []
+    except Exception as ex:
+        return JSONResponse(status_code=500, content={"error": f"Error al consultar totales: {str(ex)}"})
+    
+    # Convertir Decimal/None a float
+    out = []
+    for r in rows:
+        item = dict(r)
+        item["Total_Tons"] = float(item["Total_Tons"] or 0)
+        out.append(item)
+    
+    return {"mes": datetime.today().month, "anio": datetime.today().year, "totales": out}
+
+
 # API: Listar lo que hay en WS_Planeacion
 @router.get("/list")
 def listar_planeacion(access_token: str = Cookie(None)):
