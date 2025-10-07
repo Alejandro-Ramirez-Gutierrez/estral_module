@@ -196,8 +196,15 @@ tr:hover { background:#f1f1f1; }
 function formatearNumero(num){ return parseFloat(num||0).toLocaleString("es-MX",{minimumFractionDigits:2, maximumFractionDigits:2}); }
 // Función para modal: sin decimales
 function formatearNumeroModal(num){ return Math.round(parseFloat(num||0)); }
-
-function crearBarra(porcentaje){ porcentaje=Math.min(Math.max(porcentaje||0,0),100); return `<div class="barra-progreso" data-porcentaje="${porcentaje.toFixed(0)}%"><div class="barra-progreso-inner" style="width:${porcentaje}%;"></div></div>`; }
+function crearBarra(porcentaje){
+    porcentaje = Math.min(Math.max(porcentaje||0,0),100);
+    // Si porcentaje >= 99.2, forzar 100
+    if(porcentaje >= 99.2) porcentaje = 100;
+    let porcentajeDisplay = Math.round(porcentaje); // mostrar entero
+    return `<div class="barra-progreso" data-porcentaje="${porcentajeDisplay}%">
+                <div class="barra-progreso-inner" style="width:${porcentaje}%;"></div>
+            </div>`;
+}
 
 let noProgramadosGlobal = []; 
 let pedidosProgramados = [];
