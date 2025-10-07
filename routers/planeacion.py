@@ -384,15 +384,7 @@ def historial_pedido(pedido: str, access_token: str = Cookie(None)):
         m.descripcion AS DESCRIPCION,
         m.color AS COLOR,
         m.cantidad AS CANTIDAD,
-
-        ISNULL(SUM(
-            CASE 
-                WHEN p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
-                THEN p.Cantidad 
-                ELSE 0 
-            END
-        ),0) AS ENSAMBLE,
-
+        ISNULL(SUM(CASE WHEN p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN p.Cantidad END),0) AS ENSAMBLE,
         ISNULL(SUM(
             CASE 
                 WHEN p.Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
@@ -403,18 +395,13 @@ def historial_pedido(pedido: str, access_token: str = Cookie(None)):
             END
         ),0) AS PINTURA,
 
-        -- piezas recibidas en patio (desde EmbarquesMaterialRecibido)
-        ISNULL(r.CantidadRecibida,0) AS [Stock en Patio],
-
-        -- piezas embarcadas
-        ISNULL(e.CantidadEmbarcada,0) AS EMBARQUE,
-        (m.cantidad - ISNULL(e.CantidadEmbarcada,0)) AS [FALTANTE EMBARQUE]
+        (r.CantidadRecibida - ISNULL(e.CantidadEmbarcada,0)) AS PATIO,
+        ISNULL(e.CantidadEmbarcada,0) AS EMBARQUE
 
     FROM Mostrar m
     LEFT JOIN Produccion p
         ON m.pedido = p.Pedido AND m.partida = p.Partida
 
-    -- embarques normales y cimsa
     LEFT JOIN (
         SELECT x.Pedido, x.Partida, SUM(x.CantidadEmbarcada) AS CantidadEmbarcada
         FROM (
@@ -425,7 +412,6 @@ def historial_pedido(pedido: str, access_token: str = Cookie(None)):
         GROUP BY x.Pedido, x.Partida
     ) e ON m.pedido = e.Pedido AND m.partida = e.Partida
 
-    -- cantidades recibidas en patio
     LEFT JOIN (
         SELECT Pedido, Partida, SUM(CantidadRecibida) AS CantidadRecibida
         FROM EmbarquesMaterialRecibido 
@@ -433,9 +419,7 @@ def historial_pedido(pedido: str, access_token: str = Cookie(None)):
     ) r ON m.pedido = r.Pedido AND m.partida = r.Partida
 
     WHERE m.pedido = '{pedido}'
-    GROUP BY 
-        m.tipo, m.pedido, m.partida, m.descripcion, m.color, m.cantidad, 
-        e.CantidadEmbarcada, r.CantidadRecibida
+    GROUP BY m.tipo, m.pedido, m.partida, m.descripcion, m.color, m.cantidad, e.CantidadEmbarcada, r.CantidadRecibida
     ORDER BY
         TRY_CAST(LEFT(m.partida, PATINDEX('%[^0-9]%', m.partida + 'X') - 1) AS INT),
         RIGHT(m.partida, LEN(m.partida) - PATINDEX('%[^0-9]%', m.partida + 'X') + 1);
