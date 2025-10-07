@@ -118,11 +118,40 @@ tr:hover { background:#f1f1f1; }
 <body>
 <nav><div class="logo">📊 Planeación Estral</div></nav>
 <main>
+<!-- Botón regresar -->
 <button id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar a Dashboard</button>
-<h1>Dashboard de Planeación</h1>
-<div id="totales-por-grupo" class="totales-grupo-container"></div>
 
+<!-- Header -->
+<div style="display: flex; align-items: center; justify-content: flex-start; gap: 16px; background-color: #f8f9fa; padding: 16px 24px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+  <h1 style="margin: 0; font-size: 24px; color: #343a40;">Dashboard de Planeación</h1>
+</div>
+
+<!-- Totales por grupo -->
+<div id="totales-por-grupo" class="totales-grupo-container" style="margin-top: 24px;">
+    <!-- Tarjetas existentes -->
+    <div class="tarjeta-grupo estral">
+        <h3>Fabricación Estral</h3>
+        <p>388.92 tons</p>
+    </div>
+    <div class="tarjeta-grupo cimsa">
+        <h3>Fabricación CIMSA</h3>
+        <p>16.28 tons</p>
+    </div>
+    <div class="tarjeta-grupo global">
+        <h3>Fabricación Global</h3>
+        <p>405.19 tons</p>
+    </div>
+
+    <!-- Nueva tarjeta de Maquinaria con engranaje -->
+    <a href="https://app.pulsarml.com/realtime/tv-mode2" target="_blank" class="tarjeta-grupo" style="text-decoration:none; color:#007bff; border-top: 4px solid #ff5722;">
+        <h3>⚙️ Maquinaria Tiempo Real</h3>
+        <p>Ver en vivo</p>
+    </a>
+</div>
+
+<!-- Total KGS -->
 <div id="total-kgs">Total KGS Producidos: 0.00</div>
+
 
 <form id="add-form">
 <input type="text" id="pedido" placeholder="Ingresa pedido..." required>
@@ -339,14 +368,34 @@ tbody.appendChild(tr);
 
 async function cargarTotalesPorGrupo() {
     try {
+        const container = document.getElementById("totales-por-grupo");
+
+        // 1️⃣ Si no existe la tarjeta de Maquinaria, la agregamos
+        if (!document.getElementById("tarjeta-maquinaria")) {
+            const maquinaria = document.createElement("a");
+            maquinaria.id = "tarjeta-maquinaria";
+            maquinaria.href = "https://app.pulsarml.com/realtime/tv-mode2";
+            maquinaria.target = "_blank";
+            maquinaria.className = "tarjeta-grupo";
+            maquinaria.style.textDecoration = "none";
+            maquinaria.style.color = "#007bff";
+            maquinaria.style.borderTop = "4px solid #ff5722";
+            maquinaria.innerHTML = `<h3>⚙️ Maquinaria Tiempo Real</h3><p>Ver en vivo</p>`;
+            container.prepend(maquinaria); // Siempre al inicio
+        }
+
+        // 2️⃣ Limpiamos solo los totales antiguos (sin borrar la tarjeta de Maquinaria)
+        const tarjetas = container.querySelectorAll(".tarjeta-grupo:not(#tarjeta-maquinaria)");
+        tarjetas.forEach(t => t.remove());
+
+        // 3️⃣ Agregamos los totales desde la API
         const res = await fetch("/planeacion/totales_por_grupo");
         const data = await res.json();
         if (res.ok && data.totales) {
-            const container = document.getElementById("totales-por-grupo");
-            container.innerHTML = ""; 
             data.totales.forEach(t => {
                 const div = document.createElement("div");
-                div.className = "tarjeta-grupo " + (t.Grupo.includes("Estral") ? "estral" : t.Grupo.includes("CIMSA") ? "cimsa" : "global");
+                div.className = "tarjeta-grupo " + 
+                    (t.Grupo.includes("Estral") ? "estral" : t.Grupo.includes("CIMSA") ? "cimsa" : "global");
                 div.innerHTML = `<h3>${t.Grupo}</h3><p>${formatearNumero(t.Total_Tons)} tons</p>`;
                 container.appendChild(div);
             });
@@ -357,6 +406,7 @@ async function cargarTotalesPorGrupo() {
         console.error("Error de conexión:", err);
     }
 }
+
 
 // Cargar todo al inicio
 cargarPlaneacion();
