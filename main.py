@@ -125,7 +125,11 @@ def validar_acceso_valance(payload):
     k_empleado = payload.get("K_Empleado")
     k_area = payload.get("K_Area")
     AREAS_PERMITIDAS = [99, 20, 22, 23]
+<<<<<<< HEAD
     EMPLEADOS_PERMITIDOS = [8811, 8661, 8870, 8740, 4, 5]
+=======
+    EMPLEADOS_PERMITIDOS = [8811,8611, 8661, 8870, 8740,4,5]
+>>>>>>> c03ce4c (ajustes locales en main.py)
     return (k_area in AREAS_PERMITIDAS) or (k_empleado in EMPLEADOS_PERMITIDOS)
 
 def calcular_rango_mes(mes: str):
