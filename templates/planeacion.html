@@ -1,355 +1,304 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Planeación - Estral</title>
-  <style>
-    body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f7f9; margin:0; padding:0; }
-    nav { display:flex; align-items:center; background-color:#1a73e8; color:white; padding:15px 20px; box-shadow:0 3px 8px rgba(0,0,0,0.15); }
-    nav .logo { font-size:24px; font-weight:bold; }
-    main { padding:20px; max-width:1400px; margin:0 auto; }
-    h1, h2 { color:#333; text-align:center; margin-bottom:10px; }
-    #total-kgs, #total-kgs-np { text-align:center; font-size:20px; font-weight:bold; margin-bottom:15px; color:#1a73e8; }
-    #btn-regresar { background:#555; color:white; border:none; border-radius:8px; padding:8px 15px; cursor:pointer; font-weight:bold; margin-bottom:15px; transition:0.2s; }
-    #btn-regresar:hover { background:#333; }
-    #add-form, #filtro-no-programados { display:flex; gap:10px; justify-content:center; margin-bottom:20px; flex-wrap: wrap; }
-    #add-form input, #filtro-no-programados select { padding:10px; font-size:16px; border:2px solid #1a73e8; border-radius:8px; width:200px; }
-    #add-form button, #filtro-no-programados button { background:#ff9800; color:white; border:none; border-radius:8px; padding:10px 18px; font-size:16px; font-weight:bold; cursor:pointer; transition:0.2s; }
-    #add-form button:hover, #filtro-no-programados button:hover { background:#e68900; }
-    table { width:100%; border-collapse:collapse; margin-top:20px; background:white; border-radius:12px; overflow:hidden; box-shadow:0 6px 15px rgba(0,0,0,0.1); table-layout: fixed; }
-    th, td { padding:10px 8px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    th { background:#1a73e8; color:white; font-weight:bold; }
-    tr:nth-child(even) { background:#f9f9f9; }
-    tr:hover { background:#f1f1f1; }
+<meta charset="UTF-8">
+<title>Planeación - Estral</title>
+<style>
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f7f9; margin:0; padding:0; }
+nav { display:flex; align-items:center; background-color:#1a73e8; color:white; padding:15px 20px; box-shadow:0 3px 8px rgba(0,0,0,0.15); }
+nav .logo { font-size:24px; font-weight:bold; }
+main { padding:20px; max-width:1400px; margin:0 auto; }
+h1, h2 { color:#333; text-align:center; margin-bottom:10px; }
+#total-kgs, #total-kgs-np { text-align:center; font-size:20px; font-weight:bold; margin-bottom:15px; color:#1a73e8; }
+#btn-regresar { background:#555; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; margin-bottom:15px; transition:0.2s; }
+#btn-regresar:hover { background:#333; }
+#add-form, #filtro-no-programados { display:flex; gap:10px; justify-content:center; margin-bottom:20px; flex-wrap: wrap; }
+#add-form input, #filtro-no-programados select { padding:8px; font-size:14px; border:2px solid #1a73e8; border-radius:6px; width:180px; }
+#add-form button, #filtro-no-programados button { background:#ff9800; color:white; border:none; border-radius:6px; padding:8px 16px; font-size:14px; font-weight:bold; cursor:pointer; transition:0.2s; }
+#add-form button:hover, #filtro-no-programados button:hover { background:#e68900; }
+table { width:100%; border-collapse:collapse; margin-top:20px; background:white; border-radius:12px; overflow:hidden; box-shadow:0 6px 15px rgba(0,0,0,0.1); table-layout: fixed; font-size:13px; }
+th, td { padding:6px 5px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:0.3s; }
+th { background:#1a73e8; color:white; font-weight:bold; }
+tr:nth-child(even) { background:#f9f9f9; }
+tr:hover { background:#f1f1f1; }
+.barra-progreso { position: relative; background:#ddd; border-radius:6px; height:16px; width:100%; margin:auto; overflow:hidden; }
+.barra-progreso-inner { background:#4caf50; height:100%; border-radius:6px; text-align:center; color:#000; font-weight:bold; font-size:11px; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; white-space:nowrap; }
+.barra-progreso::after { content: attr(data-porcentaje); position:absolute; top:0; left:50%; transform:translateX(-50%); font-size:11px; font-weight:bold; color:#000; line-height:16px; z-index:3; pointer-events:none; }
+.btn-delete { background:#dc3545; color:white; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; transition:0.2s; font-weight:bold; font-size:12px; }
+.btn-delete:hover { background:#c82333; }
+.btn-detalle { background:#1a73e8; color:white; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; transition:0.2s; font-weight:bold; font-size:12px; }
+.btn-detalle:hover { background:#155ab6; }
+#mensaje { text-align:center; margin:12px 0; font-weight:bold; font-size:14px; }
+.estado-pendiente { background:#f28b82; color:white; border-radius:4px; padding:2px 4px; display:inline-block; font-size:12px; }
+.estado-completado { background:#81c784; color:white; border-radius:4px; padding:2px 4px; display:inline-block; font-size:12px; }
+@media (max-width:1024px){ th, td { font-size:12px; padding:4px 3px; } .barra-progreso{height:12px;} .barra-progreso-inner{font-size:10px; line-height:12px;} }
+@media (max-width:768px){ #add-form, #filtro-no-programados { flex-direction:column; align-items:center; } #add-form input, #filtro-no-programados select { width:100%; max-width:250px; } table{font-size:11px;} }
 
-    .barra-progreso {
-      position: relative;
-      background:#ddd;
-      border-radius:8px;
-      height:18px;
-      width:100%;
-      margin:auto;
-      overflow:hidden;
-    }
-    .barra-progreso-inner {
-      background:#4caf50;
-      height:100%;
-      border-radius:8px;
-      text-align:center;
-      color:#000;
-      font-weight:bold;
-      font-size:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      position:relative;
-      z-index:2;
-      white-space:nowrap;
-    }
-    .barra-progreso::after {
-      content: attr(data-porcentaje);
-      position:absolute;
-      top:0;
-      left:50%;
-      transform:translateX(-50%);
-      font-size:12px;
-      font-weight:bold;
-      color:#000;
-      line-height:18px;
-      z-index:3;
-      pointer-events:none;
-    }
+/* Modal */
+#modalHistorial { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:9999; }
+#modalHistorial > div { background:white; width:98%; max-width:none; height:95%; max-height:none; border-radius:12px; padding:20px; overflow:auto; position:relative; }
+#modalHistorial h2 { margin-top:0; font-size:24px; }
+#modalHistorial button.cerrar { position:absolute; top:10px; right:15px; background:#dc3545; color:white; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
 
-    .btn-delete { background:#dc3545; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
-    .btn-delete:hover { background:#c82333; }
-    .btn-detalle { background:#1a73e8; color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; transition:0.2s; font-weight:bold; }
-    .btn-detalle:hover { background:#155ab6; }
+/* Ajustes Modal Histórico */
+#tbodyHistorial td { 
+    font-size:11px; 
+    padding:2px; 
+    white-space:nowrap; 
+    overflow:hidden; 
+    text-overflow:ellipsis;
+}
 
-    #mensaje { text-align:center; margin:15px 0; font-weight:bold; font-size:16px; }
-    .ok { color:green; } .error { color:red; }
-    .estado-pendiente { background:red; color:white; border-radius:6px; padding:2px 6px; display:inline-block; }
-    .estado-completado { background:green; color:white; border-radius:6px; padding:2px 6px; display:inline-block; }
+/* Columnas muy angostas */
+#tbodyHistorial td:nth-child(1),
+#tbodyHistorial td:nth-child(2),
+#tbodyHistorial td:nth-child(3),
+#tbodyHistorial td:nth-child(5),
+#tbodyHistorial td:nth-child(7),
+#tbodyHistorial td:nth-child(8),
+#tbodyHistorial td:nth-child(9),
+#tbodyHistorial td:nth-child(10),
+#tbodyHistorial td:nth-child(11),
+#tbodyHistorial td:nth-child(12) { 
+    width:3%; 
+}
 
-    @media (max-width:1024px){ th, td { font-size:14px; padding:6px 5px; } .barra-progreso{height:14px;} .barra-progreso-inner{font-size:10px; line-height:14px;} }
-    @media (max-width:768px){ #add-form, #filtro-no-programados { flex-direction:column; align-items:center; } #add-form input, #filtro-no-programados select { width:100%; max-width:300px; } table{font-size:12px;} }
+/* Descripción súper ancha */
+#tbodyHistorial td:nth-child(4) { 
+    width:70%; 
+    font-weight:normal; 
+    text-align:left; 
+}
 
-    /* Modal */
-    #modalHistorial { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:9999; }
-    #modalHistorial > div { background:white; width:90%; max-width:800px; border-radius:12px; padding:20px; max-height:80%; overflow-y:auto; position:relative; }
-    #modalHistorial h2 { margin-top:0; }
-    #modalHistorial button.cerrar { position:absolute; top:10px; right:15px; background:#dc3545; color:white; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
-  </style>
+/* Colores de celdas */
+.celda-rojo { background:#f28b82; color:#000; border-radius:4px; }
+.celda-amarillo { background:#fff59d; color:#000; border-radius:4px; }
+.celda-verde { background:#a5d6a7; color:#000; border-radius:4px; }
+.sin-color { background:none; }
+</style>
 </head>
 <body>
-  <nav><div class="logo">📊 Planeación Estral</div></nav>
-  <main>
-    <button id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar a Dashboard</button>
-    <h1>Dashboard de Planeación</h1>
-    <div id="total-kgs">Total KGS Producidos: 0</div>
+<nav><div class="logo">📊 Planeación Estral</div></nav>
+<main>
+<button id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar a Dashboard</button>
+<h1>Dashboard de Planeación</h1>
+<div id="total-kgs">Total KGS Producidos: 0.00</div>
 
-    <form id="add-form">
-      <input type="text" id="pedido" placeholder="Ingresa pedido..." required>
-      <button type="submit">Agregar Pedido</button>
-    </form>
-    <div id="mensaje"></div>
+<form id="add-form">
+<input type="text" id="pedido" placeholder="Ingresa pedido..." required>
+<button type="submit">Agregar Pedido</button>
+</form>
+<div id="mensaje"></div>
 
-    <!-- Tabla principal -->
-    <table id="tabla-planeacion">
-      <thead>
-        <tr>
-          <th>Pedido</th><th>Cliente</th><th>Sistema</th><th>KGS</th>
-          <th>Ensamble %</th><th>Pintura %</th><th>Embarque %</th>
-          <th>Status</th><th>KGS Faltantes</th><th>Entrega</th><th>Cierre</th><th>Acción</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+<!-- Tabla principal -->
+<table id="tabla-planeacion">
+<thead>
+<tr>
+<th>Pedido</th><th>Cliente</th><th>Sistema</th><th>KGS</th>
+<th>Ensamble %</th><th>Pintura %</th><th>Embarque %</th>
+<th>Status</th><th>KGS Faltantes</th><th>Entrega</th><th>Cierre</th><th>Acción</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 
-    <!-- Tabla no programados -->
-    <h2>🚨 Pedidos Fabricados SIN Programar</h2>
-    <div style="text-align:center; margin-bottom:10px;">
-      <button id="btn-pendientes">Ver Pendientes</button>
-      <button id="btn-completados">Ver Completados</button>
-      <button id="btn-todos">Ver Todos</button>
-    </div>
-    <div id="total-kgs-np">Total KGS Detectados: 0</div>
+<!-- Tabla no programados -->
+<h2>🚨 Pedidos Fabricados SIN Programar</h2>
+<div style="text-align:center; margin-bottom:10px;">
+<button id="btn-pendientes">Ver Pendientes</button>
+<button id="btn-completados">Ver Completados</button>
+<button id="btn-todos">Ver Todos</button>
+</div>
+<div id="total-kgs-np">Total KGS Detectados: 0.00</div>
 
-    <form id="filtro-no-programados">
-      <select id="mes"></select>
-      <select id="anio"></select>
-      <button type="submit">Filtrar</button>
-    </form>
+<form id="filtro-no-programados">
+<select id="mes"></select>
+<select id="anio"></select>
+<button type="submit">Filtrar</button>
+</form>
 
-    <table id="tabla-no-programados">
-      <thead>
-        <tr>
-          <th>Pedido</th><th>Cliente</th><th>Sistema</th>
-          <th>Kg Ensamble</th><th>Kg Pintura</th><th>Kg Embarque</th>
-          <th>Última Fecha</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+<table id="tabla-no-programados">
+<thead>
+<tr>
+<th>Pedido</th><th>Cliente</th><th>Sistema</th>
+<th>Kg Ensamble</th><th>Kg Pintura</th><th>Kg Embarque</th>
+<th>Última Fecha</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 
-    <!-- Modal historial -->
-    <div id="modalHistorial">
-      <div>
-        <h2>Historial Pedido <span id="histPedido"></span></h2>
-        <button class="cerrar" onclick="cerrarModalHistorial()">Cerrar</button>
-        <table style="width:100%; border-collapse:collapse; margin-top:15px;">
-          <thead>
-            <tr style="background:#1a73e8; color:white;">
-              <th>Fecha</th><th>Area</th><th>Color</th><th>Kg Total</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyHistorial"></tbody>
-        </table>
-      </div>
-    </div>
+<!-- Modal historial -->
+<div id="modalHistorial">
+<div>
+<h2>Historial Pedido <span id="histPedido"></span></h2>
+<button class="cerrar" onclick="cerrarModalHistorial()">Cerrar</button>
+<table style="width:100%; border-collapse:collapse; margin-top:15px;">
+<thead>
+<tr style="background:#1a73e8; color:white;">
+<th>TIPO</th><th>PEDIDO</th><th>PARTIDA</th><th>DESCRIPCIÓN</th><th>COLOR</th>
+<th>CANTIDAD</th><th>ENSAMBLE</th><th>PINTURA</th><th>PATIO</th>
+<th>STOCK EN PATIO</th><th>EMBARQUE</th><th>FALTANTE EMBARQUE</th>
+</tr>
+</thead>
+<tbody id="tbodyHistorial"></tbody>
+</table>
+</div>
+</div>
 
-  </main>
+<script>
+// Función para tabla principal y totales: 2 decimales
+function formatearNumero(num){ return parseFloat(num||0).toLocaleString("es-MX",{minimumFractionDigits:2, maximumFractionDigits:2}); }
+// Función para modal: sin decimales
+function formatearNumeroModal(num){ return Math.round(parseFloat(num||0)); }
 
-  <script>
-    function crearBarra(porcentaje){
-      porcentaje = Math.min(Math.max(porcentaje||0,0),100);
-      return `<div class="barra-progreso" data-porcentaje="${porcentaje.toFixed(0)}%">
-                <div class="barra-progreso-inner" style="width:${porcentaje}%;"></div>
-              </div>`;
-    }
+function crearBarra(porcentaje){ porcentaje=Math.min(Math.max(porcentaje||0,0),100); return `<div class="barra-progreso" data-porcentaje="${porcentaje.toFixed(0)}%"><div class="barra-progreso-inner" style="width:${porcentaje}%;"></div></div>`; }
 
-    let noProgramadosGlobal = [];
-    let pedidosProgramados = [];
+let noProgramadosGlobal = []; 
+let pedidosProgramados = [];
 
-    async function cargarTotalKgs(){
-      const hoy = new Date();
-      const mes = hoy.getMonth() + 1;
-      const anio = hoy.getFullYear();
-      const res = await fetch(`/planeacion/total_kgs?mes=${mes}&anio=${anio}`);
-      const data = await res.json();
-      const total = parseFloat(data.total_kgs || 0);
-      document.getElementById("total-kgs").textContent = 
-        `Total KGS Producidos: ${total.toLocaleString("es-MX",{minimumFractionDigits:2, maximumFractionDigits:2})}`;
-    }
+// Cargar totales
+async function cargarTotalKgs(){ 
+const hoy=new Date(); const mes=hoy.getMonth()+1; const anio=hoy.getFullYear();
+const res=await fetch(`/planeacion/total_kgs?mes=${mes}&anio=${anio}`);
+const data=await res.json();
+const total=parseFloat(data.total_kgs||0);
+document.getElementById("total-kgs").textContent=`Total KGS Producidos: ${formatearNumero(total)}`;
+}
 
-    async function cargarPlaneacion(){
-      const res = await fetch("/planeacion/list");
-      const data = await res.json();
-      const tbody = document.querySelector("#tabla-planeacion tbody");
-      tbody.innerHTML = "";
-      pedidosProgramados = [];
-      if(data.planeacion){
-        data.planeacion.forEach(row => {
-          const kgs = parseFloat(row.KGS || 0);
-          const kgsFaltantes = parseFloat(row.KGS_Faltantes || 0);
-          const ensamble = parseFloat(row.ENSAMBLE || 0);
-          const pintura = parseFloat(row.PINTURA || 0);
-          const embarque = parseFloat(row.EMBARQUE || 0);
+// Cargar tabla principal
+async function cargarPlaneacion(){ 
+const res=await fetch("/planeacion/list");
+const data=await res.json();
+const tbody=document.querySelector("#tabla-planeacion tbody");
+tbody.innerHTML="";
+pedidosProgramados=[];
+if(data.planeacion){
+data.planeacion.forEach(row=>{
+const kgs=parseFloat(row.KGS||0);
+const kgsFaltantes=parseFloat(row.KGS_Faltantes||0);
+const ensamble=parseFloat(row.ENSAMBLE||0);
+const pintura=parseFloat(row.PINTURA||0);
+const embarque=parseFloat(row.EMBARQUE||0);
+let statusLabel=(ensamble===100&&pintura===100&&embarque===100)?`<span class="estado-completado">Completado</span>`:`<span class="estado-pendiente">Producción</span>`;
+const tr=document.createElement("tr");
+tr.innerHTML=`<td>${row.Pedido}<br><button class="btn-detalle" onclick="mostrarHistorial('${row.Pedido}')">Ver Detalle</button></td>
+<td>${row.Cliente||""}</td>
+<td>${row.Sistema||""}</td>
+<td>${formatearNumero(kgs)}</td>
+<td>${crearBarra(ensamble)}</td>
+<td>${crearBarra(pintura)}</td>
+<td>${crearBarra(embarque)}</td>
+<td>${statusLabel}</td>
+<td>${formatearNumero(kgsFaltantes)}</td>
+<td>${row.Fecha_Entrega||""}</td>
+<td>${row.Fecha_Cierre||""}</td>
+<td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>`;
+tbody.appendChild(tr);
+pedidosProgramados.push(row.Pedido);
+});
+}
+await cargarNoProgramados(new Date().getMonth()+1,new Date().getFullYear());
+await cargarTotalKgs();
+}
 
-          let statusLabel = (ensamble === 100 && pintura === 100 && embarque === 100) ?
-            `<span class="estado-completado">Completado</span>` :
-            `<span class="estado-pendiente">Producción</span>`;
+// Cargar pedidos no programados
+async function cargarNoProgramados(mes,anio){
+const res=await fetch(`/planeacion/list_noprogramados?mes=${mes}&anio=${anio}`);
+const data=await res.json();
+noProgramadosGlobal=(data.pedidos||[]).filter(p=>!pedidosProgramados.includes(p.Pedido));
+mostrarNoProgramados(noProgramadosGlobal);
+}
 
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${row.Pedido} <br><button class="btn-detalle" onclick="mostrarHistorial('${row.Pedido}')">Ver Detalle</button></td>
-            <td>${row.Cliente||""}</td><td>${row.Sistema||""}</td>
-            <td>${kgs.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-            <td>${crearBarra(ensamble)}</td>
-            <td>${crearBarra(pintura)}</td>
-            <td>${crearBarra(embarque)}</td>
-            <td>${statusLabel}</td>
-            <td>${kgsFaltantes.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-            <td>${row.Fecha_Entrega||""}</td><td>${row.Fecha_Cierre||""}</td>
-            <td><button class="btn-delete" onclick="borrarPedido('${row.Pedido}')">Eliminar</button></td>`;
-          tbody.appendChild(tr);
-          pedidosProgramados.push(row.Pedido);
-        });
-      }
-      await cargarNoProgramados(new Date().getMonth()+1, new Date().getFullYear());
-      await cargarTotalKgs();
-    }
+function mostrarNoProgramados(pedidos){
+const tbody=document.querySelector("#tabla-no-programados tbody");
+tbody.innerHTML="";
+let totalNP=0;
+pedidos.forEach(row=>{
+const kgEnsamble=parseFloat(row.Kg_Ensamble||0);
+const kgPintura=parseFloat(row.Kg_Pintura||0);
+const kgEmbarque=parseFloat(row.Kg_Embarque||0);
+totalNP+=kgEnsamble;
+const tr=document.createElement("tr");
+tr.innerHTML=`<td>${row.Pedido||""}</td>
+<td>${row.Cliente||""}</td>
+<td>${row.Sistema||""}</td>
+<td>${formatearNumero(kgEnsamble)}</td>
+<td>${formatearNumero(kgPintura)}</td>
+<td>${formatearNumero(kgEmbarque)}</td>
+<td>${row.Ultima_Fecha||""}</td>`;
+tbody.appendChild(tr);
+});
+document.getElementById("total-kgs-np").textContent=`Total KGS Detectados: ${formatearNumero(totalNP)}`;
+}
 
-    async function cargarNoProgramados(mes, anio){
-      const res = await fetch(`/planeacion/list_noprogramados?mes=${mes}&anio=${anio}`);
-      const data = await res.json();
-      noProgramadosGlobal = (data.pedidos || []).filter(p => !pedidosProgramados.includes(p.Pedido));
-      mostrarNoProgramados(noProgramadosGlobal);
-    }
+document.getElementById("btn-pendientes").addEventListener("click",()=>{mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Pendiente"));});
+document.getElementById("btn-completados").addEventListener("click",()=>{mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Completado"));});
+document.getElementById("btn-todos").addEventListener("click",()=>{mostrarNoProgramados(noProgramadosGlobal);});
 
-    function mostrarNoProgramados(pedidos){
-      const tbody = document.querySelector("#tabla-no-programados tbody");
-      tbody.innerHTML = "";
-      let totalNP = 0;
-      pedidos.forEach(row => {
-        const kgEnsamble = parseFloat(row.Kg_Ensamble || 0);
-        const kgPintura = parseFloat(row.Kg_Pintura || 0);
-        const kgEmbarque = parseFloat(row.Kg_Embarque || 0);
-        totalNP += kgEnsamble;
+// Funciones agregar y borrar
+async function agregarPedido(pedido){const formData=new FormData();formData.append("pedido",pedido);try{const res=await fetch("/planeacion/add",{method:"POST",body:formData});const data=await res.json();if(res.ok){mostrarMensaje("Pedido agregado ✅","ok");pedidosProgramados.push(pedido);await cargarPlaneacion();}else{mostrarMensaje(data.error||"Error al agregar ❌","error");}}catch{mostrarMensaje("Error de conexión ❌","error");}}
+async function borrarPedido(pedido){if(!confirm("¿Seguro de eliminar el pedido "+pedido+"?"))return;try{const res=await fetch("/planeacion/"+pedido,{method:"DELETE"});const data=await res.json();if(res.ok){mostrarMensaje("Pedido eliminado ✅","ok");await cargarPlaneacion();}else{mostrarMensaje(data.error||"Error al eliminar ❌","error");}}catch{mostrarMensaje("Error de conexión ❌","error");}}
+function mostrarMensaje(msg,tipo){const div=document.getElementById("mensaje");div.textContent=msg;div.className=tipo;setTimeout(()=>{div.textContent="";div.className="";},3000);}
+document.getElementById("add-form").addEventListener("submit",async e=>{e.preventDefault();const pedido=document.getElementById("pedido").value.trim();if(pedido)await agregarPedido(pedido);e.target.reset();});
+document.getElementById("filtro-no-programados").addEventListener("submit",e=>{e.preventDefault();const mes=document.getElementById("mes").value;const anio=document.getElementById("anio").value;if(mes&&anio){cargarNoProgramados(mes,anio);}});
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${row.Pedido||""}</td>
-          <td>${row.Cliente||""}</td>
-          <td>${row.Sistema||""}</td>
-          <td>${kgEnsamble.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${kgPintura.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${kgEmbarque.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td>${row.Ultima_Fecha||""}</td>`;
-        tbody.appendChild(tr);
-      });
-      document.getElementById("total-kgs-np").textContent = 
-        `Total KGS Detectados: ${totalNP.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-    }
+// Inicializar selects de mes y año
+const hoy=new Date();
+const selMes=document.getElementById("mes");
+const selAnio=document.getElementById("anio");
+const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+meses.forEach((m,i)=>{const opt=document.createElement("option");opt.value=i+1;opt.text=m;if(i===hoy.getMonth())opt.selected=true;selMes.appendChild(opt);});
+for(let y=hoy.getFullYear();y>=hoy.getFullYear()-5;y--){const opt=document.createElement("option");opt.value=y;opt.text=y;if(y===hoy.getFullYear())opt.selected=true;selAnio.appendChild(opt);}
 
-    document.getElementById("btn-pendientes").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Pendiente")); });
-    document.getElementById("btn-completados").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal.filter(r=>r.Estado==="Completado")); });
-    document.getElementById("btn-todos").addEventListener("click", ()=>{ mostrarNoProgramados(noProgramadosGlobal); });
+// Modal historial
+function cerrarModalHistorial(){document.getElementById("modalHistorial").style.display="none";document.getElementById("tbodyHistorial").innerHTML="";}
+async function mostrarHistorial(pedido){
+const tbody=document.getElementById("tbodyHistorial");
+tbody.innerHTML="<tr><td colspan='12'>Cargando...</td></tr>";
+document.getElementById("histPedido").textContent=pedido;
+document.getElementById("modalHistorial").style.display="flex";
+try{
+const res=await fetch(`/planeacion/historial?pedido=${pedido}`);
+const data=await res.json();
+tbody.innerHTML="";
+if(data.historial && data.historial.length){
+data.historial.forEach(r=>{
+const tr=document.createElement("tr");
+const cant=parseFloat(r.CANTIDAD||0);
+const ens=parseFloat(r.ENSAMBLE||0);
+const pint=parseFloat(r.PINTURA||0);
+const patio=parseFloat(r.PATIO||0);
+const stock=parseFloat(r["Stock en Patio"]||0);
+const embarque=parseFloat(r.EMBARQUE||0);
+const faltante=parseFloat(r["FALTANTE EMBARQUE"]||0);
+// Para columna PATIO (col 9)
+const clasePatio = (patio === cant) ? 'celda-verde' : (patio > 0 ? 'celda-amarillo' : 'sin-color');
 
-    async function agregarPedido(pedido){
-      const formData = new FormData();
-      formData.append("pedido", pedido);
-      try{
-        const res = await fetch("/planeacion/add",{method:"POST",body:formData});
-        const data = await res.json();
-        if(res.ok){
-          mostrarMensaje("Pedido agregado ✅","ok");
-          pedidosProgramados.push(pedido);
-          await cargarPlaneacion();
-        } else {
-          mostrarMensaje(data.error||"Error al agregar ❌","error");
-        }
-      }catch{
-        mostrarMensaje("Error de conexión ❌","error");
-      }
-    }
+const colorCelda=(valor,total)=>{ if(valor===0) return 'celda-rojo'; else if(valor===total) return 'celda-verde'; else return 'celda-amarillo'; }
+tr.innerHTML=`
+<td title="${r.TIPO||""}">${r.TIPO||""}</td>
+<td title="${r.PEDIDO||""}">${r.PEDIDO||""}</td>
+<td title="${r.PARTIDA||""}">${r.PARTIDA||""}</td>
+<td style="font-size:11px; font-weight:normal; text-align:left;" title="${r.DESCRIPCION||""}">${r.DESCRIPCION||""}</td>
+<td title="${r.COLOR||""}">${r.COLOR||""}</td>
+<td title="${cant}">${formatearNumeroModal(cant)}</td>
+<td class="${colorCelda(ens,cant)}" title="${ens}">${formatearNumeroModal(ens)}</td>
+<td class="${colorCelda(pint,cant)}" title="${pint}">${formatearNumeroModal(pint)}</td>
+<td class="${clasePatio}" title="${patio}">${formatearNumeroModal(patio)}</td>
+<td class="sin-color" title="${stock}">${formatearNumeroModal(stock)}</td>
+<td class="${colorCelda(embarque,cant)}" title="${embarque}">${formatearNumeroModal(embarque)}</td>
+<td class="${colorCelda(faltante,cant)}" title="${faltante}">${formatearNumeroModal(faltante)}</td>
+`;
+tbody.appendChild(tr);
+});
+}else{ tbody.innerHTML="<tr><td colspan='12'>No hay historial disponible</td></tr>"; }
+}catch{ tbody.innerHTML="<tr><td colspan='12'>Error al cargar historial</td></tr>"; }
+}
 
-    async function borrarPedido(pedido){
-      if(!confirm("¿Seguro de eliminar el pedido "+pedido+"?")) return;
-      try{
-        const res = await fetch("/planeacion/"+pedido,{method:"DELETE"});
-        const data = await res.json();
-        if(res.ok){
-          mostrarMensaje("Pedido eliminado ✅","ok");
-          await cargarPlaneacion();
-        } else {
-          mostrarMensaje(data.error||"Error al eliminar ❌","error");
-        }
-      }catch{
-        mostrarMensaje("Error de conexión ❌","error");
-      }
-    }
-
-    function mostrarMensaje(msg,tipo){
-      const div=document.getElementById("mensaje");
-      div.textContent=msg; div.className=tipo;
-      setTimeout(()=>{div.textContent="";div.className="";},3000);
-    }
-
-    document.getElementById("add-form").addEventListener("submit", async e=>{
-      e.preventDefault();
-      const pedido=document.getElementById("pedido").value.trim();
-      if(pedido) await agregarPedido(pedido);
-      e.target.reset();
-    });
-
-    document.getElementById("filtro-no-programados").addEventListener("submit", e=>{
-      e.preventDefault();
-      const mes=document.getElementById("mes").value;
-      const anio=document.getElementById("anio").value;
-      if(mes && anio){ cargarNoProgramados(mes, anio); }
-    });
-
-    const hoy=new Date();
-    const selMes=document.getElementById("mes");
-    const selAnio=document.getElementById("anio");
-    const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-    meses.forEach((m,i)=>{
-      const opt=document.createElement("option");
-      opt.value=i+1; opt.text=m; if(i===hoy.getMonth()) opt.selected=true;
-      selMes.appendChild(opt);
-    });
-    for(let y=hoy.getFullYear(); y>=hoy.getFullYear()-5; y--){
-      const opt=document.createElement("option");
-      opt.value=y; opt.text=y; if(y===hoy.getFullYear()) opt.selected=true;
-      selAnio.appendChild(opt);
-    }
-
-    // Modal historial
-    function cerrarModalHistorial(){
-      document.getElementById("modalHistorial").style.display="none";
-      document.getElementById("tbodyHistorial").innerHTML="";
-    }
-
-    async function mostrarHistorial(pedido){
-      const tbody = document.getElementById("tbodyHistorial");
-      tbody.innerHTML = "<tr><td colspan='4'>Cargando...</td></tr>";
-      document.getElementById("histPedido").textContent = pedido;
-      document.getElementById("modalHistorial").style.display="flex";
-
-      try{
-        const res = await fetch(`/planeacion/historial?pedido=${pedido}`);
-        const data = await res.json();
-        tbody.innerHTML = "";
-        if(data.historial && data.historial.length){
-          data.historial.forEach(r=>{
-            const tr=document.createElement("tr");
-            tr.innerHTML=`
-              <td>${r.Fecha||""}</td>
-              <td>${r.Area||""}</td>
-              <td>${r.Color||""}</td>
-              <td>${(r.KgTotal||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
-            tbody.appendChild(tr);
-          });
-        } else {
-          tbody.innerHTML="<tr><td colspan='4'>No hay historial disponible</td></tr>";
-        }
-      }catch(err){
-        tbody.innerHTML="<tr><td colspan='4'>Error al cargar historial</td></tr>";
-      }
-    }
-
-    cargarPlaneacion();
-    cargarNoProgramados(hoy.getMonth()+1, hoy.getFullYear());
-  </script>
+// Cargar todo al inicio
+cargarPlaneacion();
+cargarNoProgramados(hoy.getMonth()+1,hoy.getFullYear());
+</script>
 </body>
 </html>

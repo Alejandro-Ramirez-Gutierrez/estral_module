@@ -113,7 +113,7 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
             SUM(CASE 
                     WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
                          OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
-                             AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%' OR Color = 'SIN'))
+                             AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%' OR Color = '%SIN%'))
                     THEN KgTotal ELSE 0 
                 END) AS Kg_Pintura
         FROM db_Estral.dbo.Produccion
@@ -324,15 +324,70 @@ def historial_pedido(pedido: str, access_token: str = Cookie(None)):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
     query = f"""
-    SELECT 
-        Fecha,
-        Area,
-        Color,
-        KgTotal
-    FROM db_Estral.dbo.Produccion
-    WHERE Pedido = '{pedido}'
-    ORDER BY Fecha DESC;
+    SELECT
+        m.tipo AS TIPO,
+        m.pedido AS PEDIDO,
+        m.partida AS PARTIDA,
+        m.descripcion AS DESCRIPCION,
+        m.color AS COLOR,
+        m.cantidad AS CANTIDAD,
+
+        ISNULL(SUM(
+            CASE 
+                WHEN p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
+                THEN p.Cantidad 
+                ELSE 0 
+            END
+        ),0) AS ENSAMBLE,
+
+        ISNULL(SUM(
+            CASE 
+                WHEN p.Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
+                     OR (p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+                         AND (p.Color LIKE '%GALVANIZADO%' OR p.Color LIKE '%GALV%' OR p.Color LIKE '%SIN%'))
+                THEN p.Cantidad 
+                ELSE 0 
+            END
+        ),0) AS PINTURA,
+
+        -- piezas recibidas en patio (desde EmbarquesMaterialRecibido)
+        ISNULL(r.CantidadRecibida,0) AS [Stock en Patio],
+
+        -- piezas embarcadas
+        ISNULL(e.CantidadEmbarcada,0) AS EMBARQUE,
+        (m.cantidad - ISNULL(e.CantidadEmbarcada,0)) AS [FALTANTE EMBARQUE]
+
+    FROM Mostrar m
+    LEFT JOIN Produccion p
+        ON m.pedido = p.Pedido AND m.partida = p.Partida
+
+    -- embarques normales y cimsa
+    LEFT JOIN (
+        SELECT x.Pedido, x.Partida, SUM(x.CantidadEmbarcada) AS CantidadEmbarcada
+        FROM (
+            SELECT Pedido, Partida, CantidadEmbarcada FROM embarques
+            UNION ALL
+            SELECT Pedido, Partida, CantidadEmbarcada FROM CIMSAEMBARQUES
+        ) x
+        GROUP BY x.Pedido, x.Partida
+    ) e ON m.pedido = e.Pedido AND m.partida = e.Partida
+
+    -- cantidades recibidas en patio
+    LEFT JOIN (
+        SELECT Pedido, Partida, SUM(CantidadRecibida) AS CantidadRecibida
+        FROM EmbarquesMaterialRecibido 
+        GROUP BY Pedido, Partida 
+    ) r ON m.pedido = r.Pedido AND m.partida = r.Partida
+
+    WHERE m.pedido = '{pedido}'
+    GROUP BY 
+        m.tipo, m.pedido, m.partida, m.descripcion, m.color, m.cantidad, 
+        e.CantidadEmbarcada, r.CantidadRecibida
+    ORDER BY
+        TRY_CAST(LEFT(m.partida, PATINDEX('%[^0-9]%', m.partida + 'X') - 1) AS INT),
+        RIGHT(m.partida, LEN(m.partida) - PATINDEX('%[^0-9]%', m.partida + 'X') + 1);
     """
+
     try:
         rows = ejecutar_consulta_sql(query, fetchall=True) or []
     except Exception as ex:
@@ -346,7 +401,6 @@ def historial_pedido(pedido: str, access_token: str = Cookie(None)):
         out.append(item)
 
     return {"pedido": pedido, "historial": out}
-
 
 
 
