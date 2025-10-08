@@ -1,0 +1,287 @@
+<!-- templates/fabricacion_direccion.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fabricación - Dirección | Estral</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/static/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --blue:#1a73e8;
+  --dark:#153a66;
+  --accent:#ff9800;
+  --muted:#f4f7f9;
+  --card-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:var(--muted); margin:0}
+.header{
+  display:flex; align-items:center; gap:12px; padding:16px 24px; background:linear-gradient(90deg,var(--blue),#2b86ff);
+  color:white;
+}
+.header .title{font-weight:700; font-size:20px}
+.header .sub{opacity:0.9; font-size:13px}
+.container{max-width:1200px; margin:20px auto; padding:0 16px;}
+.controls{display:flex; gap:12px; align-items:center; margin:18px 0; flex-wrap:wrap;}
+.input{padding:8px 12px; border-radius:8px; border:1px solid #ddd; background:white}
+.btn{padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700}
+.btn-primary{background:var(--blue); color:white}
+.btn-accent{background:var(--accent); color:white}
+.kpi-row{display:flex; gap:14px; margin-bottom:18px; flex-wrap:wrap}
+.kpi{background:white; padding:16px; border-radius:12px; box-shadow:var(--card-shadow); flex:1; min-width:180px}
+.kpi h3{margin:0; color:var(--dark); font-size:14px}
+.kpi p{margin:8px 0 0; font-size:20px; font-weight:700; color:var(--blue)}
+
+.grid{display:grid; grid-template-columns: 1fr 360px; gap:18px; align-items:start}
+.card{background:white; border-radius:12px; padding:14px; box-shadow:var(--card-shadow)}
+.table{width:100%; border-collapse:collapse; margin-top:10px}
+.table th, .table td{padding:8px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px}
+.table th{font-weight:700; color:white; background:var(--blue)}
+.small{font-size:12px; color:#666}
+
+/* modal */
+.modal-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:flex-start; padding:28px; overflow:auto}
+.modal{background:white; width:100%; max-width:1100px; border-radius:10px; padding:16px; position:relative}
+.modal .close-outside{position:absolute; right:10px; top:10px; background:#eee; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer}
+.modal .modal-body{max-height:70vh; overflow:auto; margin-top:12px}
+
+/* responsive */
+@media (max-width:980px){
+  .grid{grid-template-columns: 1fr; }
+  .kpi{min-width:140px}
+  .header{flex-direction:column; align-items:flex-start; gap:6px}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="title">ESTRAL - Fabricación</div>
+  </div>
+  <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
+    <button class="btn" id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar</button>
+    <button class="btn btn-primary" id="btn-refresh">🔄 Refrescar</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="controls">
+    <label>Desde <input type="date" id="f-desde" class="input"></label>
+    <label>Hasta <input type="date" id="f-hasta" class="input"></label>
+    <button class="btn btn-accent" id="btn-actualizar">Actualizar</button>
+    <div style="margin-left:auto; display:flex; gap:8px">
+      <button class="btn" id="export-resumen-excel">Exportar Resumen Excel</button>
+      <button class="btn" id="export-resumen-pdf">Exportar Resumen PDF</button>
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi">
+      <h3>Total producido (kg)</h3>
+      <p id="kpi-kg">0</p>
+      <div class="small">Último periodo</div>
+    </div>
+    <div class="kpi">
+      <h3>Total piezas</h3>
+      <p id="kpi-pzas">0</p>
+      <div class="small">Último periodo</div>
+    </div>
+    <div class="kpi">
+      <h3>Turno Día (kg)</h3>
+      <p id="kpi-dia">0</p>
+    </div>
+    <div class="kpi">
+      <h3>Turno Noche (kg)</h3>
+      <p id="kpi-noche">0</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 style="color:var(--dark); margin:0 0 8px">Resumen por Bloque / Área</h2>
+      <div class="small">Haz click en "Ver detalle" para abrir desglose</div>
+      <table class="table" id="tabla-resumen">
+        <thead>
+          <tr><th>Dia</th><th>Area</th><th>Turno</th><th>Bloque</th><th>Kilos</th><th>Piezas</th><th>Tipos</th><th>Acción</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px">Gráficas</h3>
+      <canvas id="chart-area" height="220"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-bloques" height="140"></canvas>
+      <div style="height:8px"></div>
+      <div class="small" style="margin-top:6px">Colores y escala pensadas para claridad y presentación.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="display:flex; align-items:center; justify-content:space-between">
+      <div><strong id="modalTitle">Detalle</strong></div>
+      <div style="display:flex; gap:8px; align-items:center">
+        <button class="btn" id="export-detalle-excel">Excel</button>
+        <button class="btn" id="export-detalle-pdf">PDF</button>
+        <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
+      </div>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- tabla dinámica -->
+      <table class="table" id="tabla-detalle">
+        <thead><tr><th>Pedido</th><th>Partida</th><th>Componente</th><th>Descripción</th><th>Cantidad</th><th>Peso</th><th>PesoTotal</th><th>Fecha</th><th>Máquina</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const apiResumen = "/fabricacion/api/resumen";
+const apiDetalle = "/fabricacion/api/detalle";
+const apiExport = "/fabricacion/api/export";
+
+// init dates from server-rendered defaults
+document.getElementById('f-desde').value = "{{ desde }}";
+document.getElementById('f-hasta').value = "{{ hasta }}";
+
+// helpers
+function fnum(x){ try{ return Number(x).toLocaleString('en-US'); }catch(e){return x;} }
+function fetchResumen(){
+  const desde = document.getElementById('f-desde').value;
+  const hasta = document.getElementById('f-hasta').value;
+  fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`, {credentials:'include'})
+    .then(r=>r.json()).then(data=>{
+      renderResumen(data.resumen || []);
+      renderKpis(data.kpis || {});
+      renderCharts(data.resumen || []);
+    }).catch(e=>{ alert("Error al cargar resumen: "+e) });
+}
+
+function renderKpis(kpis){
+  document.getElementById('kpi-kg').textContent = fnum(kpis.total_kg || 0);
+  document.getElementById('kpi-pzas').textContent = fnum(kpis.total_piezas || 0);
+  // estimate day/night by scanning resumen
+  const resumen = window._lastResumen || [];
+  let kgDia=0, kgNoche=0;
+  resumen.forEach(r=>{ if(r.Turno === 'Día') kgDia += r.PesoKg; else kgNoche += r.PesoKg; });
+  document.getElementById('kpi-dia').textContent = fnum(kgDia);
+  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
+}
+
+function renderResumen(rows){
+  window._lastResumen = rows;
+  const tbody = document.querySelector('#tabla-resumen tbody');
+  tbody.innerHTML = '';
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.DiaTurno}</td>
+      <td>${r.Area}</td>
+      <td>${r.Turno}</td>
+      <td>${r.Bloque}</td>
+      <td>${fnum(r.PesoKg.toFixed? r.PesoKg.toFixed(2): r.PesoKg)}</td>
+      <td>${fnum(r.Piezas)}</td>
+      <td title="${r.Tipos}">${r.Tipos.length>60? r.Tipos.substring(0,60)+'...': r.Tipos}</td>
+      <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${r.DiaTurno}','${r.Bloque}')">Ver detalle</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+let chartArea=null, chartBloques=null;
+function renderCharts(rows){
+  // prepare data by area (sum PesoKg)
+  const byArea = {};
+  const byBloq = {};
+  rows.forEach(r=>{
+    byArea[r.Area] = (byArea[r.Area]||0) + (r.PesoKg||0);
+    byBloq[r.Bloque] = (byBloq[r.Bloque]||0) + (r.PesoKg||0);
+  });
+  const areaLabels = Object.keys(byArea);
+  const areaData = areaLabels.map(k=>Math.round(byArea[k]));
+  const bloqLabels = Object.keys(byBloq);
+  const bloqData = bloqLabels.map(k=>Math.round(byBloq[k]));
+
+  // destroy previous
+  if(chartArea) chartArea.destroy();
+  if(chartBloques) chartBloques.destroy();
+
+  const ctxA = document.getElementById('chart-area').getContext('2d');
+  chartArea = new Chart(ctxA, {
+    type:'bar',
+    data:{ labels: areaLabels, datasets:[{ label:'Kilos (kg)', data: areaData, backgroundColor:'#1a73e8' }]},
+    options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  const ctxB = document.getElementById('chart-bloques').getContext('2d');
+  chartBloques = new Chart(ctxB, {
+    type:'line',
+    data:{ labels: bloqLabels, datasets:[{ label:'Kilos por bloque', data: bloqData, fill:true, backgroundColor:'rgba(75,192,192,0.15)', borderColor:'#ff9800' }]},
+    options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } }
+  });
+}
+
+// detalle modal
+function verDetalle(area, dia, bloque){
+  area = decodeURIComponent(area);
+  document.getElementById('modalTitle').textContent = `Detalle — ${area} • ${dia} • ${bloque}`;
+  // show overlay
+  const overlay = document.getElementById('modalOverlay');
+  overlay.style.display = 'flex';
+  // load detalle
+  fetch(`${apiDetalle}?area=${encodeURIComponent(area)}&dia=${dia}&bloque=${encodeURIComponent(bloque)}`, {credentials:'include'})
+    .then(r=>r.json())
+    .then(data=>{
+      const tb = document.querySelector('#tabla-detalle tbody');
+      tb.innerHTML = '';
+      (data.detalle || []).forEach(d=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.Pedido||''}</td>
+                        <td>${d.Partida||''}</td>
+                        <td>${d.Componente||''}</td>
+                        <td>${d.Descripcion||''}</td>
+                        <td>${d.Cantidad}</td>
+                        <td>${d.Peso}</td>
+                        <td>${d.PesoTotal}</td>
+                        <td>${d.Fecha}</td>
+                        <td>${d.Maquina}</td>`;
+        tb.appendChild(tr);
+      });
+      // set export handlers
+      document.getElementById('export-detalle-excel').onclick = ()=> window.open(`/fabricacion/api/export?mode=detalle&tipo=excel&area=${encodeURIComponent(area)}&dia=${dia}&bloque=${encodeURIComponent(bloque)}`, '_blank');
+      document.getElementById('export-detalle-pdf').onclick = ()=> window.open(`/fabricacion/api/export?mode=detalle&tipo=pdf&area=${encodeURIComponent(area)}&dia=${dia}&bloque=${encodeURIComponent(bloque)}`, '_blank');
+    });
+}
+
+// close modal (outside button)
+document.getElementById('closeModal').addEventListener('click', ()=> {
+  document.getElementById('modalOverlay').style.display = 'none';
+});
+// also close clicking overlay outside modal box
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{
+  if(e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').style.display = 'none';
+});
+
+// exports resumen
+document.getElementById('export-resumen-excel').onclick = ()=> {
+  const d=document.getElementById('f-desde').value, h=document.getElementById('f-hasta').value;
+  window.open(`/fabricacion/api/export?mode=resumen&tipo=excel&desde=${d}&hasta=${h}`,'_blank');
+};
+document.getElementById('export-resumen-pdf').onclick = ()=> {
+  const d=document.getElementById('f-desde').value, h=document.getElementById('f-hasta').value;
+  window.open(`/fabricacion/api/export?mode=resumen&tipo=pdf&desde=${d}&hasta=${h}`,'_blank');
+};
+
+// update button
+document.getElementById('btn-actualizar').addEventListener('click', fetchResumen);
+document.getElementById('btn-refresh').addEventListener('click', fetchResumen);
+
+// initial load
+fetchResumen();
+</script>
+</body>
+</html>

@@ -64,7 +64,6 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             "K_Departamento": getattr(user_row, "K_Departamento", None),
             "D_Departamento": getattr(user_row, "D_Departamento", None)
         }
-        print("DEBUG:", {"user_row": user_row, "pmsMsg": pmsMsg})
 
         return {"user": user_data}
 

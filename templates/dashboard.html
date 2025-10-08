@@ -170,6 +170,64 @@ button.cancelar:hover { background-color:#c82333; }
     .pdf-icon { width:120px; height:120px; font-size:40px; }
     .pdf-text { font-size:20px; }
 }
+
+/* Dropdown navbar */
+.dropdown {
+    position: relative;
+}
+
+.dropbtn {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    padding: 10px 20px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: 0.2s;
+}
+
+.dropbtn:hover {
+    background: rgba(255,255,255,0.4);
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #1a73e8;
+    min-width: 220px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    flex-direction: column;
+    margin-top: 5px;
+    z-index: 1000;
+}
+
+.dropdown-content a {
+    color: white;
+    padding: 12px 20px;
+    text-decoration: none;
+    display: block;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.dropdown-content a:last-child {
+    border-bottom: none;
+}
+
+.dropdown-content a:hover {
+    background-color: rgba(255,255,255,0.3);
+}
+
+/* Para que abra con clic en vez de hover */
+.dropdown.show .dropdown-content {
+    display: flex;
+}
+
+
 </style>
 </head>
 <body>
@@ -180,10 +238,20 @@ button.cancelar:hover { background-color:#c82333; }
     <div class="tabs">
         <a href="/dashboard" class="active">🏠 Dashboard</a>
         <a href="/valance">📊 KPIS - Compras</a>
-        <a href="/planeacion">📋 Planeación</a>
+
+        <!-- Dropdown Planeación -->
+        <div class="dropdown">
+            <button class="dropbtn">📋 Planeación ▾</button>
+            <div class="dropdown-content">
+                <a href="/planeacion">Programa mensual</a>
+                <a href="/fabricacion">Fabricación mensual</a>
+                <a href="#">Calendario mensual</a>
+            </div>
+        </div>
     </div>
     <button onclick="location.href='/logout'">Cerrar sesión</button>
 </nav>
+
 
 <header>
     <h1>Bienvenido, {{ usuario }}!</h1>
@@ -309,6 +377,22 @@ async function autorizarOrdenConfirm() {
     } catch(err){ alert('Error al autorizar: '+err.message); }
     cerrarModalAutorizar();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dropdown = document.querySelector('.dropdown');
+    const btn = dropdown.querySelector('.dropbtn');
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('show');
+    });
+
+    // Cerrar si clic afuera
+    document.addEventListener('click', () => {
+        dropdown.classList.remove('show');
+    });
+});
+
 </script>
 </body>
 </html>

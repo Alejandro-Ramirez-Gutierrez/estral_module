@@ -28,7 +28,7 @@ def get_payload_from_cookie(access_token: str = Cookie(None)):
     token = access_token.replace("Bearer ", "")
     return verificar_access_token(token)
 
-# Página HTML del dashboard de planeación (si quieres usar template)
+# Página HTML del dashboard de planeación
 @router.get("/", response_class=HTMLResponse)
 def planeacion_page(request: Request, access_token: str = Cookie(None)):
     payload = get_payload_from_cookie(access_token)

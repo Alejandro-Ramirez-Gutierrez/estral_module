@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Form, Cookie, Body, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from routers import auth_requisiciones, planeacion
+from routers import auth_requisiciones, planeacion, fabricacion_mensual
 from utils.auth import crear_access_token, verificar_access_token
 from services.db_service import (
     login_user,
@@ -29,6 +29,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # -------------------- ROUTERS --------------------
 app.include_router(auth_requisiciones.router, prefix="/auth", tags=["Autenticación"])
 app.include_router(planeacion.router, prefix="/planeacion", tags=["Planeación"])
+app.include_router(fabricacion_mensual.router, prefix="/fabricacion", tags=["Fabricación Mensual"])
 
 # -------------------- LOGIN --------------------
 @app.get("/", response_class=HTMLResponse)
