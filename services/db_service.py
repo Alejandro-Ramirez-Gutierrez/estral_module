@@ -18,13 +18,13 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
                version: str = "1.1.5.18", b_web: int = 1):
     """
     Valida el login del usuario usando el procedure Gp_Valida_Usuario_Nuevo.
-    Devuelve un diccionario con 'user' si es correcto o 'error' si falla.
+    Devuelve {'user': {...}} si es correcto o {'error': '...'} si falla.
     """
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            DECLARE @pmsMsg varchar(254);
+            DECLARE @pmsMsg VARCHAR(254);
             EXEC Gp_Valida_Usuario_Nuevo
                 @Login=?,
                 @Contrasenia=?,
@@ -35,13 +35,19 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             SELECT @pmsMsg AS pmsMsg;
         """, username, password, aplicacion, version, b_web)
 
+        
         user_row = safe_fetch(cursor)
-        if cursor.nextset():
-            output_row = safe_fetch(cursor)
-            if output_row and getattr(output_row, "pmsMsg", None):
-                return {"error": "Usuario o contraseña incorrectos"}
 
-        if not user_row:
+        pmsMsg = None
+        if cursor.nextset():
+            msg_row = safe_fetch(cursor)
+            if msg_row and hasattr(msg_row, "pmsMsg"):
+                pmsMsg = msg_row.pmsMsg
+
+        if pmsMsg and len(pmsMsg.strip()) > 0:
+            return {"error": pmsMsg}
+
+        if not user_row or not getattr(user_row, "K_Usuario", None):
             return {"error": "Usuario o contraseña incorrectos"}
 
         user_data = {
@@ -58,6 +64,7 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             "K_Departamento": getattr(user_row, "K_Departamento", None),
             "D_Departamento": getattr(user_row, "D_Departamento", None)
         }
+        print("DEBUG:", {"user_row": user_row, "pmsMsg": pmsMsg})
 
         return {"user": user_data}
 
@@ -69,6 +76,7 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
     finally:
         cursor.close()
         conn.close()
+
 
 def valida_usuario(username: str, password: str):
     result = login_user(username, password)
