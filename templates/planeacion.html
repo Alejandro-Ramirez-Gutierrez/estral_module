@@ -407,11 +407,27 @@ async function cargarTotalesPorGrupo() {
     }
 }
 
+async function refrescarPlaneacion() {
+    try {
+        const res = await fetch("/planeacion/refresh", { method: "POST" });
+        const data = await res.json();
+        console.log("Actualización:", data.message || data.error || data);
+    } catch (err) {
+        console.error("Error actualizando planeación:", err);
+    }
+}
+
+
 
 // Cargar todo al inicio
-cargarPlaneacion();
-cargarNoProgramados(hoy.getMonth()+1,hoy.getFullYear());
-cargarTotalesPorGrupo();
+(async () => {
+    await refrescarPlaneacion();
+    await cargarPlaneacion();
+    await cargarNoProgramados(hoy.getMonth()+1, hoy.getFullYear());
+    await cargarTotalesPorGrupo();
+})();
+
+
 
 </script>
 </body>

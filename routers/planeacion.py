@@ -325,6 +325,20 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
 
     return {"message": "Pedido agregado a planeación", "inserted": inserted}
 
+
+@router.post("/refresh")
+def refrescar_planeacion(access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    try:
+        ejecutar_consulta_sql("EXEC sp_Actualizar_WS_Planeacion;")
+        return {"message": "Datos de planeación actualizados correctamente"}
+    except Exception as ex:
+        return JSONResponse(status_code=500, content={"error": str(ex)})
+
+
 # API: Borrar pedido de WS_Planeacion
 @router.delete("/{pedido}")
 def borrar_pedido(pedido: str, access_token: str = Cookie(None)):
