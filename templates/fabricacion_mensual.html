@@ -175,7 +175,7 @@ function renderResumen(rows){
   });
 }
 
-/* --- Charts (se quitaron las 4,5,6,7 como pediste) --- */
+/* --- Charts --- */
 let charts={};
 function renderCharts(rows){
   const byArea={},byBloq={},diaData={},nocheData={},labelsTendencia=[];
@@ -283,7 +283,7 @@ async function exportTableToPDF(tableId,title='Reporte'){
       return;
     }
 
-    // 2) Usar window.jspdfAutoTable si existe (forma UMD común)
+    // 2) Usar window.jspdfAutoTable si existe
     if(typeof window.jspdfAutoTable === 'function'){
       window.jspdfAutoTable(doc, { html: `#${tableId}`, startY: 16 });
       doc.save(`${title}.pdf`);
@@ -297,21 +297,21 @@ async function exportTableToPDF(tableId,title='Reporte'){
       return;
     }
 
-    // 4) Intentar llamar a la función registrada en window.jspdf.autotable (por si)
+    // 4) Intentar llamar a la función registrada en window.jspdf.autotable
     if(window.jspdf && typeof window.jspdf.autotable === 'function'){
       window.jspdf.autotable(doc, { html: `#${tableId}`, startY: 16 });
       doc.save(`${title}.pdf`);
       return;
     }
 
-    // 5) Fallback: generar un PDF "de texto" simple (no bonito, pero sirve)
+    // 5) Fallback: generar un PDF
     const table = document.getElementById(tableId);
     if(table){
       const rows = Array.from(table.querySelectorAll('tr')).map(tr => Array.from(tr.children).map(td => td.innerText.trim().replace(/\s+/g,' ')).join('  |  '));
       let y = 20;
       doc.setFontSize(10);
       rows.forEach((line, idx) => {
-        const maxLineWidth = 180; // aproximado
+        const maxLineWidth = 180;
         // dividir líneas largas
         const parts = [];
         for(let i=0;i<line.length;i+=120) parts.push(line.substring(i,i+120));
@@ -325,7 +325,6 @@ async function exportTableToPDF(tableId,title='Reporte'){
       return;
     }
 
-    // Si llegamos aquí no hay forma de exportar con autoTable ni tabla de fallback
     console.error('autoTable no disponible. Objetos relevantes:', { doc, jspdfAutoTable: window.jspdfAutoTable, docAutoTable: doc.autoTable, windowAutoTable: window.autoTable });
     alert('No se encontró método autoTable. Asegúrate de que jspdf-autotable se haya cargado después de jspdf.');
   }catch(err){
