@@ -5,35 +5,34 @@
 <meta charset="utf-8">
 <title>Fabricación - Dirección | Estral</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="/static/styles.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{
   --blue:#1a73e8;
   --dark:#153a66;
   --accent:#ff9800;
+  --accent2:#34a853;
   --muted:#f4f7f9;
   --card-shadow: 0 8px 20px rgba(0,0,0,0.08);
 }
 body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:var(--muted); margin:0}
-.header{
-  display:flex; align-items:center; gap:12px; padding:16px 24px; background:linear-gradient(90deg,var(--blue),#2b86ff);
-  color:white;
-}
+.header{display:flex; align-items:center; gap:12px; padding:16px 24px; background:linear-gradient(90deg,var(--blue),#2b86ff); color:white;}
 .header .title{font-weight:700; font-size:20px}
 .header .sub{opacity:0.9; font-size:13px}
 .container{max-width:1200px; margin:20px auto; padding:0 16px;}
 .controls{display:flex; gap:12px; align-items:center; margin:18px 0; flex-wrap:wrap;}
 .input{padding:8px 12px; border-radius:8px; border:1px solid #ddd; background:white}
-.btn{padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700}
+.btn{padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700; transition:0.2s;}
+.btn:hover{opacity:0.85;}
 .btn-primary{background:var(--blue); color:white}
 .btn-accent{background:var(--accent); color:white}
+.btn-accent2{background:var(--accent2); color:white}
 .kpi-row{display:flex; gap:14px; margin-bottom:18px; flex-wrap:wrap}
-.kpi{background:white; padding:16px; border-radius:12px; box-shadow:var(--card-shadow); flex:1; min-width:180px}
+.kpi{background:white; padding:16px; border-radius:12px; box-shadow:var(--card-shadow); flex:1; min-width:180px; text-align:center}
 .kpi h3{margin:0; color:var(--dark); font-size:14px}
 .kpi p{margin:8px 0 0; font-size:20px; font-weight:700; color:var(--blue)}
 
-.grid{display:grid; grid-template-columns: 1fr 360px; gap:18px; align-items:start}
+.grid{display:grid; grid-template-columns: 1fr 420px; gap:18px; align-items:start}
 .card{background:white; border-radius:12px; padding:14px; box-shadow:var(--card-shadow)}
 .table{width:100%; border-collapse:collapse; margin-top:10px}
 .table th, .table td{padding:8px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:13px}
@@ -43,8 +42,9 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
 /* modal */
 .modal-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; justify-content:center; align-items:flex-start; padding:28px; overflow:auto}
 .modal{background:white; width:100%; max-width:1100px; border-radius:10px; padding:16px; position:relative}
-.modal .close-outside{position:absolute; right:10px; top:10px; background:#eee; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer}
-.modal .modal-body{max-height:70vh; overflow:auto; margin-top:12px}
+.modal .close-outside{position:absolute; right:10px; top:10px; background:#eee; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px;}
+.modal .modal-body{max-height:65vh; overflow:auto; margin-top:12px}
+.modal .modal-actions{display:flex; justify-content:center; gap:16px; margin-top:12px}
 
 /* responsive */
 @media (max-width:980px){
@@ -57,7 +57,7 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
 <body>
 <div class="header">
   <div>
-    <div class="title">ESTRAL - Fabricación</div>
+    <div class="title">ESTRAL - Fabricación de componentes</div>
   </div>
   <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
     <button class="btn" id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar</button>
@@ -71,8 +71,8 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
     <label>Hasta <input type="date" id="f-hasta" class="input"></label>
     <button class="btn btn-accent" id="btn-actualizar">Actualizar</button>
     <div style="margin-left:auto; display:flex; gap:8px">
-      <button class="btn" id="export-resumen-excel">Exportar Resumen Excel</button>
-      <button class="btn" id="export-resumen-pdf">Exportar Resumen PDF</button>
+      <button class="btn btn-accent" id="export-resumen-excel">Exportar Resumen Excel</button>
+      <button class="btn btn-primary" id="export-resumen-pdf">Exportar Resumen PDF</button>
     </div>
   </div>
 
@@ -111,9 +111,21 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
 
     <div class="card">
       <h3 style="margin:0 0 8px">Gráficas</h3>
-      <canvas id="chart-area" height="220"></canvas>
+      <canvas id="chart-area" height="180"></canvas>
       <div style="height:12px"></div>
       <canvas id="chart-bloques" height="140"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-tendencia-turno" height="180"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-tendencia-dia" height="140"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-tendencia-noche" height="140"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-hab-perf-dia" height="140"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-hab-perf-noche" height="140"></canvas>
+      <div style="height:12px"></div>
+      <canvas id="chart-torta-turno" height="180"></canvas>
       <div style="height:8px"></div>
       <div class="small" style="margin-top:6px">Colores y escala pensadas para claridad y presentación.</div>
     </div>
@@ -125,18 +137,17 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
   <div class="modal" role="dialog" aria-modal="true">
     <div style="display:flex; align-items:center; justify-content:space-between">
       <div><strong id="modalTitle">Detalle</strong></div>
-      <div style="display:flex; gap:8px; align-items:center">
-        <button class="btn" id="export-detalle-excel">Excel</button>
-        <button class="btn" id="export-detalle-pdf">PDF</button>
-        <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
-      </div>
+      <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
     </div>
     <div class="modal-body" id="modalBody">
-      <!-- tabla dinámica -->
       <table class="table" id="tabla-detalle">
         <thead><tr><th>Pedido</th><th>Partida</th><th>Componente</th><th>Descripción</th><th>Cantidad</th><th>Peso</th><th>PesoTotal</th><th>Fecha</th><th>Máquina</th></tr></thead>
         <tbody></tbody>
       </table>
+      <div class="modal-actions">
+        <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
+        <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -144,19 +155,17 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
 <script>
 const apiResumen = "/fabricacion/api/resumen";
 const apiDetalle = "/fabricacion/api/detalle";
-const apiExport = "/fabricacion/api/export";
-
-// init dates from server-rendered defaults
 document.getElementById('f-desde').value = "{{ desde }}";
 document.getElementById('f-hasta').value = "{{ hasta }}";
 
-// helpers
-function fnum(x){ try{ return Number(x).toLocaleString('en-US'); }catch(e){return x;} }
+function fnum(x){ return Number(x||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
 function fetchResumen(){
   const desde = document.getElementById('f-desde').value;
   const hasta = document.getElementById('f-hasta').value;
   fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`, {credentials:'include'})
-    .then(r=>r.json()).then(data=>{
+    .then(r=>r.json())
+    .then(data=>{
       renderResumen(data.resumen || []);
       renderKpis(data.kpis || {});
       renderCharts(data.resumen || []);
@@ -166,121 +175,137 @@ function fetchResumen(){
 function renderKpis(kpis){
   document.getElementById('kpi-kg').textContent = fnum(kpis.total_kg || 0);
   document.getElementById('kpi-pzas').textContent = fnum(kpis.total_piezas || 0);
-  // estimate day/night by scanning resumen
   const resumen = window._lastResumen || [];
   let kgDia=0, kgNoche=0;
-  resumen.forEach(r=>{ if(r.Turno === 'Día') kgDia += r.PesoKg; else kgNoche += r.PesoKg; });
-  document.getElementById('kpi-dia').textContent = fnum(kgDia);
-  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
+  resumen.forEach(r=>{ if(r.Turno==='Día') kgDia+=r.PesoKg; else kgNoche+=r.PesoKg; });
+  document.getElementById('kpi-dia').textContent=fnum(kgDia);
+  document.getElementById('kpi-noche').textContent=fnum(kgNoche);
 }
 
 function renderResumen(rows){
-  window._lastResumen = rows;
-  const tbody = document.querySelector('#tabla-resumen tbody');
-  tbody.innerHTML = '';
+  window._lastResumen=rows;
+  const tbody=document.querySelector('#tabla-resumen tbody');
+  tbody.innerHTML='';
   rows.forEach(r=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.DiaTurno}</td>
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.DiaTurno}</td>
       <td>${r.Area}</td>
       <td>${r.Turno}</td>
       <td>${r.Bloque}</td>
       <td>${fnum(r.PesoKg.toFixed? r.PesoKg.toFixed(2): r.PesoKg)}</td>
       <td>${fnum(r.Piezas)}</td>
       <td title="${r.Tipos}">${r.Tipos.length>60? r.Tipos.substring(0,60)+'...': r.Tipos}</td>
-      <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${r.DiaTurno}','${r.Bloque}')">Ver detalle</button></td>`;
+      <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${encodeURIComponent(r.DiaTurno)}','${encodeURIComponent(r.Bloque)}')">Ver detalle</button></td>`;
     tbody.appendChild(tr);
   });
 }
 
-let chartArea=null, chartBloques=null;
+let charts={};
+
 function renderCharts(rows){
-  // prepare data by area (sum PesoKg)
-  const byArea = {};
-  const byBloq = {};
+  const byArea={}, byBloq={}, diaData={}, nocheData={}, labelsTendencia=[];
+  const habDia={}, perfDia={}, habNoche={}, perfNoche={};
   rows.forEach(r=>{
-    byArea[r.Area] = (byArea[r.Area]||0) + (r.PesoKg||0);
-    byBloq[r.Bloque] = (byBloq[r.Bloque]||0) + (r.PesoKg||0);
-  });
-  const areaLabels = Object.keys(byArea);
-  const areaData = areaLabels.map(k=>Math.round(byArea[k]));
-  const bloqLabels = Object.keys(byBloq);
-  const bloqData = bloqLabels.map(k=>Math.round(byBloq[k]));
+    byArea[r.Area]=(byArea[r.Area]||0)+(r.PesoKg||0);
+    byBloq[r.Bloque]=(byBloq[r.Bloque]||0)+(r.PesoKg||0);
+    if(!labelsTendencia.includes(r.DiaTurno)) labelsTendencia.push(r.DiaTurno);
+    if(r.Turno==='Día') diaData[r.DiaTurno]=(diaData[r.DiaTurno]||0)+r.PesoKg;
+    if(r.Turno==='Noche') nocheData[r.DiaTurno]=(nocheData[r.DiaTurno]||0)+r.PesoKg;
 
-  // destroy previous
-  if(chartArea) chartArea.destroy();
-  if(chartBloques) chartBloques.destroy();
-
-  const ctxA = document.getElementById('chart-area').getContext('2d');
-  chartArea = new Chart(ctxA, {
-    type:'bar',
-    data:{ labels: areaLabels, datasets:[{ label:'Kilos (kg)', data: areaData, backgroundColor:'#1a73e8' }]},
-    options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } }
+    if(r.Tipos.includes('Habilitado')) { if(r.Turno==='Día') habDia[r.DiaTurno]=(habDia[r.DiaTurno]||0)+r.PesoKg; else habNoche[r.DiaTurno]=(habNoche[r.DiaTurno]||0)+r.PesoKg; }
+    if(r.Tipos.includes('Perfilado')) { if(r.Turno==='Día') perfDia[r.DiaTurno]=(perfDia[r.DiaTurno]||0)+r.PesoKg; else perfNoche[r.DiaTurno]=(perfNoche[r.DiaTurno]||0)+r.PesoKg; }
   });
 
-  const ctxB = document.getElementById('chart-bloques').getContext('2d');
-  chartBloques = new Chart(ctxB, {
-    type:'line',
-    data:{ labels: bloqLabels, datasets:[{ label:'Kilos por bloque', data: bloqData, fill:true, backgroundColor:'rgba(75,192,192,0.15)', borderColor:'#ff9800' }]},
-    options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ beginAtZero:true } } }
+  function destroyChart(id){ if(charts[id]) charts[id].destroy(); }
+
+  destroyChart('chart-area'); destroyChart('chart-bloques'); destroyChart('chart-tendencia-turno');
+  destroyChart('chart-torta-turno'); destroyChart('chart-tendencia-dia'); destroyChart('chart-tendencia-noche');
+  destroyChart('chart-hab-perf-dia'); destroyChart('chart-hab-perf-noche');
+
+  charts['chart-area']=new Chart(document.getElementById('chart-area').getContext('2d'),{
+    type:'bar', data:{labels:Object.keys(byArea), datasets:[{label:'Kilos (kg)', data:Object.keys(byArea).map(k=>Math.round(byArea[k])), backgroundColor:'#1a73e8'}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-bloques']=new Chart(document.getElementById('chart-bloques').getContext('2d'),{
+    type:'line', data:{labels:Object.keys(byBloq), datasets:[{label:'Kilos por bloque', data:Object.keys(byBloq).map(k=>Math.round(byBloq[k])), fill:true, backgroundColor:'rgba(75,192,192,0.15)', borderColor:'#ff9800', tension:0.4, pointRadius:4}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno').getContext('2d'),{
+    type:'line', data:{labels:labelsTendencia, datasets:[
+      {label:'Turno Día', data:labelsTendencia.map(d=>diaData[d]||0), borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', tension:0.4, fill:true, pointRadius:4},
+      {label:'Turno Noche', data:labelsTendencia.map(d=>nocheData[d]||0), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', tension:0.4, fill:true, pointRadius:4}
+    ]},
+    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-tendencia-dia']=new Chart(document.getElementById('chart-tendencia-dia').getContext('2d'),{
+    type:'line', data:{labels:labelsTendencia, datasets:[{label:'Turno Día', data:labelsTendencia.map(d=>diaData[d]||0), borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', fill:true, tension:0.4, pointRadius:4}]},
+    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-tendencia-noche']=new Chart(document.getElementById('chart-tendencia-noche').getContext('2d'),{
+    type:'line', data:{labels:labelsTendencia, datasets:[{label:'Turno Noche', data:labelsTendencia.map(d=>nocheData[d]||0), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', fill:true, tension:0.4, pointRadius:4}]},
+    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-hab-perf-dia']=new Chart(document.getElementById('chart-hab-perf-dia').getContext('2d'),{
+    type:'bar', data:{labels:labelsTendencia, datasets:[
+      {label:'Habilitado', data:labelsTendencia.map(d=>habDia[d]||0), backgroundColor:'#1a73e8'},
+      {label:'Perfilado', data:labelsTendencia.map(d=>perfDia[d]||0), backgroundColor:'#ff9800'}
+    ]},
+    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-hab-perf-noche']=new Chart(document.getElementById('chart-hab-perf-noche').getContext('2d'),{
+    type:'bar', data:{labels:labelsTendencia, datasets:[
+      {label:'Habilitado', data:labelsTendencia.map(d=>habNoche[d]||0), backgroundColor:'#1a73e8'},
+      {label:'Perfilado', data:labelsTendencia.map(d=>perfNoche[d]||0), backgroundColor:'#ff9800'}
+    ]},
+    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno').getContext('2d'),{
+    type:'doughnut', data:{labels:['Día','Noche'], datasets:[{data:[Object.values(diaData).reduce((a,b)=>a+b,0), Object.values(nocheData).reduce((a,b)=>a+b,0)], backgroundColor:['#1a73e8','#ff9800']}]},
+    options:{responsive:true, plugins:{legend:{display:true}}}
   });
 }
 
-// detalle modal
+// modal
 function verDetalle(area, dia, bloque){
-  area = decodeURIComponent(area);
-  document.getElementById('modalTitle').textContent = `Detalle — ${area} • ${dia} • ${bloque}`;
-  // show overlay
-  const overlay = document.getElementById('modalOverlay');
-  overlay.style.display = 'flex';
-  // load detalle
-  fetch(`${apiDetalle}?area=${encodeURIComponent(area)}&dia=${dia}&bloque=${encodeURIComponent(bloque)}`, {credentials:'include'})
-    .then(r=>r.json())
-    .then(data=>{
-      const tb = document.querySelector('#tabla-detalle tbody');
-      tb.innerHTML = '';
-      (data.detalle || []).forEach(d=>{
+  const tbody = document.querySelector('#tabla-detalle tbody');
+  tbody.innerHTML = '<tr><td colspan=9>Cargando...</td></tr>';
+  document.getElementById('modalOverlay').style.display = 'flex';
+  document.getElementById('modalTitle').textContent = `Detalle ${decodeURIComponent(area)} - ${decodeURIComponent(dia)} - Bloque ${decodeURIComponent(bloque)}`;
+
+  fetch(`${apiDetalle}?area=${area}&dia=${dia}&bloque=${bloque}`, { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+      tbody.innerHTML = '';
+      const rows = Array.isArray(data.detalle) ? data.detalle : [];
+      if(rows.length === 0){
+        tbody.innerHTML = '<tr><td colspan=9>No hay datos</td></tr>';
+        return;
+      }
+      rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${d.Pedido||''}</td>
-                        <td>${d.Partida||''}</td>
-                        <td>${d.Componente||''}</td>
-                        <td>${d.Descripcion||''}</td>
-                        <td>${d.Cantidad}</td>
-                        <td>${d.Peso}</td>
-                        <td>${d.PesoTotal}</td>
-                        <td>${d.Fecha}</td>
-                        <td>${d.Maquina}</td>`;
-        tb.appendChild(tr);
+        tr.innerHTML = `<td>${r.Pedido}</td><td>${r.Partida}</td><td>${r.Componente}</td><td>${r.Descripcion}</td>
+        <td>${r.Cantidad}</td><td>${r.Peso}</td><td>${r.PesoTotal}</td><td>${r.Fecha}</td><td>${r.Maquina}</td>`;
+        tbody.appendChild(tr);
       });
-      // set export handlers
-      document.getElementById('export-detalle-excel').onclick = ()=> window.open(`/fabricacion/api/export?mode=detalle&tipo=excel&area=${encodeURIComponent(area)}&dia=${dia}&bloque=${encodeURIComponent(bloque)}`, '_blank');
-      document.getElementById('export-detalle-pdf').onclick = ()=> window.open(`/fabricacion/api/export?mode=detalle&tipo=pdf&area=${encodeURIComponent(area)}&dia=${dia}&bloque=${encodeURIComponent(bloque)}`, '_blank');
+    })
+    .catch(e => {
+      tbody.innerHTML = `<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;
     });
 }
 
-// close modal (outside button)
-document.getElementById('closeModal').addEventListener('click', ()=> {
-  document.getElementById('modalOverlay').style.display = 'none';
-});
-// also close clicking overlay outside modal box
-document.getElementById('modalOverlay').addEventListener('click', (e)=>{
-  if(e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').style.display = 'none';
-});
+// Cerrar modal
+document.getElementById('closeModal').addEventListener('click',()=>{document.getElementById('modalOverlay').style.display='none';});
+document.getElementById('btn-actualizar').addEventListener('click',fetchResumen);
+document.getElementById('btn-refresh').addEventListener('click',fetchResumen);
 
-// exports resumen
-document.getElementById('export-resumen-excel').onclick = ()=> {
-  const d=document.getElementById('f-desde').value, h=document.getElementById('f-hasta').value;
-  window.open(`/fabricacion/api/export?mode=resumen&tipo=excel&desde=${d}&hasta=${h}`,'_blank');
-};
-document.getElementById('export-resumen-pdf').onclick = ()=> {
-  const d=document.getElementById('f-desde').value, h=document.getElementById('f-hasta').value;
-  window.open(`/fabricacion/api/export?mode=resumen&tipo=pdf&desde=${d}&hasta=${h}`,'_blank');
-};
-
-// update button
-document.getElementById('btn-actualizar').addEventListener('click', fetchResumen);
-document.getElementById('btn-refresh').addEventListener('click', fetchResumen);
-
-// initial load
+// init
 fetchResumen();
 </script>
 </body>
