@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-# Permisos (ajusta si necesitas)
+# Permisos
 AREAS_PERMITIDAS = [20, 22]
 EMPLEADOS_PERMITIDOS = [8811, 8661, 8870, 8740, 4, 5]
 
@@ -22,7 +22,7 @@ def validar_token(access_token: str):
     payload = verificar_access_token(token)
     if not payload:
         return None
-    # validar acceso a fabricacion
+    
     if (payload.get("K_Area") in AREAS_PERMITIDAS) or (payload.get("K_Empleado") in EMPLEADOS_PERMITIDOS):
         return payload
     return None
@@ -33,7 +33,7 @@ def direccion_page(request: Request, access_token: str = Cookie(None)):
     payload = validar_token(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
-    # Default: último mes (desde primer día hasta primer día del siguiente mes)
+    
     today = datetime.today()
     start_default = (today.replace(day=1) - timedelta(days=0)).strftime("%Y-%m-01")
     end_default = (today + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -51,14 +51,12 @@ def api_resumen(desde: str = Query(None), hasta: str = Query(None), access_token
     if not payload:
         return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
 
-    # defaults: mes actual
     if not hasta:
         hasta = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
     if not desde:
         dt = datetime.strptime(hasta, "%Y-%m-%d")
         desde = (dt.replace(day=1)).strftime("%Y-%m-%d")
 
-    # Query: usa la versión que concatena Tipos_Fabricados (STUFF) + peso/piezas
     query = f"""
     ;WITH Base AS (
       SELECT
@@ -103,10 +101,10 @@ def api_resumen(desde: str = Query(None), hasta: str = Query(None), access_token
     """
 
     rows = ejecutar_consulta_sql(query, fetchall=True) or []
-    # prepare KPIs
+    
     total_kg = sum([float(r["PesoTotal_Kilogramos"]) for r in rows])
     total_piezas = sum([int(r["Piezas"]) for r in rows])
-    # build response lists
+    
     resumen = []
     for r in rows:
         resumen.append({
@@ -127,13 +125,13 @@ def api_detalle(area: str = Query(...), dia: str = Query(...), bloque: str = Que
     if not payload:
         return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
 
-    # bloque: "07:00 - 09:00" -> we extract start hour
+    
     try:
         start_hour = int(bloque.split(":")[0])
     except:
         start_hour = None
 
-    # Use a safe-ish query: match by computed BloqueHour similar to resumen
+   
     query = f"""
     SELECT
       p.Pedido_Estral AS Pedido,
@@ -160,7 +158,7 @@ def api_detalle(area: str = Query(...), dia: str = Query(...), bloque: str = Que
                  ELSE DATEADD(DAY, -1, CONVERT(date, mc.F_Movimiento)) END) = '{dia}'
     """
     if start_hour is not None:
-        # compute the same block formula (DATEADD(HOUR,-7,mc.F_Movimiento) hour /2 *2 ) = bloqueHour
+        
         query += f" AND ((DATEPART(HOUR, DATEADD(HOUR, -7, mc.F_Movimiento)) / 2) * 2) = { (start_hour - 7) % 24 if start_hour is not None else '((DATEPART(HOUR, DATEADD(HOUR, -7, mc.F_Movimiento)) / 2) * 2)'}"
     query += " ORDER BY mc.F_Movimiento ASC"
 
@@ -191,7 +189,7 @@ def generar_export(df: pd.DataFrame, nombre: str, tipo: str):
         return StreamingResponse(out, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 headers={"Content-Disposition": f"attachment; filename={nombre}.xlsx"})
     elif tipo == "pdf":
-        # Vertical A4, con multi_cell para Descripcion y ajuste dinámico de anchos
+        
         pdf = FPDF(orientation='P', unit='mm', format='A4')
         pdf.set_auto_page_break(True, margin=12)
         pdf.add_page()
@@ -199,31 +197,31 @@ def generar_export(df: pd.DataFrame, nombre: str, tipo: str):
         pdf.cell(0, 10, nombre, ln=True, align="C")
         pdf.ln(4)
         pdf.set_font("Arial", size=9)
-        # determine columns: if Descripcion in df, give it more width
+        
         cols = list(df.columns)
         page_w = pdf.w - 2 * pdf.l_margin
-        # allocate widths
+      
         if "Descripcion" in cols:
-            # give description ~40% width, the rest share remaining
+           
             desc_w = page_w * 0.4
             other_w = (page_w - desc_w) / (len(cols)-1) if len(cols) > 1 else page_w - desc_w
             widths = [other_w if c != "Descripcion" else desc_w for c in cols]
         else:
             widths = [page_w / len(cols) for _ in cols]
-        # header
+        
         for i, c in enumerate(cols):
             pdf.cell(widths[i], 8, str(c)[:30], 1)
         pdf.ln()
-        # rows
+        
         for _, row in df.iterrows():
             max_h = 0
             y_start = pdf.get_y()
             x_start = pdf.get_x()
-            # write each cell; for Description use multi_cell
+
             for i, c in enumerate(cols):
                 v = "" if pd.isna(row[c]) else str(row[c])
                 if c == "Descripcion":
-                    # save current x,y and write multi_cell with border handling
+                   
                     x = pdf.get_x()
                     y = pdf.get_y()
                     pdf.multi_cell(widths[i], 5, v, border=1)
@@ -251,7 +249,7 @@ def api_export(mode: str = Query("resumen"), tipo: str = Query("excel"),
         return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
 
     if mode == "resumen":
-        # reutiliza api_resumen query but fetch raw and export
+        
         if not hasta:
             hasta = (datetime.today() + timedelta(days=1)).strftime("%Y-%m-%d")
         if not desde:
@@ -308,10 +306,8 @@ def api_export(mode: str = Query("resumen"), tipo: str = Query("excel"),
         return generar_export(df, f"resumen_fabricacion_{desde}_a_{hasta}", tipo)
 
     elif mode == "detalle":
-        # require area/dia/bloque
         if not (area and dia and bloque):
             return JSONResponse(status_code=400, content={"error":"Faltan parámetros para detalle (area/dia/bloque)"})
-        # call same logic as api_detalle
         q = f"""
         SELECT
           p.Pedido_Estral AS Pedido,
@@ -337,7 +333,6 @@ def api_export(mode: str = Query("resumen"), tipo: str = Query("excel"),
           AND (CASE WHEN DATEPART(HOUR, mc.F_Movimiento) >= 7 THEN CONVERT(date, mc.F_Movimiento)
                  ELSE DATEADD(DAY, -1, CONVERT(date, mc.F_Movimiento)) END) = '{dia}'
         """
-        # compute start hour like before
         try:
             start_hour = int(bloque.split(":")[0])
             q += f" AND ((DATEPART(HOUR, DATEADD(HOUR, -7, mc.F_Movimiento)) / 2) * 2) = { (start_hour - 7) % 24 }"

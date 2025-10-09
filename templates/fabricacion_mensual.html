@@ -6,6 +6,8 @@
 <title>Fabricación - Dirección | Estral</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --blue:#1a73e8;
@@ -127,7 +129,6 @@ body{font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background:va
       <div style="height:12px"></div>
       <canvas id="chart-torta-turno" height="180"></canvas>
       <div style="height:8px"></div>
-      <div class="small" style="margin-top:6px">Colores y escala pensadas para claridad y presentación.</div>
     </div>
   </div>
 </div>
@@ -158,7 +159,9 @@ const apiDetalle = "/fabricacion/api/detalle";
 document.getElementById('f-desde').value = "{{ desde }}";
 document.getElementById('f-hasta').value = "{{ hasta }}";
 
-function fnum(x){ return Number(x||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+const formatoMX = new Intl.NumberFormat('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function fnum(x){ return formatoMX.format(Number(x||0)); }
 
 function fetchResumen(){
   const desde = document.getElementById('f-desde').value;
@@ -192,7 +195,7 @@ function renderResumen(rows){
       <td>${r.Area}</td>
       <td>${r.Turno}</td>
       <td>${r.Bloque}</td>
-      <td>${fnum(r.PesoKg.toFixed? r.PesoKg.toFixed(2): r.PesoKg)}</td>
+      <td>${fnum(r.PesoKg)}</td>
       <td>${fnum(r.Piezas)}</td>
       <td title="${r.Tipos}">${r.Tipos.length>60? r.Tipos.substring(0,60)+'...': r.Tipos}</td>
       <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${encodeURIComponent(r.DiaTurno)}','${encodeURIComponent(r.Bloque)}')">Ver detalle</button></td>`;
@@ -200,20 +203,30 @@ function renderResumen(rows){
   });
 }
 
+// --- Charts ---
 let charts={};
 
 function renderCharts(rows){
   const byArea={}, byBloq={}, diaData={}, nocheData={}, labelsTendencia=[];
   const habDia={}, perfDia={}, habNoche={}, perfNoche={};
+
   rows.forEach(r=>{
+    const tipos = (r.Tipos || "").toLowerCase();
     byArea[r.Area]=(byArea[r.Area]||0)+(r.PesoKg||0);
     byBloq[r.Bloque]=(byBloq[r.Bloque]||0)+(r.PesoKg||0);
+
     if(!labelsTendencia.includes(r.DiaTurno)) labelsTendencia.push(r.DiaTurno);
     if(r.Turno==='Día') diaData[r.DiaTurno]=(diaData[r.DiaTurno]||0)+r.PesoKg;
     if(r.Turno==='Noche') nocheData[r.DiaTurno]=(nocheData[r.DiaTurno]||0)+r.PesoKg;
 
-    if(r.Tipos.includes('Habilitado')) { if(r.Turno==='Día') habDia[r.DiaTurno]=(habDia[r.DiaTurno]||0)+r.PesoKg; else habNoche[r.DiaTurno]=(habNoche[r.DiaTurno]||0)+r.PesoKg; }
-    if(r.Tipos.includes('Perfilado')) { if(r.Turno==='Día') perfDia[r.DiaTurno]=(perfDia[r.DiaTurno]||0)+r.PesoKg; else perfNoche[r.DiaTurno]=(perfNoche[r.DiaTurno]||0)+r.PesoKg; }
+    if(tipos.includes('habilitado')) {
+      if(r.Turno==='Día') habDia[r.DiaTurno]=(habDia[r.DiaTurno]||0)+r.PesoKg;
+      else habNoche[r.DiaTurno]=(habNoche[r.DiaTurno]||0)+r.PesoKg;
+    }
+    if(tipos.includes('perfilado')) {
+      if(r.Turno==='Día') perfDia[r.DiaTurno]=(perfDia[r.DiaTurno]||0)+r.PesoKg;
+      else perfNoche[r.DiaTurno]=(perfNoche[r.DiaTurno]||0)+r.PesoKg;
+    }
   });
 
   function destroyChart(id){ if(charts[id]) charts[id].destroy(); }
@@ -222,14 +235,27 @@ function renderCharts(rows){
   destroyChart('chart-torta-turno'); destroyChart('chart-tendencia-dia'); destroyChart('chart-tendencia-noche');
   destroyChart('chart-hab-perf-dia'); destroyChart('chart-hab-perf-noche');
 
+  function chartOptions(showLegend=true){
+    return {
+      responsive:true,
+      plugins:{
+        legend:{display:showLegend},
+        tooltip:{
+          callbacks:{ label: ctx => `${ctx.dataset.label}: ${formatoMX.format(ctx.raw)} kg` }
+        }
+      },
+      scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>formatoMX.format(v) } } }
+    };
+  }
+
   charts['chart-area']=new Chart(document.getElementById('chart-area').getContext('2d'),{
-    type:'bar', data:{labels:Object.keys(byArea), datasets:[{label:'Kilos (kg)', data:Object.keys(byArea).map(k=>Math.round(byArea[k])), backgroundColor:'#1a73e8'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    type:'bar', data:{labels:Object.keys(byArea), datasets:[{label:'Kilos (kg)', data:Object.keys(byArea).map(k=>byArea[k]), backgroundColor:'#1a73e8'}]},
+    options:chartOptions(false)
   });
 
   charts['chart-bloques']=new Chart(document.getElementById('chart-bloques').getContext('2d'),{
-    type:'line', data:{labels:Object.keys(byBloq), datasets:[{label:'Kilos por bloque', data:Object.keys(byBloq).map(k=>Math.round(byBloq[k])), fill:true, backgroundColor:'rgba(75,192,192,0.15)', borderColor:'#ff9800', tension:0.4, pointRadius:4}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+    type:'line', data:{labels:Object.keys(byBloq), datasets:[{label:'Kilos por bloque', data:Object.keys(byBloq).map(k=>byBloq[k]), fill:true, backgroundColor:'rgba(75,192,192,0.15)', borderColor:'#ff9800', tension:0.4, pointRadius:4}]},
+    options:chartOptions(false)
   });
 
   charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno').getContext('2d'),{
@@ -237,17 +263,17 @@ function renderCharts(rows){
       {label:'Turno Día', data:labelsTendencia.map(d=>diaData[d]||0), borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', tension:0.4, fill:true, pointRadius:4},
       {label:'Turno Noche', data:labelsTendencia.map(d=>nocheData[d]||0), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', tension:0.4, fill:true, pointRadius:4}
     ]},
-    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+    options:chartOptions(true)
   });
 
   charts['chart-tendencia-dia']=new Chart(document.getElementById('chart-tendencia-dia').getContext('2d'),{
     type:'line', data:{labels:labelsTendencia, datasets:[{label:'Turno Día', data:labelsTendencia.map(d=>diaData[d]||0), borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', fill:true, tension:0.4, pointRadius:4}]},
-    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+    options:chartOptions(true)
   });
 
   charts['chart-tendencia-noche']=new Chart(document.getElementById('chart-tendencia-noche').getContext('2d'),{
     type:'line', data:{labels:labelsTendencia, datasets:[{label:'Turno Noche', data:labelsTendencia.map(d=>nocheData[d]||0), borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', fill:true, tension:0.4, pointRadius:4}]},
-    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+    options:chartOptions(true)
   });
 
   charts['chart-hab-perf-dia']=new Chart(document.getElementById('chart-hab-perf-dia').getContext('2d'),{
@@ -255,7 +281,7 @@ function renderCharts(rows){
       {label:'Habilitado', data:labelsTendencia.map(d=>habDia[d]||0), backgroundColor:'#1a73e8'},
       {label:'Perfilado', data:labelsTendencia.map(d=>perfDia[d]||0), backgroundColor:'#ff9800'}
     ]},
-    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+    options:chartOptions(true)
   });
 
   charts['chart-hab-perf-noche']=new Chart(document.getElementById('chart-hab-perf-noche').getContext('2d'),{
@@ -263,16 +289,16 @@ function renderCharts(rows){
       {label:'Habilitado', data:labelsTendencia.map(d=>habNoche[d]||0), backgroundColor:'#1a73e8'},
       {label:'Perfilado', data:labelsTendencia.map(d=>perfNoche[d]||0), backgroundColor:'#ff9800'}
     ]},
-    options:{responsive:true, plugins:{legend:{display:true}}, scales:{y:{beginAtZero:true}}}
+    options:chartOptions(true)
   });
 
   charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno').getContext('2d'),{
     type:'doughnut', data:{labels:['Día','Noche'], datasets:[{data:[Object.values(diaData).reduce((a,b)=>a+b,0), Object.values(nocheData).reduce((a,b)=>a+b,0)], backgroundColor:['#1a73e8','#ff9800']}]},
-    options:{responsive:true, plugins:{legend:{display:true}}}
+    options:chartOptions(true)
   });
 }
 
-// modal
+// --- Modal Detalle ---
 function verDetalle(area, dia, bloque){
   const tbody = document.querySelector('#tabla-detalle tbody');
   tbody.innerHTML = '<tr><td colspan=9>Cargando...</td></tr>';
@@ -295,17 +321,37 @@ function verDetalle(area, dia, bloque){
         tbody.appendChild(tr);
       });
     })
-    .catch(e => {
-      tbody.innerHTML = `<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;
-    });
+    .catch(e => { tbody.innerHTML = `<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`; });
 }
 
-// Cerrar modal
+// --- Exportar ---
+function exportTableToExcel(tableId, filename='export.xlsx'){
+  const table = document.getElementById(tableId);
+  const wb = XLSX.utils.table_to_book(table, {sheet:"Sheet1"});
+  XLSX.writeFile(wb, filename);
+}
+
+async function exportTableToPDF(tableId, title='Reporte'){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text(title, 10, 10);
+  await doc.autoTable({ html: `#${tableId}`, startY: 16 });
+  doc.save(`${title}.pdf`);
+}
+
+// --- Eventos ---
 document.getElementById('closeModal').addEventListener('click',()=>{document.getElementById('modalOverlay').style.display='none';});
 document.getElementById('btn-actualizar').addEventListener('click',fetchResumen);
 document.getElementById('btn-refresh').addEventListener('click',fetchResumen);
 
-// init
+document.getElementById('export-resumen-excel').addEventListener('click',()=>exportTableToExcel('tabla-resumen','Resumen.xlsx'));
+document.getElementById('export-resumen-pdf').addEventListener('click',()=>exportTableToPDF('tabla-resumen','Resumen'));
+
+document.getElementById('export-detalle-excel').addEventListener('click',()=>exportTableToExcel('tabla-detalle','Detalle.xlsx'));
+document.getElementById('export-detalle-pdf').addEventListener('click',()=>exportTableToPDF('tabla-detalle','Detalle'));
+
+// --- Init ---
 fetchResumen();
 </script>
 </body>
