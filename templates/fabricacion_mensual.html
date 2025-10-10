@@ -62,6 +62,13 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
 @media (max-width:980px){
   .header{flex-direction:column;align-items:flex-start;gap:6px}
 }
+
+.btn-activo {
+  background-color: #153a66 !important; /* color que quieras cuando está activo */
+  color: white !important;
+}
+
+
 </style>
 </head>
 <body>
@@ -106,6 +113,27 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
   </div>
 </div>
 
+<!-- FILTROS TABLA -->
+<div class="controls" style="margin-bottom:8px;gap:8px;">
+  <label>Turno:
+    <select id="filtro-turno" class="input">
+      <option value="">Todos</option>
+      <option value="Día">Día</option>
+      <option value="Noche">Noche</option>
+    </select>
+  </label>
+  <label>Área:
+  <select id="filtro-area" class="input">
+    <option value="">Todas</option>
+    <option value="PERFILADO">PERFILADO</option>
+    <option value="HABILITADO">HABILITADO</option>
+  </select>
+</label>
+
+  <button class="btn btn-accent" id="btn-semana">Últimos 7 días</button>
+  <button class="btn btn-primary" id="btn-refresh-tabla">Refrescar</button>
+</div>
+
 <!-- TABLA -->
 <div class="grid">
   <div class="card">
@@ -117,7 +145,7 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
     </table>
   </div>
 </div>
-</div>
+
 
 <!-- MODAL DETALLE -->
 <div class="modal-overlay" id="modalOverlay">
@@ -177,6 +205,8 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
 </div>
 
 <script>
+window._lastResumen = [];
+
 // --- Variables y formatos ---
 const apiResumen="/fabricacion/api/resumen";
 const apiDetalle="/fabricacion/api/detalle";
@@ -210,18 +240,45 @@ function renderKpis(kpis){
 }
 
 function renderResumen(rows){
-  window._lastResumen=rows;
-  const tbody=document.querySelector('#tabla-resumen tbody');
-  tbody.innerHTML='';
+  // Guardamos los datos
+  window._lastResumen = rows;
+
+  // Llamamos a la función que filtra según turno
+  filtrarTabla(document.getElementById('filtro-turno').value);
+}
+
+function filtrarTabla(turnoFiltro, rango=null, areaFiltro=''){
+  const rows = window._lastResumen || [];
+  const tbody = document.querySelector('#tabla-resumen tbody');
+  tbody.innerHTML = '';
+
   rows.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.DiaTurno}</td><td>${r.Area}</td><td>${r.Turno}</td><td>${r.Bloque}</td>
-      <td>${fnum(r.PesoKg)}</td><td>${fnum(r.Piezas)}</td>
-      <td title="${r.Tipos}">${r.Tipos.length>60?r.Tipos.substring(0,60)+'...':r.Tipos}</td>
-      <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${encodeURIComponent(r.DiaTurno)}','${encodeURIComponent(r.Bloque)}')">Ver detalle</button></td>`;
+    const fecha = new Date(r.DiaTurno);
+
+    // Filtro por turno
+    if(turnoFiltro && r.Turno !== turnoFiltro) return;
+
+    // Filtro por área
+    if(areaFiltro && r.Area !== areaFiltro) return;
+
+    // Filtro por rango de fechas (Últimos 7 días)
+    if(rango && (fecha < rango.desde || fecha > rango.hasta)) return;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.DiaTurno}</td>
+                    <td>${r.Area}</td>
+                    <td>${r.Turno}</td>
+                    <td>${r.Bloque}</td>
+                    <td>${fnum(r.PesoKg)}</td>
+                    <td>${fnum(r.Piezas)}</td>
+                    <td title="${r.Tipos}">${r.Tipos.length>60?r.Tipos.substring(0,60)+'...':r.Tipos}</td>
+                    <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${encodeURIComponent(r.DiaTurno)}','${encodeURIComponent(r.Bloque)}')">Ver detalle</button></td>`;
     tbody.appendChild(tr);
   });
 }
+
+
+
 
 // --- Charts ---
 let charts={};
@@ -489,6 +546,55 @@ document.getElementById('export-resumen-excel').addEventListener('click',()=>exp
 document.getElementById('export-resumen-pdf').addEventListener('click',()=>exportTableToPDF('tabla-resumen','Resumen'));
 document.getElementById('export-detalle-excel').addEventListener('click',()=>exportTableToExcel('tabla-detalle','detalle.xlsx'));
 document.getElementById('export-detalle-pdf').addEventListener('click',()=>exportTableToPDF('tabla-detalle','Detalle'));
+
+// Filtrar tabla según turno
+document.getElementById('filtro-turno').addEventListener('change', ()=>{
+  filtrarTabla(
+    document.getElementById('filtro-turno').value,
+    document.getElementById('btn-semana').classList.contains('btn-activo') 
+      ? {desde: new Date(new Date().setDate(new Date().getDate()-6)), hasta: new Date()} 
+      : null,
+    document.getElementById('filtro-area')?.value || ''
+  );
+});
+
+// Filtrar tabla según área
+document.getElementById('filtro-area')?.addEventListener('change', ()=>{
+  filtrarTabla(
+    document.getElementById('filtro-turno').value,
+    document.getElementById('btn-semana').classList.contains('btn-activo') 
+      ? {desde: new Date(new Date().setDate(new Date().getDate()-6)), hasta: new Date()} 
+      : null,
+    document.getElementById('filtro-area')?.value || ''
+  );
+});
+
+// Últimos 7 días (solo tabla)
+document.getElementById('btn-semana').addEventListener('click', ()=>{
+  const btn = document.getElementById('btn-semana');
+  btn.classList.toggle('btn-activo'); // cambia color
+  const activo = btn.classList.contains('btn-activo');
+
+  const hoy = new Date();
+  const hace7 = new Date();
+  hace7.setDate(hoy.getDate() - 6);
+
+  filtrarTabla(
+    document.getElementById('filtro-turno').value,
+    activo ? {desde:hace7,hasta:hoy} : null,
+    document.getElementById('filtro-area')?.value || ''
+  );
+});
+
+// Refrescar tabla (limpia filtros y últimos 7 días)
+document.getElementById('btn-refresh-tabla').addEventListener('click', ()=>{
+  document.getElementById('filtro-turno').value = '';
+  if(document.getElementById('filtro-area')) document.getElementById('filtro-area').value = '';
+  document.getElementById('btn-semana').classList.remove('btn-activo');
+  filtrarTabla();
+});
+
+
 
 fetchResumen();
 </script>
