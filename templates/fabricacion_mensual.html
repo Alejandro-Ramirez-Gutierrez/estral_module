@@ -147,18 +147,28 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
       <div class="close-outside" onclick="document.getElementById('modalComparativa').style.display='none'">✖</div>
     </div>
     <div class="modal-body">
+      <!-- CONTROLES -->
       <div class="controls">
-        <label>Periodo A: <input type="month" id="periodoA" class="input" placeholder="YYYY-MM o YYYY"></label>
-        <label>Periodo B: <input type="month" id="periodoB" class="input" placeholder="YYYY-MM o YYYY"></label>
+        <label>Periodo A: <input type="text" id="periodoA" class="input" placeholder="YYYY o YYYY-MM"></label>
+        <label>Periodo B: <input type="text" id="periodoB" class="input" placeholder="YYYY o YYYY-MM"></label>
         <button class="btn btn-accent" id="btn-generar-comparativa">Generar gráfica</button>
         <div class="small" style="margin-top:4px">
-          También puedes poner solo el año (YYYY) para comparar años completos
+          Puedes poner solo el año (YYYY) o mes (YYYY-MM) para comparar.
         </div>
       </div>
-      <div id="totales-comparativa" style="display:flex;gap:16px;margin-top:12px;font-weight:700">
+
+      <!-- TOTALES LIMPIOS -->
+      <div id="totales-comparativa" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;font-weight:700">
         <div id="totalesA"></div>
         <div id="totalesB"></div>
       </div>
+
+      <!-- MENSAJE CARGANDO -->
+      <div id="mensajeCargando" style="margin-top:16px;font-weight:700;color:#555;display:none">
+        Cargando datos...
+      </div>
+
+      <!-- GRÁFICA -->
       <div style="width:100%;height:350px;margin-top:16px;">
         <canvas id="chart-comparativa"></canvas>
       </div>
@@ -328,52 +338,105 @@ async function exportTableToPDF(id,title='Reporte'){
 // --- Comparativa mejorada ---
 let chartComparativa = null;
 
+// Detecta si es año completo
+function esAnual(periodo){
+  return /^\d{4}$/.test(periodo);
+}
+
+// Genera fechas desde/hasta según mes o año
 function generarFechas(periodo){
-  if(periodo.length===4){ // solo año
+  if(/^\d{4}$/.test(periodo)){ // Año completo
     return { desde:`${periodo}-01-01`, hasta:`${periodo}-12-31` };
-  } else { // mes YYYY-MM
+  } else if(/^\d{4}-\d{2}$/.test(periodo)){ // Mes YYYY-MM
     const [year, month] = periodo.split('-');
     const ultimoDia = new Date(year, month, 0).getDate();
     return { desde:`${year}-${month}-01`, hasta:`${year}-${month}-${ultimoDia}` };
+  } else {
+    throw new Error('Formato inválido: usa YYYY o YYYY-MM');
   }
 }
 
-function acumularPorDia(resumen){
-  const obj = {};
-  resumen.forEach(r=>{
-    const fecha = r.DiaTurno; // se usa fecha exacta
-    obj[fecha] = (obj[fecha]||0) + r.PesoKg;
-  });
-  return obj;
-}
-
+// Renderiza gráfica comparativa
 function renderComparativa(periodoA, periodoB, dataA, dataB){
-  const objA = acumularPorDia(dataA.resumen||[]);
-  const objB = acumularPorDia(dataB.resumen||[]);
+  // Totales por turno
+  const totales = resumen=>{
+    let dia=0, noche=0;
+    resumen.forEach(r=>{
+      if(r.Turno==='Día') dia+=r.PesoKg;
+      else noche+=r.PesoKg;
+    });
+    return { dia, noche, total: dia+noche };
+  }
 
-  // todas las fechas únicas de ambos periodos
-  const allDates = Array.from(new Set([...Object.keys(objA), ...Object.keys(objB)])).sort((a,b)=>new Date(a)-new Date(b));
+  const totalA = totales(dataA.resumen||[]);
+  const totalB = totales(dataB.resumen||[]);
 
-  const datasetA = allDates.map(d=>objA[d]||0);
-  const datasetB = allDates.map(d=>objB[d]||0);
+  // Mostrar totales arriba
+  document.getElementById('totalesA').innerHTML = `
+    <strong>Periodo A (${periodoA}):</strong>
+    Día: ${totalA.dia.toLocaleString('es-MX')} kg,
+    Noche: ${totalA.noche.toLocaleString('es-MX')} kg,
+    <span style="color:var(--blue)">Total: ${totalA.total.toLocaleString('es-MX')} kg</span>
+  `;
+  document.getElementById('totalesB').innerHTML = `
+    <strong>Periodo B (${periodoB}):</strong>
+    Día: ${totalB.dia.toLocaleString('es-MX')} kg,
+    Noche: ${totalB.noche.toLocaleString('es-MX')} kg,
+    <span style="color:var(--accent)">Total: ${totalB.total.toLocaleString('es-MX')} kg</span>
+  `;
 
-  // totales de cada periodo
-  const totalA = datasetA.reduce((a,b)=>a+b,0);
-  const totalB = datasetB.reduce((a,b)=>a+b,0);
-  document.getElementById('totalesA').textContent = `Periodo A (${periodoA}) Total: ${totalA.toLocaleString('es-MX')} kg`;
-  document.getElementById('totalesB').textContent = `Periodo B (${periodoB}) Total: ${totalB.toLocaleString('es-MX')} kg`;
+  // Agrupa por día o mes según sea anual
+  const agruparPor = (resumen, anual=false)=>{
+    const obj = {};
+    resumen.forEach(r=>{
+      let key;
+      if(anual){
+        key = r.DiaTurno.slice(5,7); // MM
+      } else {
+        key = r.DiaTurno; // día exacto
+      }
+      obj[key] = (obj[key]||0) + r.PesoKg;
+    });
+    return obj;
+  }
+
+  const objA = agruparPor(dataA.resumen||[], esAnual(periodoA));
+  const objB = agruparPor(dataB.resumen||[], esAnual(periodoB));
+
+  // Etiquetas: meses si anual, días si mensual
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let labels;
+  if(esAnual(periodoA) || esAnual(periodoB)){
+    labels = meses;
+  } else {
+    const diasA = dataA.resumen?.map(r=>r.DiaTurno)||[];
+    const diasB = dataB.resumen?.map(r=>r.DiaTurno)||[];
+    labels = Array.from(new Set([...diasA,...diasB])).sort((a,b)=>new Date(a)-new Date(b));
+  }
+
+  const datasetA = labels.map((lab,i)=>{
+    if(esAnual(periodoA)) return objA[String(i+1).padStart(2,'0')]||0;
+    else return objA[lab]||0;
+  });
+  const datasetB = labels.map((lab,i)=>{
+    if(esAnual(periodoB)) return objB[String(i+1).padStart(2,'0')]||0;
+    else return objB[lab]||0;
+  });
+
+  // Ocultar mensaje cargando
+  document.getElementById('mensajeCargando').style.display='none';
 
   if(chartComparativa) chartComparativa.destroy();
   chartComparativa = new Chart(document.getElementById('chart-comparativa'),{
     type:'line',
     data:{
-      labels: allDates,
+      labels,
       datasets:[
         {label:`Periodo A (${periodoA})`, data: datasetA, borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', fill:true, tension:0.4, pointRadius:4},
         {label:`Periodo B (${periodoB})`, data: datasetB, borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', fill:true, tension:0.4, pointRadius:4}
       ]
     },
-    options: {
+    options:{
       responsive:true,
       maintainAspectRatio:true,
       plugins:{
@@ -388,24 +451,33 @@ function renderComparativa(periodoA, periodoB, dataA, dataB){
   });
 }
 
+// --- Botón Generar Comparativa ---
 document.getElementById('btn-generar-comparativa').addEventListener('click', async ()=>{
-  const periodoA = document.getElementById('periodoA').value;
-  const periodoB = document.getElementById('periodoB').value;
-  if(!periodoA||!periodoB){
+  const periodoA = document.getElementById('periodoA').value.trim();
+  const periodoB = document.getElementById('periodoB').value.trim();
+  if(!periodoA || !periodoB){
     alert('Selecciona ambos periodos (mes o año)');
     return;
   }
 
-  const fA = generarFechas(periodoA);
-  const fB = generarFechas(periodoB);
+  try {
+    const fA = generarFechas(periodoA);
+    const fB = generarFechas(periodoB);
 
-  const [dataA, dataB] = await Promise.all([
-    fetch(`${apiResumen}?desde=${fA.desde}&hasta=${fA.hasta}`,{credentials:'include'}).then(r=>r.json()),
-    fetch(`${apiResumen}?desde=${fB.desde}&hasta=${fB.hasta}`,{credentials:'include'}).then(r=>r.json())
-  ]);
+    // Mostrar mensaje cargando
+    document.getElementById('mensajeCargando').style.display='block';
 
-  renderComparativa(periodoA, periodoB, dataA, dataB);
-  document.getElementById('modalComparativa').style.display='flex';
+    const [dataA, dataB] = await Promise.all([
+      fetch(`${apiResumen}?desde=${fA.desde}&hasta=${fA.hasta}`,{credentials:'include'}).then(r=>r.json()),
+      fetch(`${apiResumen}?desde=${fB.desde}&hasta=${fB.hasta}`,{credentials:'include'}).then(r=>r.json())
+    ]);
+
+    renderComparativa(periodoA, periodoB, dataA, dataB);
+    document.getElementById('modalComparativa').style.display='flex';
+  } catch(err){
+    document.getElementById('mensajeCargando').style.display='none';
+    alert('Error: '+err.message);
+  }
 });
 
 // --- Event listeners ---
