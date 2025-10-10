@@ -148,10 +148,16 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
     </div>
     <div class="modal-body">
       <div class="controls">
-        <label>Periodo A: <input type="month" id="periodoA" class="input" placeholder="YYYY-MM"></label>
-        <label>Periodo B: <input type="month" id="periodoB" class="input" placeholder="YYYY-MM"></label>
+        <label>Periodo A: <input type="month" id="periodoA" class="input" placeholder="YYYY-MM o YYYY"></label>
+        <label>Periodo B: <input type="month" id="periodoB" class="input" placeholder="YYYY-MM o YYYY"></label>
         <button class="btn btn-accent" id="btn-generar-comparativa">Generar gráfica</button>
-        <div class="small" style="margin-top:4px">También puedes poner solo el año (YYYY) para comparar años completos</div>
+        <div class="small" style="margin-top:4px">
+          También puedes poner solo el año (YYYY) para comparar años completos
+        </div>
+      </div>
+      <div id="totales-comparativa" style="display:flex;gap:16px;margin-top:12px;font-weight:700">
+        <div id="totalesA"></div>
+        <div id="totalesB"></div>
       </div>
       <div style="width:100%;height:350px;margin-top:16px;">
         <canvas id="chart-comparativa"></canvas>
@@ -319,53 +325,86 @@ async function exportTableToPDF(id,title='Reporte'){
   }catch(e){alert('Error exportando PDF: '+e);}
 }
 
-// --- Comparativa ---
+// --- Comparativa mejorada ---
 let chartComparativa = null;
 
-function ultimoDiaMes(periodo){
-  const [year, month] = periodo.split('-').map(Number);
-  if(!month)return '12-31'; // año completo
-  const ultimo = new Date(year, month, 0).getDate();
-  return `${month.toString().padStart(2,'0')}-${ultimo}`;
-}
-
 function generarFechas(periodo){
-  if(periodo.length===4){ // año YYYY
+  if(periodo.length===4){ // solo año
     return { desde:`${periodo}-01-01`, hasta:`${periodo}-12-31` };
-  }else{ // mes YYYY-MM
-    const [year,month] = periodo.split('-');
-    const ultimoDia = new Date(year, month,0).getDate();
+  } else { // mes YYYY-MM
+    const [year, month] = periodo.split('-');
+    const ultimoDia = new Date(year, month, 0).getDate();
     return { desde:`${year}-${month}-01`, hasta:`${year}-${month}-${ultimoDia}` };
   }
+}
+
+function acumularPorDia(resumen){
+  const obj = {};
+  resumen.forEach(r=>{
+    const fecha = r.DiaTurno; // se usa fecha exacta
+    obj[fecha] = (obj[fecha]||0) + r.PesoKg;
+  });
+  return obj;
+}
+
+function renderComparativa(periodoA, periodoB, dataA, dataB){
+  const objA = acumularPorDia(dataA.resumen||[]);
+  const objB = acumularPorDia(dataB.resumen||[]);
+
+  // todas las fechas únicas de ambos periodos
+  const allDates = Array.from(new Set([...Object.keys(objA), ...Object.keys(objB)])).sort((a,b)=>new Date(a)-new Date(b));
+
+  const datasetA = allDates.map(d=>objA[d]||0);
+  const datasetB = allDates.map(d=>objB[d]||0);
+
+  // totales de cada periodo
+  const totalA = datasetA.reduce((a,b)=>a+b,0);
+  const totalB = datasetB.reduce((a,b)=>a+b,0);
+  document.getElementById('totalesA').textContent = `Periodo A (${periodoA}) Total: ${totalA.toLocaleString('es-MX')} kg`;
+  document.getElementById('totalesB').textContent = `Periodo B (${periodoB}) Total: ${totalB.toLocaleString('es-MX')} kg`;
+
+  if(chartComparativa) chartComparativa.destroy();
+  chartComparativa = new Chart(document.getElementById('chart-comparativa'),{
+    type:'line',
+    data:{
+      labels: allDates,
+      datasets:[
+        {label:`Periodo A (${periodoA})`, data: datasetA, borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', fill:true, tension:0.4, pointRadius:4},
+        {label:`Periodo B (${periodoB})`, data: datasetB, borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', fill:true, tension:0.4, pointRadius:4}
+      ]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRatio:true,
+      plugins:{
+        legend:{display:true,labels:{font:{size:14,weight:'700'}}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw.toLocaleString('es-MX')} kg`}}
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{font:{size:12,weight:'700'},callback:v=>v.toLocaleString('es-MX')}},
+        x:{ticks:{font:{size:12,weight:'700'}}}
+      }
+    }
+  });
 }
 
 document.getElementById('btn-generar-comparativa').addEventListener('click', async ()=>{
   const periodoA = document.getElementById('periodoA').value;
   const periodoB = document.getElementById('periodoB').value;
-  if(!periodoA||!periodoB)return alert('Selecciona ambos periodos');
+  if(!periodoA||!periodoB){
+    alert('Selecciona ambos periodos (mes o año)');
+    return;
+  }
 
   const fA = generarFechas(periodoA);
   const fB = generarFechas(periodoB);
 
-  const dataA = await fetch(`${apiResumen}?desde=${fA.desde}&hasta=${fA.hasta}`,{credentials:'include'}).then(r=>r.json());
-  const dataB = await fetch(`${apiResumen}?desde=${fB.desde}&hasta=${fB.hasta}`,{credentials:'include'}).then(r=>r.json());
+  const [dataA, dataB] = await Promise.all([
+    fetch(`${apiResumen}?desde=${fA.desde}&hasta=${fA.hasta}`,{credentials:'include'}).then(r=>r.json()),
+    fetch(`${apiResumen}?desde=${fB.desde}&hasta=${fB.hasta}`,{credentials:'include'}).then(r=>r.json())
+  ]);
 
-  const labels = [...new Set([...dataA.resumen.map(r=>r.DiaTurno), ...dataB.resumen.map(r=>r.DiaTurno)])].sort((a,b)=>new Date(a)-new Date(b));
-  function acumular(resumen){ const obj={}; resumen.forEach(r=>obj[r.DiaTurno]=(obj[r.DiaTurno]||0)+r.PesoKg); return labels.map(d=>obj[d]||0); }
-  const datasetA = acumular(dataA.resumen||[]);
-  const datasetB = acumular(dataB.resumen||[]);
-
-  if(chartComparativa) chartComparativa.destroy();
-
-  chartComparativa=new Chart(document.getElementById('chart-comparativa'),{
-    type:'line',
-    data:{labels,datasets:[
-      {label:`Periodo A (${periodoA})`,data:datasetA,borderColor:'#1a73e8',backgroundColor:'rgba(26,115,232,0.15)',fill:true,tension:0.4,pointRadius:4},
-      {label:`Periodo B (${periodoB})`,data:datasetB,borderColor:'#ff9800',backgroundColor:'rgba(255,152,0,0.15)',fill:true,tension:0.4,pointRadius:4}
-    ]},
-    options:chartOptions(true)
-  });
-
+  renderComparativa(periodoA, periodoB, dataA, dataB);
   document.getElementById('modalComparativa').style.display='flex';
 });
 
