@@ -98,17 +98,23 @@ body{
 
 /* modal */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(6,20,40,0.45);z-index:9999;align-items:center;justify-content:center;padding:24px}
-.modal{
-    width:100%;
-    max-width:980px;
-    max-height:80vh; /* altura máxima visible */
-    background:var(--card);
-    border-radius:12px;
-    padding:16px;
-    box-shadow:0 24px 48px rgba(6,20,40,0.4);
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
+.modal {
+    width: 100%;
+    max-width: 980px;
+    max-height: 80vh;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 24px 48px rgba(6,20,40,0.4);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal > div {
+    display: flex;
+    flex-direction: column;
+    flex: 1;        /* esto permite que modal-body crezca */
+    overflow: hidden;
 }
 
 .modal table{
@@ -117,11 +123,9 @@ body{
 }
 
 /* Contenedor scrollable para la tabla */
-.modal-body{
-    overflow-y:auto;
-    flex:1;
-    margin-top:8px;
-    min-height:200px; /* fuerza altura para ver scroll */
+.modal-body {
+    overflow-y: auto;
+    flex: 1;
 }
 
 .modal .close{position:absolute;right:20px;top:20px;cursor:pointer}
