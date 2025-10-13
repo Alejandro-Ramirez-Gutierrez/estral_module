@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Fabricación Mensual - Partidas | Estral</title>
+<title>Fabricación - Dirección | Estral</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,14 +11,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-/* --- ESTILOS CSS --- */
 :root{
-  --blue:#1a73e8;
-  --dark:#153a66;
-  --accent:#ff9800;
-  --accent2:#34a853;
-  --muted:#f4f7f9;
-  --card-shadow:0 8px 20px rgba(0,0,0,0.08);
+  --blue:#1a73e8;
+  --dark:#153a66;
+  --accent:#ff9800;
+  --accent2:#34a853;
+  --muted:#f4f7f9;
+  --card-shadow:0 8px 20px rgba(0,0,0,0.08);
 }
 body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--muted);margin:0}
 .header{display:flex;align-items:center;gap:12px;padding:16px 24px;background:linear-gradient(90deg,var(--blue),#2b86ff);color:white;}
@@ -39,10 +38,10 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
 .card{background:white;border-radius:12px;padding:14px;box-shadow:var(--card-shadow);width:100%;}
 
 .card.graficas{
-  width:100%;
-  max-width:900px;
-  margin:auto;
-  text-align:center;
+  width:100%;
+  max-width:900px;
+  margin:auto;
+  text-align:center;
 }
 
 .table{width:100%;border-collapse:collapse;margin-top:10px}
@@ -59,577 +58,548 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
 
 /* responsive */
 @media (max-width:980px){
-  .header{flex-direction:column;align-items:flex-start;gap:6px}
+  .header{flex-direction:column;align-items:flex-start;gap:6px}
 }
 
 .btn-activo {
-  background-color: var(--dark) !important; 
-  color: white !important;
+  background-color: #153a66 !important; /* color que quieras cuando está activo */
+  color: white !important;
 }
+
+
 </style>
 </head>
 <body>
 <div class="header">
-  <div><div class="title">ESTRAL - Fabricación de componentes</div></div>
-  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-    <button class="btn" id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar</button>
-    <button class="btn btn-primary" id="btn-refresh">🔄 Refrescar</button>
-  </div>
+  <div><div class="title">ESTRAL - Fabricación de componentes</div></div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <button class="btn" id="btn-regresar" onclick="location.href='/dashboard'">⬅️ Regresar</button>
+    <button class="btn btn-primary" id="btn-refresh">🔄 Refrescar</button>
+  </div>
 </div>
 
 <div class="container">
 
 <div class="controls">
-  <label>Desde <input type="date" id="f-desde" class="input" value="{{ desde }}"></label>
-  <label>Hasta <input type="date" id="f-hasta" class="input" value="{{ hasta }}"></label>
-  <button class="btn btn-accent" id="btn-actualizar">Actualizar</button>
-  <button class="btn btn-accent2" id="btn-comparativa">Comparar periodos</button>
+  <label>Desde <input type="date" id="f-desde" class="input"></label>
+  <label>Hasta <input type="date" id="f-hasta" class="input"></label>
+  <button class="btn btn-accent" id="btn-actualizar">Actualizar</button>
+  <button class="btn btn-accent2" id="btn-comparativa">Comparar periodos</button>
 
-  <div style="margin-left:auto;display:flex;gap:8px">
-    <button class="btn btn-accent" id="export-resumen-excel">Exportar Resumen Excel</button>
-    <button class="btn btn-primary" id="export-resumen-pdf">Exportar Resumen PDF</button>
-  </div>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-accent" id="export-resumen-excel">Exportar Resumen Excel</button>
+    <button class="btn btn-primary" id="export-resumen-pdf">Exportar Resumen PDF</button>
+  </div>
 </div>
 
 <div class="kpi-row" id="kpi-row">
-  <div class="kpi"><h3>Total producido (kg)</h3><p id="kpi-kg">0</p><div class="small">Productivo</div></div>
-  <div class="kpi"><h3>Total piezas</h3><p id="kpi-pzas">0</p><div class="small">Productivo</div></div>
-  <div class="kpi"><h3>Turno DIA (kg)</h3><p id="kpi-dia">0</p></div>
-  <div class="kpi"><h3>Turno NOCHE (kg)</h3><p id="kpi-noche">0</p></div>
-  <div class="kpi" title="Porcentaje de piezas acabadas respecto al total productivo"><h3>Acabado (Pintura)</h3><p id="kpi-pintura">0%</p></div>
-  <div class="kpi" title="Porcentaje de piezas acabadas respecto al total productivo"><h3>Acabado (Galv.)</h3><p id="kpi-galv">0%</p></div>
+  <div class="kpi"><h3>Total producido (kg)</h3><p id="kpi-kg">0</p><div class="small">Último periodo</div></div>
+  <div class="kpi"><h3>Total piezas</h3><p id="kpi-pzas">0</p><div class="small">Último periodo</div></div>
+  <div class="kpi"><h3>Turno Día (kg)</h3><p id="kpi-dia">0</p></div>
+  <div class="kpi"><h3>Turno Noche (kg)</h3><p id="kpi-noche">0</p></div>
 </div>
 
 <div class="card graficas">
-  <h3 style="margin:0 0 16px">Gráficas de Producción</h3>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:24px;">
-    <div style="width:100%;height:350px;"><canvas id="chart-area"></canvas></div>
-    <div style="width:100%;height:350px;"><canvas id="chart-bloques"></canvas></div>
-    <div style="width:100%;height:350px;"><canvas id="chart-tendencia-turno"></canvas></div>
-    <div style="width:100%;height:350px;"><canvas id="chart-torta-turno"></canvas></div>
-  </div>
+  <h3 style="margin:0 0 16px">Gráficas de Producción</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:24px;">
+    <div style="width:100%;height:350px;"><canvas id="chart-area"></canvas></div>
+    <div style="width:100%;height:350px;"><canvas id="chart-bloques"></canvas></div>
+    <div style="width:100%;height:350px;"><canvas id="chart-tendencia-turno"></canvas></div>
+    <div style="width:100%;height:350px;"><canvas id="chart-torta-turno"></canvas></div>
+  </div>
 </div>
 
 <div class="controls" style="margin-bottom:8px;gap:8px;">
-  <label>Turno:
-    <select id="filtro-turno" class="input">
-      <option value="">Todos</option>
-      <option value="DIA">DIA</option>
-      <option value="NOCHE">NOCHE</option>
-    </select>
-  </label>
-  <label>Área:
-  <select id="filtro-area" class="input">
-    <option value="">Todas</option>
-      </select>
+  <label>Turno:
+    <select id="filtro-turno" class="input">
+      <option value="">Todos</option>
+      <option value="Día">Día</option>
+      <option value="Noche">Noche</option>
+    </select>
+  </label>
+  <label>Área:
+  <select id="filtro-area" class="input">
+    <option value="">Todas</option>
+    <option value="PERFILADO">PERFILADO</option>
+    <option value="HABILITADO">HABILITADO</option>
+  </select>
 </label>
 
-  <button class="btn btn-accent" id="btn-semana">Últimos 7 días</button>
-  <button class="btn btn-primary" id="btn-refresh-tabla">Refrescar</button>
+  <button class="btn btn-accent" id="btn-semana">Últimos 7 días</button>
+  <button class="btn btn-primary" id="btn-refresh-tabla">Refrescar</button>
 </div>
 
 <div class="grid">
-  <div class="card">
-    <h2 style="color:var(--dark);margin:0 0 8px">Resumen por Bloque / Área</h2>
-    <div class="small">Los filtros de turno y área aplican a esta tabla.</div>
-    <table class="table" id="tabla-resumen">
-      <thead><tr><th>Día</th><th>Área</th><th>Turno</th><th>Bloque</th><th>Kilos</th><th>Piezas</th><th>Acción</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <div class="card">
+    <h2 style="color:var(--dark);margin:0 0 8px">Resumen por Bloque / Área</h2>
+    <div class="small">Haz click en "Ver detalle" para abrir desglose</div>
+    <table class="table" id="tabla-resumen">
+      <thead><tr><th>Dia</th><th>Area</th><th>Turno</th><th>Bloque</th><th>Kilos</th><th>Piezas</th><th>Tipos</th><th>Acción</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal" role="dialog" aria-modal="true">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div><strong id="modalTitle">Detalle</strong></div>
-      <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
-    </div>
-    <div class="modal-body" id="modalBody">
-      <table class="table" id="tabla-detalle">
-        <thead><tr><th>Día</th><th>Turno</th><th>Bloque</th><th>Área</th><th>Peso Total</th><th>Piezas</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="modal-actions">
-        <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
-        <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
-      </div>
-    </div>
-  </div>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong id="modalTitle">Detalle</strong></div>
+      <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <table class="table" id="tabla-detalle">
+        <thead><tr><th>Pedido</th><th>Partida</th><th>Area</th><th>Descripción</th><th>Cantidad</th><th>Turno</th><th>Peso Total</th><th>Dia</th><th>Fecha/Hora</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="modal-actions">
+        <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
+        <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modalComparativa">
-  <div class="modal" role="dialog" aria-modal="true">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div><strong>Comparativa de Producción</strong></div>
-      <div class="close-outside" onclick="document.getElementById('modalComparativa').style.display='none'">✖</div>
-      </div>
-    <div class="modal-body">
-            <div class="controls">
-        <label>Periodo A: <input type="text" id="periodoA" class="input" placeholder="YYYY o YYYY-MM"></label>
-        <label>Periodo B: <input type="text" id="periodoB" class="input" placeholder="YYYY o YYYY-MM"></label>
-        <button class="btn btn-accent" id="btn-generar-comparativa">Generar gráfica</button>
-        <div class="small" style="margin-top:4px">
-          Puedes poner solo el año (YYYY) o mes (YYYY-MM) para comparar.
-        </div>
-      </div>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong>Comparativa de Producción</strong></div>
+      <div class="close-outside" onclick="document.getElementById('modalComparativa').style.display='none'">✖</div>
+    </div>
+    <div class="modal-body">
+      <div class="controls">
+        <label>Periodo A: <input type="text" id="periodoA" class="input" placeholder="YYYY o YYYY-MM"></label>
+        <label>Periodo B: <input type="text" id="periodoB" class="input" placeholder="YYYY o YYYY-MM"></label>
+        <button class="btn btn-accent" id="btn-generar-comparativa">Generar gráfica</button>
+        <div class="small" style="margin-top:4px">
+          Puedes poner solo el año (YYYY) o mes (YYYY-MM) para comparar.
+        </div>
+      </div>
 
-            <div id="totales-comparativa" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;font-weight:700">
-        <div id="totalesA"></div>
-        <div id="totalesB"></div>
-      </div>
+      <div id="totales-comparativa" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;font-weight:700">
+        <div id="totalesA"></div>
+        <div id="totalesB"></div>
+      </div>
 
-            <div id="mensajeCargando" style="margin-top:16px;font-weight:700;color:#555;display:none">
-        Cargando datos...
-      </div>
+      <div id="mensajeCargando" style="margin-top:16px;font-weight:700;color:#555;display:none">
+        Cargando datos...
+      </div>
 
-            <div style="width:100%;height:350px;margin-top:16px;">
-        <canvas id="chart-comparativa"></canvas>
-      </div>
-    </div>
-  </div>
+      <div style="width:100%;height:350px;margin-top:16px;">
+        <canvas id="chart-comparativa"></canvas>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-window._lastResumen = []; 
-window._lastTendenciaTurnos = {}; 
+window._lastResumen = [];
+// 🚨🚨🚨 CONSTANTES CORREGIDAS: Agregamos el prefijo /fabricacion_partidas/ 🚨🚨🚨
+const apiResumen="/fabricacion_partidas/api/resumen";
+const apiDetalle="/fabricacion_partidas/api/detalle";
+const apiTotales="/fabricacion_partidas/api/totales_produccion"; 
 
-// --- Variables y formatos ---
-// *** CORRECCIÓN CRÍTICA DE LA RUTA BASE DEL BACKEND ***
-// El router se monta en /fabricacion_partidas, y las APIs internas están en /api
-const apiBase = "/fabricacion_partidas/api"; 
-const apiResumen = `${apiBase}/resumen`;
-const apiTendenciaTurnos = `${apiBase}/tendencia_turnos`;
-const apiTendenciaBloques = `${apiBase}/tendencia_bloques`;
-const apiDetalle = `${apiBase}/detalle`; 
-const apiTotalesProd = `${apiBase}/totales_produccion`;
-const apiAcabados = `${apiBase}/acabados`; // Usaremos este endpoint
+document.getElementById('f-desde').value="{{ desde }}";
+document.getElementById('f-hasta').value="{{ hasta }}";
 
-const formatoMX = new Intl.NumberFormat('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-const formatoPct = new Intl.NumberFormat('es-MX', {style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1});
-
+const formatoMX=new Intl.NumberFormat('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
 function fnum(x){return formatoMX.format(Number(x||0));}
 
-// --- Fetch Principal (Llamada a todas las APIs) ---
-async function fetchAllData(){
-  const desde = document.getElementById('f-desde').value;
-  const hasta = document.getElementById('f-hasta').value;
+// --- Fetch y render (AJUSTADA) ---
+function fetchResumen(){
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
 
-  // Limpiar antes de cargar
-  document.getElementById('kpi-kg').textContent = '...';
-  document.getElementById('kpi-pzas').textContent = '...';
-  document.getElementById('kpi-pintura').textContent = '...';
-  document.getElementById('kpi-galv').textContent = '...';
-  document.getElementById('tabla-resumen').querySelector('tbody').innerHTML = '<tr><td colspan="7">Cargando datos...</td></tr>';
-  
-  try {
-    // Corregida la ruta base: ahora usa /fabricacion_partidas/api
-    const [resumenData, tendenciaTurnosData, tendenciaBloquesData, acabadosData] = await Promise.all([
-      fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`, {credentials:'include'}).then(r => r.json()),
-      fetch(`${apiTendenciaTurnos}?desde=${desde}&hasta=${hasta}`, {credentials:'include'}).then(r => r.json()),
-      fetch(`${apiTendenciaBloques}?desde=${desde}&hasta=${hasta}`, {credentials:'include'}).then(r => r.json()),
-      fetch(`${apiAcabados}?desde=${desde}&hasta=${hasta}`, {credentials:'include'}).then(r => r.json()) // Nueva llamada
-    ]);
+  // 1. Carga Resumen y Tabla
+  fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+  .then(r=>r.json())
+  .then(data=>{
+    renderResumen(data.resumen||[]);
+    
+    // 2. Carga KPIS (Total Kg, Total Piezas) - Usa el endpoint TOTALES_PRODUCCION
+    fetch(`${apiTotales}?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+    .then(r=>r.json())
+    .then(kpisData=>{
+      // El backend retorna el objeto simple {total_kg: X, total_piezas: Y}
+      renderKpis(kpisData); 
+    });
 
-    // 1. RESUMEN Y TABLA
-    window._lastResumen = resumenData.resumen || [];
-    renderKpis(tendenciaTurnosData, acabadosData); // Se pasa la data de acabados
-    renderResumenTabla();
-    
-    // Llenar filtros de área
-    populateAreaFilter(resumenData.resumen);
-
-    // 2. TENDENCIAS (GRÁFICAS)
-    window._lastTendenciaTurnos = tendenciaTurnosData; 
-    renderCharts(resumenData.resumen, tendenciaTurnosData, tendenciaBloquesData);
-
-  } catch (e) {
-    alert("Error al cargar datos. Verifica la consola para más detalles. Error: " + e.message);
-    console.error("Error al cargar datos:", e);
-    document.getElementById('tabla-resumen').querySelector('tbody').innerHTML = '<tr><td colspan="7">Error al cargar datos.</td></tr>';
-  }
+    // 3. Carga Gráficas con nuevas funciones
+    renderCharts(desde, hasta); 
+    
+  }).catch(e=>alert("Error al cargar resumen/kpis: "+e));
 }
 
+// --- Render KPIS (AJUSTADA) ---
+function renderKpis(kpis){
+  // Estos KPIs vienen de /fabricacion_partidas/api/totales_produccion y solo suman áreas productivas
+  document.getElementById('kpi-kg').textContent=fnum(kpis.total_kg||0);
+  document.getElementById('kpi-pzas').textContent=fnum(kpis.total_piezas||0);
 
-function renderKpis(tt, ac){
-  // 1. KPI Total Kg y Piezas Productivo
-  const totalKg = window._lastResumen.filter(r => ['HABILITADO','PERFILADO','ENSAMBLE','CIMSA/ ENSAMBLE'].includes(r.Area)).reduce((sum, r) => sum + r.PesoKg, 0);
-  const totalPzas = window._lastResumen.filter(r => ['HABILITADO','PERFILADO','ENSAMBLE','CIMSA/ ENSAMBLE'].includes(r.Area)).reduce((sum, r) => sum + r.Piezas, 0);
-
-  document.getElementById('kpi-kg').textContent = fnum(totalKg);
-  document.getElementById('kpi-pzas').textContent = fnum(totalPzas);
-  
-  // 2. Cálculo de KG por turno (Productivo)
-  const kgDiaProd = (tt.dia_kg || []).reduce((sum, val) => sum + val, 0);
-  const kgNocheProd = (tt.noche_kg || []).reduce((sum, val) => sum + val, 0);
-  
-  document.getElementById('kpi-dia').textContent = fnum(kgDiaProd);
-  document.getElementById('kpi-noche').textContent = fnum(kgNocheProd);
-
-  // 3. KPIs de Acabados
-  const pctPintura = ac.pct_pintura || 0;
-  const pctGalv = ac.pct_galv || 0;
-  
-  document.getElementById('kpi-pintura').textContent = formatoPct.format(pctPintura / 100);
-  document.getElementById('kpi-galv').textContent = formatoPct.format(pctGalv / 100);
+  // Los KPIs por turno (Día/Noche) se calculan de la data de resumen (tabla)
+  const resumen=window._lastResumen||[];
+  let kgDia=0,kgNoche=0;
+  // Tu back retorna 'DIA' y 'NOCHE' en mayúsculas
+  resumen.forEach(r=>{if(r.Turno==='DIA')kgDia+=r.PesoKg;else if(r.Turno==='NOCHE')kgNoche+=r.PesoKg;}); 
+  document.getElementById('kpi-dia').textContent=fnum(kgDia);
+  document.getElementById('kpi-noche').textContent=fnum(kgNoche);
 }
 
-function populateAreaFilter(rows){
-  const select = document.getElementById('filtro-area');
-  const currentArea = select.value;
-  select.innerHTML = '<option value="">Todas</option>';
-  
-  const areas = new Set();
-  rows.forEach(r => areas.add(r.Area));
-
-  Array.from(areas).sort().forEach(area => {
-    const option = document.createElement('option');
-    option.value = area;
-    option.textContent = area;
-    if (area === currentArea) option.selected = true;
-    select.appendChild(option);
-  });
+function renderResumen(rows){
+  window._lastResumen = rows;
+  filtrarTabla(document.getElementById('filtro-turno').value);
 }
 
-function renderResumenTabla(){
-  const turnoFiltro = document.getElementById('filtro-turno').value;
-  const areaFiltro = document.getElementById('filtro-area').value;
-  const is7DaysActive = document.getElementById('btn-semana').classList.contains('btn-activo');
-  const tbody = document.querySelector('#tabla-resumen tbody');
-  tbody.innerHTML = '';
+// --- Filtrar Tabla (AJUSTADA: Usa mayúsculas y placeholder para 'Tipos') ---
+function filtrarTabla(turnoFiltro, rango=null, areaFiltro=''){
+  const rows = window._lastResumen || [];
+  const tbody = document.querySelector('#tabla-resumen tbody');
+  tbody.innerHTML = '';
 
-  let rango = null;
-  if(is7DaysActive){
-    const hoy = new Date();
-    const hace7 = new Date();
-    hace7.setDate(hoy.getDate() - 6);
-    rango = {
-      desde: hace7.toISOString().slice(0, 10), 
-      hasta: hoy.toISOString().slice(0, 10)
-    };
-  }
-  
-  const rows = window._lastResumen || [];
+  rows.forEach(r=>{
+    const fecha = new Date(r.DiaTurno);
 
-  rows.forEach(r=>{
-    
-    // Filtro por rango de fechas (Últimos 7 días)
-    if(rango && (r.DiaTurno < rango.desde || r.DiaTurno > rango.hasta)) return;
-    
-    // Filtro por turno
-    if(turnoFiltro && r.Turno !== turnoFiltro) return;
+    // Filtro por turno (ajustado a MAYÚSCULAS)
+    if(turnoFiltro && r.Turno.toUpperCase() !== turnoFiltro.toUpperCase()) return;
 
-    // Filtro por área
-    if(areaFiltro && r.Area !== areaFiltro) return;
+    if(areaFiltro && r.Area !== areaFiltro) return;
 
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.DiaTurno}</td>
-                    <td>${r.Area}</td>
-                    <td>${r.Turno}</td>
-                    <td>${r.Bloque}</td>
-                    <td>${fnum(r.PesoKg)}</td>
-                    <td>${fnum(r.Piezas)}</td>
-                    <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}')">Ver detalle</button></td>`;
-    tbody.appendChild(tr);
-  });
-  
-  if(tbody.innerHTML === ''){
-    tbody.innerHTML = '<tr><td colspan="7">No hay datos que coincidan con los filtros.</td></tr>';
-  }
+    if(rango && (fecha < rango.desde || fecha > rango.hasta)) return;
+
+    const tr = document.createElement('tr');
+    // Como tu nuevo backend ya no regresa 'Tipos', usamos un placeholder
+    const tipos = r.Tipos || "Ver detalle para Componentes"; 
+    
+    tr.innerHTML = `<td>${r.DiaTurno}</td>
+                     <td>${r.Area}</td>
+                     <td>${r.Turno}</td>
+                     <td>${r.Bloque}</td>
+                     <td>${fnum(r.PesoKg)}</td>
+                     <td>${fnum(r.Piezas)}</td>
+                     <td title="${tipos}">${tipos.length>60?tipos.substring(0,60)+'...':tipos}</td>
+                     <td><button class="btn" onclick="verDetalle('${encodeURIComponent(r.Area)}','${encodeURIComponent(r.DiaTurno)}','${encodeURIComponent(r.Bloque)}')">Ver detalle</button></td>`;
+    tbody.appendChild(tr);
+  });
 }
 
-
-// --- Charts ---
+// --- Charts (AJUSTADA: Carga con el prefijo /fabricacion_partidas) ---
 let charts={};
-function chartOptions(showLegend=true, callbackLabel=null){
-  return {
-    responsive:true,
-    maintainAspectRatio:true,
-    plugins:{
-      legend:{display:showLegend,labels:{font:{size:16,weight:'700'}}},
-      tooltip:{callbacks:{label:callbackLabel || (ctx=>`${ctx.dataset.label}: ${formatoMX.format(ctx.raw)} kg`)}
-      }
-    },
-    scales:{
-      y:{beginAtZero:true,ticks:{font:{size:14,weight:'700'},callback:v=>formatoMX.format(v)}},
-      x:{ticks:{font:{size:14,weight:'700'}}}
-    }
-  };
+function chartOptions(showLegend=true){
+  return {
+    responsive:true,
+    maintainAspectRatio:true,
+    plugins:{
+      legend:{display:showLegend,labels:{font:{size:16,weight:'700'}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${formatoMX.format(ctx.raw)} kg`}}
+    },
+    scales:{
+      y:{beginAtZero:true,ticks:{font:{size:14,weight:'700'},callback:v=>formatoMX.format(v)}},
+      x:{ticks:{font:{size:14,weight:'700'}}}
+    }
+  };
 }
 
-function renderCharts(resumenRows, tendenciaTurnosData, tendenciaBloquesData){
-  // 1. Gráfica por Área (Barra, Resumen)
-  const byArea={};
-  resumenRows.forEach(r => byArea[r.Area] = (byArea[r.Area] || 0) + (r.PesoKg || 0));
+function renderCharts(desde, hasta){
+  function destroyChart(id){if(charts[id])charts[id].destroy();}
+  destroyChart('chart-area');destroyChart('chart-bloques');destroyChart('chart-tendencia-turno');destroyChart('chart-torta-turno');
 
-  // 2. Gráfica de Tendencia por Bloques (Línea, TendenciaBloques)
-  const bloquesData = tendenciaBloquesData.bloques || [];
-  const prod_day = tendenciaBloquesData.prod_day || [];
-  const prod_night = tendenciaBloquesData.prod_night || [];
-  
-  // 3. Gráfica de Tendencia por Turno (Línea, TendenciaTurnos)
-  const dias = tendenciaTurnosData.dias || [];
-  const dia_kg = tendenciaTurnosData.dia_kg || [];
-  const noche_kg = tendenciaTurnosData.noche_kg || [];
-  
-  // 4. Torta Turno (Total Kg, Productivo)
-  const totalKgDia = dia_kg.reduce((a,b)=>a+b,0);
-  const totalKgNoche = noche_kg.reduce((a,b)=>a+b,0);
-  const totalProductivo = totalKgDia + totalKgNoche;
+  // --- Gráfica de Bloques y Áreas (Cargada de /fabricacion_partidas/api/tendencia_bloques) ---
+  // 🚨 RUTA CORREGIDA con prefijo
+  fetch(`/fabricacion_partidas/api/tendencia_bloques?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+  .then(r=>r.json())
+  .then(data => {
+    // 1. Gráfica de Barras Total por Turno (simula el "Por Área")
+    const prodDayTotal = data.prod_day.reduce((a,b)=>a+b, 0);
+    const prodNightTotal = data.prod_night.reduce((a,b)=>a+b, 0);
+    const acDayTotal = data.ac_day.reduce((a,b)=>a+b, 0);
+    const acNightTotal = data.ac_night.reduce((a,b)=>a+b, 0);
+    
+    charts['chart-area']=new Chart(document.getElementById('chart-area'),{
+      type:'bar',
+      data:{
+        labels:['Producción Día','Producción Noche', 'Acabado Día', 'Acabado Noche'],
+        datasets:[{
+          label:'Kilos (kg)',
+          data:[prodDayTotal, prodNightTotal, acDayTotal, acNightTotal],
+          backgroundColor:['#1a73e8', '#ff9800', '#34a853', '#e8451a']
+        }]
+      },
+      options:chartOptions(false)
+    });
 
-  function destroyChart(id){if(charts[id])charts[id].destroy();}
-  destroyChart('chart-area');destroyChart('chart-bloques');destroyChart('chart-tendencia-turno');destroyChart('chart-torta-turno');
+    // 2. Gráfica de Línea por Bloque
+    charts['chart-bloques']=new Chart(document.getElementById('chart-bloques'),{
+      type:'line',
+      data:{
+        labels:data.bloques,
+        datasets:[
+          {label:'Prod. Día',data:data.prod_day,fill:true,backgroundColor:'rgba(26,115,232,0.15)',borderColor:'#1a73e8',tension:0.4,pointRadius:4},
+          {label:'Prod. Noche',data:data.prod_night,fill:true,backgroundColor:'rgba(255,152,0,0.15)',borderColor:'#ff9800',tension:0.4,pointRadius:4}
+        ]
+      },
+      options:chartOptions(true)
+    });
+  });
 
-  // CHART 1: Kg por Área 
-  charts['chart-area']=new Chart(document.getElementById('chart-area'),{
-    type:'bar',
-    data:{labels:Object.keys(byArea),datasets:[{label:'Kilos (kg)',data:Object.values(byArea),backgroundColor:'#1a73e8'}]},
-    options:chartOptions(false)
-  });
+  // --- Gráfica de Tendencia por Día (Cargada de /fabricacion_partidas/api/tendencia_turnos) ---
+  // 🚨 RUTA CORREGIDA con prefijo
+  fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+  .then(r=>r.json())
+  .then(data => {
+    // 3. Gráfica de Tendencia por Día y Turno
+    charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno'),{
+      type:'line',
+      data:{
+        labels:data.dias,
+        datasets:[
+          {label:'Turno Día (kg)',data:data.dia_kg,borderColor:'#1a73e8',backgroundColor:'rgba(26,115,232,0.15)',fill:true,tension:0.4,pointRadius:4},
+          {label:'Turno Noche (kg)',data:data.noche_kg,borderColor:'#ff9800',backgroundColor:'rgba(255,152,0,0.15)',fill:true,tension:0.4,pointRadius:4}
+        ]
+      },
+      options:chartOptions(true)
+    });
 
-  // CHART 2: Tendencia por Bloques (Productivo)
-  charts['chart-bloques']=new Chart(document.getElementById('chart-bloques'),{
-    type:'bar',
-    data:{labels:bloquesData,datasets:[
-      {label:'Día (kg)', data:prod_day, backgroundColor:'rgba(26,115,232,0.8)'},
-      {label:'Noche (kg)', data:prod_night, backgroundColor:'rgba(255,152,0,0.8)'}
-    ]},
-    options:chartOptions(true)
-  });
-  
-  // CHART 3: Tendencia Diaria por Turno (Productivo)
-  charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno'),{
-    type:'line',
-    data:{labels:dias,datasets:[
-      {label:'Turno DIA',data:dia_kg,borderColor:'#1a73e8',backgroundColor:'rgba(26,115,232,0.15)',fill:true,tension:0.4,pointRadius:4},
-      {label:'Turno NOCHE',data:noche_kg,borderColor:'#ff9800',backgroundColor:'rgba(255,152,0,0.15)',fill:true,tension:0.4,pointRadius:4}
-    ]},
-    options:chartOptions(true)
-  });
-
-  // CHART 4: Torta Kg Productivo por Turno
-  charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno'),{
-    type:'doughnut',
-    data:{labels:['DIA (Productivo)','NOCHE (Productivo)'],datasets:[{data:[totalKgDia,totalKgNoche],backgroundColor:['#1a73e8','#ff9800']}]},
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{display:true,labels:{font:{size:16,weight:'700'}}},
-        tooltip:{
-          callbacks:{
-            label: ctx => `${ctx.label}: ${fnum(ctx.raw)} kg (${(ctx.raw / totalProductivo * 100).toFixed(1)}%)`
-          }
-        }
-      }
-    }
-  });
+    // 4. Gráfica de Torta/Doughnut por Turno
+    const totalDia = data.dia_kg.reduce((a,b)=>a+b,0);
+    const totalNoche = data.noche_kg.reduce((a,b)=>a+b,0);
+    charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno'),{
+      type:'doughnut',
+      data:{
+        labels:['Día','Noche'],
+        datasets:[{data:[totalDia, totalNoche],backgroundColor:['#1a73e8','#ff9800']}]
+      },
+      options:{responsive:true,plugins:{legend:{display:true,labels:{font:{size:16,weight:'700'}}}}}
+    });
+  });
 }
 
-// --- Modal detalle ---
-function verDetalle(area){
-  const tbody=document.querySelector('#tabla-detalle tbody');
-  tbody.innerHTML='<tr><td colspan=6>Cargando...</td></tr>';
-  document.getElementById('modalOverlay').style.display='flex';
-  const desde = document.getElementById('f-desde').value;
-  const hasta = document.getElementById('f-hasta').value;
+// --- Modal detalle (AJUSTADA: Usa apiDetalle que ya tiene el prefijo) ---
+function verDetalle(area, dia, bloque){
+  const tbody=document.querySelector('#tabla-detalle tbody');
+  tbody.innerHTML='<tr><td colspan=9>Cargando...</td></tr>';
+  document.getElementById('modalOverlay').style.display='flex';
 
-  document.getElementById('modalTitle').textContent=`Detalle de ${decodeURIComponent(area)} (${desde} al ${hasta})`;
-  
-  // Usa la ruta corregida
-  fetch(`${apiDetalle}?desde=${desde}&hasta=${hasta}&area=${decodeURIComponent(area)}`,{credentials:'include'})
-  .then(r=>r.json())
-  .then(data=>{
-    tbody.innerHTML='';
-    const rows=Array.isArray(data.detalle)?data.detalle:[];
-    if(rows.length===0){tbody.innerHTML='<tr><td colspan=6>No hay datos</td></tr>';return;}
-    
-    rows.forEach(r=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.DiaTurno}</td><td>${r.Turno}</td><td>${r.Bloque}</td><td>${r.Area}</td><td>${fnum(r.PesoKg)}</td><td>${fnum(r.Piezas)}</td>`;
-      tbody.appendChild(tr);
-    });
-  }).catch(e=>{
-    console.error("Error al cargar detalle:", e);
-    tbody.innerHTML=`<tr><td colspan=6>Error al cargar detalle: ${e.message || 'Error de red'}</td></tr>`;
-  });
+  const decArea = decodeURIComponent(area);
+  const decDia = decodeURIComponent(dia);
+  const decBloque = decodeURIComponent(bloque);
+
+  document.getElementById('modalTitle').textContent=`Detalle ${decArea} - ${decDia} - Bloque ${decBloque}`;
+  
+  // Usamos los filtros globales de fecha y área que el backend espera
+  const desde = document.getElementById('f-desde').value;
+  const hasta = document.getElementById('f-hasta').value;
+
+  // apiDetalle ya contiene /fabricacion_partidas/api/detalle
+  fetch(`${apiDetalle}?desde=${desde}&hasta=${hasta}&area=${area}`,{credentials:'include'})
+  .then(r=>r.json())
+  .then(data=>{
+    tbody.innerHTML='';
+    const rows=Array.isArray(data.detalle)?data.detalle:[];
+    
+    // FILTRAMOS EN EL FRONT: Solo mostramos las filas que coinciden con DiaTurno y Bloque
+    const detalleFiltrado = rows.filter(r => 
+      r.DiaTurno === decDia && 
+      r.Bloque === decBloque
+    );
+
+    if(detalleFiltrado.length===0){tbody.innerHTML='<tr><td colspan=9>No hay datos</td></tr>';return;}
+    
+    detalleFiltrado.forEach(r=>{
+      const tr=document.createElement('tr');
+      // Las columnas se ajustan al nuevo backend:
+      tr.innerHTML=`<td>${r.Pedido}</td>
+                    <td>${r.Partida}</td>
+                    <td>${r.Area}</td> 
+                    <td>${r.Descripcion}</td>
+                    <td>${r.Piezas}</td>
+                    <td>${r.Turno}</td> 
+                    <td>${fnum(r.PesoKg)}</td>
+                    <td>${r.DiaTurno}</td>
+                    <td>${r.FechaHora}</td>`; 
+      tbody.appendChild(tr);
+    });
+  }).catch(e=>{tbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
 }
 
-// --- Export ---
+// --- Export (SIN CAMBIOS) ---
 function exportTableToExcel(id,filename='export.xlsx'){
-  const table=document.getElementById(id);
-  const wb=XLSX.utils.table_to_book(table,{sheet:"Sheet1"});
-  XLSX.writeFile(wb,filename);
+  const table=document.getElementById(id);
+  const wb=XLSX.utils.table_to_book(table,{sheet:"Sheet1"});
+  XLSX.writeFile(wb,filename);
 }
 
 function getJsPDFConstructor(){
-  if(window.jspdf && typeof window.jspdf.jsPDF==='function')return window.jspdf.jsPDF;
-  if(typeof window.jsPDF==='function')return window.jsPDF;
-  if(typeof window.jspdf==='function')return window.jspdf;
-  return null;
+  if(window.jspdf && typeof window.jspdf.jsPDF==='function')return window.jspdf.jsPDF;
+  if(typeof window.jsPDF==='function')return window.jsPDF;
+  if(typeof window.jspdf==='function')return window.jspdf;
+  return null;
 }
 
 async function exportTableToPDF(id,title='Reporte'){
-  try{
-    const JsPDFCtor=getJsPDFConstructor();
-    if(!JsPDFCtor){alert('Error: jsPDF no está cargado.');return;}
-    const doc=new JsPDFCtor();
-    doc.setFontSize(14);
-    doc.text(title,10,10);
-    if(typeof doc.autoTable==='function'){doc.autoTable({html:`#${id}`,startY:16});doc.save(`${title}.pdf`);return;}
-    const table=document.getElementById(id);
-    if(table){
-      const rows=Array.from(table.querySelectorAll('tr')).map(tr=>Array.from(tr.children).map(td=>td.innerText.trim()).join(' | '));
-      let y=20;doc.setFontSize(10);
-      rows.forEach(line=>{if(y>280){doc.addPage();y=20;}doc.text(line,10,y);y+=6;});
-      doc.save(`${title}.pdf`);
-    }
-  }catch(e){alert('Error exportando PDF: '+e);}
+  try{
+    const JsPDFCtor=getJsPDFConstructor();
+    if(!JsPDFCtor){alert('Error: jsPDF no está cargado.');return;}
+    const doc=new JsPDFCtor();
+    doc.setFontSize(14);
+    doc.text(title,10,10);
+    if(typeof doc.autoTable==='function'){doc.autoTable({html:`#${id}`,startY:16});doc.save(`${title}.pdf`);return;}
+    const table=document.getElementById(id);
+    if(table){
+      const rows=Array.from(table.querySelectorAll('tr')).map(tr=>Array.from(tr.children).map(td=>td.innerText.trim()).join(' | '));
+      let y=20;doc.setFontSize(10);
+      rows.forEach(line=>{if(y>280){doc.addPage();y=20;}doc.text(line,10,y);y+=6;});
+      doc.save(`${title}.pdf`);
+    }
+  }catch(e){alert('Error exportando PDF: '+e);}
 }
 
-// --- Lógica de Comparativa (Usa API /api/resumen) ---
+// --- Comparativa (AJUSTADA: Usa apiTotales que ya tiene el prefijo) ---
 let chartComparativa = null;
+
 function esAnual(periodo){return /^\d{4}$/.test(periodo);}
+
 function generarFechas(periodo){
-  if(/^\d{4}$/.test(periodo)){ 
-    return { desde:`${periodo}-01-01`, hasta:`${periodo}-12-31` };
-  } else if(/^\d{4}-\d{2}$/.test(periodo)){ 
-    const [year, month] = periodo.split('-');
-    const ultimoDia = new Date(year, month, 0).getDate();
-    return { desde:`${year}-${month}-01`, hasta:`${year}-${month}-${ultimoDia}` };
-  } else {
-    throw new Error('Formato inválido: usa YYYY o YYYY-MM');
-  }
+  if(/^\d{4}$/.test(periodo)){ 
+    return { desde:`${periodo}-01-01`, hasta:`${periodo}-12-31` };
+  } else if(/^\d{4}-\d{2}$/.test(periodo)){ 
+    const [year, month] = periodo.split('-');
+    const ultimoDia = new Date(year, month, 0).getDate();
+    return { desde:`${year}-${month}-01`, hasta:`${year}-${month}-${ultimoDia}` };
+  } else {
+    throw new Error('Formato inválido: usa YYYY o YYYY-MM');
+  }
 }
-async function getResumenDataForComparison(periodo){
-  const f = generarFechas(periodo);
-  return fetch(`${apiResumen}?desde=${f.desde}&hasta=${f.hasta}`,{credentials:'include'}).then(r=>r.json());
-}
-function renderComparativa(periodoA, periodoB, dataA, dataB){
-  const totalA = dataA.kpis.total_kg || 0;
-  const totalB = dataB.kpis.total_kg || 0;
 
-  // Mostrar totales arriba (solo total general)
-  document.getElementById('totalesA').innerHTML = `
-    <strong>Periodo A (${periodoA}):</strong>
-    <span style="color:var(--blue)">Total: ${fnum(totalA)} kg</span>
-  `;
-  document.getElementById('totalesB').innerHTML = `
-    <strong>Periodo B (${periodoB}):</strong>
-    <span style="color:var(--accent)">Total: ${fnum(totalB)} kg</span>
-  `;
+function renderComparativaTotal(periodoA, periodoB, dataA, dataB){
+  // dataA y dataB son los KPIS totales: { "total_kg": X, "total_piezas": Y }
+  const totalA = dataA.total_kg || 0;
+  const totalB = dataB.total_kg || 0;
+  
+  // Mostrar totales arriba
+  document.getElementById('totalesA').innerHTML = `
+    <strong>Periodo A (${periodoA}):</strong> 
+    <span style="color:var(--blue)">Total: ${totalA.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})} kg</span>
+  `;
+  document.getElementById('totalesB').innerHTML = `
+    <strong>Periodo B (${periodoB}):</strong> 
+    <span style="color:var(--accent)">Total: ${totalB.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})} kg</span>
+  `;
 
-  // Agrupa por día o mes según sea anual
-  const AREAS_PRODUCTIVAS = ['HABILITADO','PERFILADO','ENSAMBLE','CIMSA/ ENSAMBLE'];
-  const agruparPor = (resumen, anual=false)=>{
-    const obj = {};
-    resumen.filter(r => AREAS_PRODUCTIVAS.includes(r.Area)).forEach(r=>{
-      let key;
-      if(anual){
-        key = r.DiaTurno.slice(5,7); // MM
-      } else {
-        key = r.DiaTurno; // día exacto
-      }
-      obj[key] = (obj[key]||0) + r.PesoKg;
-    });
-    return obj;
-  }
+  // Ocultar mensaje cargando
+  document.getElementById('mensajeCargando').style.display='none';
 
-  const objA = agruparPor(dataA.resumen||[], esAnual(periodoA));
-  const objB = agruparPor(dataB.resumen||[], esAnual(periodoB));
-
-  // Etiquetas: meses si anual, días si mensual
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  let labels;
-  if(esAnual(periodoA) || esAnual(periodoB)){
-    labels = meses;
-  } else {
-    const diasA = dataA.resumen?.map(r=>r.DiaTurno)||[];
-    const diasB = dataB.resumen?.map(r=>r.DiaTurno)||[];
-    labels = Array.from(new Set([...diasA,...diasB])).sort((a,b)=>new Date(a)-new Date(b));
-  }
-
-  const datasetA = labels.map((lab,i)=>{
-    if(esAnual(periodoA)) return objA[String(i+1).padStart(2,'0')]||0;
-    else return objA[lab]||0;
-  });
-  const datasetB = labels.map((lab,i)=>{
-    if(esAnual(periodoB)) return objB[String(i+1).padStart(2,'0')]||0;
-    else return objB[lab]||0;
-  });
-
-  document.getElementById('mensajeCargando').style.display='none';
-
-  if(chartComparativa) chartComparativa.destroy();
-  chartComparativa = new Chart(document.getElementById('chart-comparativa'),{
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        {label:`Periodo A (${periodoA})`, data: datasetA, borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', fill:true, tension:0.4, pointRadius:4},
-        {label:`Periodo B (${periodoB})`, data: datasetB, borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', fill:true, tension:0.4, pointRadius:4}
-      ]
-    },
-    options:chartOptions(true, ctx=>`${ctx.dataset.label}: ${fnum(ctx.raw)} kg`) 
-  });
+  if(chartComparativa) chartComparativa.destroy();
+  chartComparativa = new Chart(document.getElementById('chart-comparativa'),{
+    type:'bar',
+    data:{
+      labels:[periodoA, periodoB],
+      datasets:[
+        {label:`Producción Total (kg)`, data: [totalA, totalB], backgroundColor:['#1a73e8','#ff9800']}
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})} kg`}}
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{font:{size:12,weight:'700'},callback:v=>v.toLocaleString('es-MX')}},
+        x:{ticks:{font:{size:12,weight:'700'}}}
+      }
+    }
+  });
 }
 
 
-// --- Event listeners ---
-document.getElementById('btn-comparativa').addEventListener('click',()=>document.getElementById('modalComparativa').style.display='flex');
-document.getElementById('btn-actualizar').addEventListener('click',fetchAllData);
-document.getElementById('btn-refresh').addEventListener('click',fetchAllData);
-document.getElementById('closeModal').addEventListener('click',()=>document.getElementById('modalOverlay').style.display='none');
-document.getElementById('export-resumen-excel').addEventListener('click',()=>exportTableToExcel('tabla-resumen','resumen_fabricacion.xlsx'));
-document.getElementById('export-resumen-pdf').addEventListener('click',()=>exportTableToPDF('tabla-resumen','ResumenFabricacion'));
-document.getElementById('export-detalle-excel').addEventListener('click',()=>exportTableToExcel('tabla-detalle','detalle_fabricacion.xlsx'));
-document.getElementById('export-detalle-pdf').addEventListener('click',()=>exportTableToPDF('tabla-detalle','DetalleFabricacion'));
-
-document.getElementById('filtro-turno').addEventListener('change', renderResumenTabla);
-document.getElementById('filtro-area').addEventListener('change', renderResumenTabla);
-
-document.getElementById('btn-semana').addEventListener('click', ()=>{
-  const btn = document.getElementById('btn-semana');
-  btn.classList.toggle('btn-activo'); 
-  renderResumenTabla();
-});
-
-document.getElementById('btn-refresh-tabla').addEventListener('click', ()=>{
-  document.getElementById('filtro-turno').value = '';
-  document.getElementById('filtro-area').value = '';
-  document.getElementById('btn-semana').classList.remove('btn-activo');
-  renderResumenTabla();
-});
-
+// --- Event listeners (AJUSTADO: Usa apiTotales que ya tiene el prefijo) ---
 document.getElementById('btn-generar-comparativa').addEventListener('click', async ()=>{
-  const periodoA = document.getElementById('periodoA').value.trim();
-  const periodoB = document.getElementById('periodoB').value.trim();
-  if(!periodoA || !periodoB){
-    alert('Selecciona ambos periodos (mes o año)');
-    return;
-  }
+  const periodoA = document.getElementById('periodoA').value.trim();
+  const periodoB = document.getElementById('periodoB').value.trim();
+  if(!periodoA || !periodoB){
+    alert('Selecciona ambos periodos (mes o año)');
+    return;
+  }
 
-  try {
-    document.getElementById('mensajeCargando').style.display='block';
-    document.getElementById('totalesA').innerHTML = '';
-    document.getElementById('totalesB').innerHTML = '';
+  try {
+    const fA = generarFechas(periodoA);
+    const fB = generarFechas(periodoB);
 
-    const [dataA, dataB] = await Promise.all([
-      getResumenDataForComparison(periodoA),
-      getResumenDataForComparison(periodoB)
-    ]);
+    document.getElementById('mensajeCargando').style.display='block';
 
-    renderComparativa(periodoA, periodoB, dataA, dataB);
-    document.getElementById('modalComparativa').style.display='flex';
-  } catch(err){
-    document.getElementById('mensajeCargando').style.display='none';
-    alert('Error: '+err.message);
-  }
+    // apiTotales ya contiene /fabricacion_partidas/api/totales_produccion
+    const [dataA, dataB] = await Promise.all([
+      fetch(`${apiTotales}?desde=${fA.desde}&hasta=${fA.hasta}`,{credentials:'include'}).then(r=>r.json()),
+      fetch(`${apiTotales}?desde=${fB.desde}&hasta=${fB.hasta}`,{credentials:'include'}).then(r=>r.json())
+    ]);
+
+    // Llama a la nueva función de render que solo espera los KPIS totales
+    renderComparativaTotal(periodoA, periodoB, dataA, dataB);
+    document.getElementById('modalComparativa').style.display='flex';
+  } catch(err){
+    document.getElementById('mensajeCargando').style.display='none';
+    alert('Error al generar comparativa: '+err.message);
+  }
 });
 
+document.getElementById('btn-comparativa').addEventListener('click',()=>document.getElementById('modalComparativa').style.display='flex');
+document.getElementById('btn-actualizar').addEventListener('click',fetchResumen);
+document.getElementById('btn-refresh').addEventListener('click',fetchResumen);
+document.getElementById('closeModal').addEventListener('click',()=>document.getElementById('modalOverlay').style.display='none');
+document.getElementById('export-resumen-excel').addEventListener('click',()=>exportTableToExcel('tabla-resumen','resumen.xlsx'));
+document.getElementById('export-resumen-pdf').addEventListener('click',()=>exportTableToPDF('tabla-resumen','Resumen'));
+document.getElementById('export-detalle-excel').addEventListener('click',()=>exportTableToExcel('tabla-detalle','detalle.xlsx'));
+document.getElementById('export-detalle-pdf').addEventListener('click',()=>exportTableToPDF('tabla-detalle','Detalle'));
 
-// INICIO
-fetchAllData();
+// Filtrar tabla según turno (SIN CAMBIOS, ya ajustado a mayúsculas)
+document.getElementById('filtro-turno').addEventListener('change', ()=>{
+  filtrarTabla(
+    document.getElementById('filtro-turno').value,
+    document.getElementById('btn-semana').classList.contains('btn-activo') 
+      ? {desde: new Date(new Date().setDate(new Date().getDate()-6)), hasta: new Date()} 
+      : null,
+    document.getElementById('filtro-area')?.value || ''
+  );
+});
+
+// Filtrar tabla según área (SIN CAMBIOS)
+document.getElementById('filtro-area')?.addEventListener('change', ()=>{
+  filtrarTabla(
+    document.getElementById('filtro-turno').value,
+    document.getElementById('btn-semana').classList.contains('btn-activo') 
+      ? {desde: new Date(new Date().setDate(new Date().getDate()-6)), hasta: new Date()} 
+      : null,
+    document.getElementById('filtro-area')?.value || ''
+  );
+});
+
+// Últimos 7 días (solo tabla) (SIN CAMBIOS)
+document.getElementById('btn-semana').addEventListener('click', ()=>{
+  const btn = document.getElementById('btn-semana');
+  btn.classList.toggle('btn-activo'); 
+  const activo = btn.classList.contains('btn-activo');
+
+  const hoy = new Date();
+  const hace7 = new Date();
+  hace7.setDate(hoy.getDate() - 6);
+
+  filtrarTabla(
+    document.getElementById('filtro-turno').value,
+    activo ? {desde:hace7,hasta:hoy} : null,
+    document.getElementById('filtro-area')?.value || ''
+  );
+});
+
+// Refrescar tabla (SIN CAMBIOS)
+document.getElementById('btn-refresh-tabla').addEventListener('click', ()=>{
+  document.getElementById('filtro-turno').value = '';
+  if(document.getElementById('filtro-area')) document.getElementById('filtro-area').value = '';
+  document.getElementById('btn-semana').classList.remove('btn-activo');
+  filtrarTabla();
+});
+
+fetchResumen();
 </script>
 </body>
 </html>
