@@ -352,6 +352,8 @@ def api_detalle(area: str = Query(...), desde: str = Query(...), hasta: str = Qu
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
+    fecha_case = fecha_col_case()
+
     query = f"""
     SELECT
         {get_diaturno_case('Hora')} AS DiaTurno,
@@ -371,4 +373,4 @@ def api_detalle(area: str = Query(...), desde: str = Query(...), hasta: str = Qu
     """
 
     rows = ejecutar_consulta_sql(query, fetchall=True) or []
-    return {"detalle": rows}
+    return {"detalle": rows}    

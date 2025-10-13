@@ -98,7 +98,32 @@ body{
 
 /* modal */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(6,20,40,0.45);z-index:9999;align-items:center;justify-content:center;padding:24px}
-.modal{width:100%;max-width:980px;background:var(--card);border-radius:12px;padding:16px;box-shadow:0 24px 48px rgba(6,20,40,0.4)}
+.modal{
+    width:100%;
+    max-width:980px;
+    max-height:80vh; /* altura máxima visible */
+    background:var(--card);
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 24px 48px rgba(6,20,40,0.4);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+.modal table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+/* Contenedor scrollable para la tabla */
+.modal-body{
+    overflow-y:auto;
+    flex:1;
+    margin-top:8px;
+    min-height:200px; /* fuerza altura para ver scroll */
+}
+
 .modal .close{position:absolute;right:20px;top:20px;cursor:pointer}
 
 /* buttons */
@@ -273,27 +298,42 @@ body{
     </div>
   </div>
 
-  <!-- modal detalle -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div style="position:relative;padding:8px 4px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div><strong id="modalTitle">Detalle</strong></div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-ghost btn-small" id="export-detalle-excel">📥 Excel</button>
-            <button class="btn btn-ghost btn-small" id="export-detalle-pdf">📄 PDF</button>
-            <button class="btn btn-ghost btn-small" id="closeModal">✖</button>
-          </div>
-        </div>
-        <div style="margin-top:8px">
-          <table class="table" id="tabla-detalle">
-            <thead><tr><th>Pedido</th><th>Partida</th><th>Descripción</th><th>Cantidad</th><th>Peso (Kg)</th><th>Fecha</th></tr></thead>
-            <tbody></tbody>
-          </table>
+<!-- modal detalle -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div style="position:relative;padding:8px 4px; display:flex; flex-direction:column; height:100%;">
+      
+      <!-- header modal con título y botones -->
+      <div style="display:flex;align-items:center;justify-content:space-between; flex-shrink:0">
+        <div><strong id="modalTitle">Detalle</strong></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-small" id="export-detalle-excel">📥 Excel</button>
+          <button class="btn btn-ghost btn-small" id="export-detalle-pdf">📄 PDF</button>
+          <button class="btn btn-ghost btn-small" id="closeModal">✖</button>
         </div>
       </div>
+
+      <!-- contenido scrollable -->
+      <div class="modal-body">
+        <table class="table" id="tabla-detalle">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Partida</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Peso (Kg)</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
     </div>
   </div>
+</div>
+
 
 <script>
 /* ---------- Config ---------- */
