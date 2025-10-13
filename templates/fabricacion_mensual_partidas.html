@@ -392,23 +392,39 @@ function fetchResumen(){
 
 /* ---------- KPIs y resumen rapido ---------- */
 function renderKPIs(resumen){
-  // Totales
-  const totalKg = resumen.reduce((s,r)=>s + (Number(r.PesoKg)||0),0);
-  const totalPzas = resumen.reduce((s,r)=>s + (Number(r.Piezas)||0),0);
+  // 🔹 Solo áreas productivas (igual que tu SQL)
+  const areasProductivas = ['ENSAMBLE','CIMSA/ ENSAMBLE','HABILITADO','PERFILADO'];
+  const filtrado = resumen.filter(r => areasProductivas.includes(r.Area));
 
-  // días distintos válidos
-  const dias = [...new Set(resumen.map(r=>r.DiaTurno).filter(d=>d && d!=='1899-12-31'))].sort();
+  // 🔹 Evitar duplicados por Pedido + Partida
+  const vistos = {};
+  const resumenUnico = [];
+  filtrado.forEach(r => {
+    const key = `${r.Pedido || ''}-${r.Partida || ''}`;
+    if(!vistos[key]){
+      resumenUnico.push(r);
+      vistos[key] = true;
+    }
+  });
+
+  // 🔹 Totales
+  const totalKg = resumenUnico.reduce((s,r)=>s + (Number(r.PesoKg)||0),0);
+  const totalPzas = resumenUnico.reduce((s,r)=>s + (Number(r.Piezas)||0),0);
+
+  // 🔹 Días válidos
+  const dias = [...new Set(resumenUnico.map(r=>r.DiaTurno).filter(d=>d && d!=='1899-12-31'))].sort();
   const diasConActividad = dias.length || 1;
   const promedioDia = totalKg / diasConActividad;
 
+  // 🔹 Render en HTML
   document.getElementById('kpiTotalKg').innerText = `${fnum(totalKg)} Kg`;
   document.getElementById('kpiTotalPzas').innerText = `${fnum(totalPzas)}`;
   document.getElementById('kpiPromedio').innerText = `${fnum(promedioDia)} Kg/día`;
   document.getElementById('kpiRange').innerText = `${dias.length?dias.join(', '):'Sin días'}`;
 
-  // Mejor y peor día
+  // 🔹 Mejor y peor día
   const sumaPorDia = {};
-  resumen.forEach(r=>{
+  resumenUnico.forEach(r=>{
     const d = (r.DiaTurno && r.DiaTurno!=='1899-12-31') ? r.DiaTurno : (r.FechaHora ? (new Date(r.FechaHora)).toISOString().slice(0,10) : null);
     if(!d) return;
     sumaPorDia[d] = (sumaPorDia[d] || 0) + (Number(r.PesoKg)||0);
@@ -423,13 +439,12 @@ function renderKPIs(resumen){
     document.getElementById('worstDay').innerText = '—';
   }
 
-  // Horas muertas: total por hora ascendente -> top 3 con menos producción
+  // 🔹 Horas muertas (top 3)
   const horas = Array.from({length:24},(_,i)=>0);
-  resumen.forEach(r=>{
+  resumenUnico.forEach(r=>{
     const h = getHourFromRecord(r);
     if(h !== null && !isNaN(h) && h>=0 && h<24) horas[h] += (Number(r.PesoKg)||0);
   });
-  // encontrar 3 horas con menor producción (ignoramos horas con 0 porque pueden ser fuera de jornada - pero se mantienen)
   const hrsArr = horas.map((v,i)=>({h:i,v}));
   hrsArr.sort((a,b)=>a.v-b.v);
   const topDead = hrsArr.slice(0,3).map(x=>`${x.h}:00 (${fnum(x.v)} Kg)`).join(', ');
@@ -440,11 +455,28 @@ function renderKPIs(resumen){
 function renderTabla(resumen){
   const tbody=document.querySelector('#tabla-resumen tbody');
   tbody.innerHTML='';
-  if(!resumen.length){
+
+  // 🔹 Solo áreas productivas
+  const areasProductivas = ['ENSAMBLE','CIMSA/ ENSAMBLE','HABILITADO','PERFILADO'];
+  const filtrado = resumen.filter(r => areasProductivas.includes(r.Area));
+
+  // 🔹 Evitar duplicados por Pedido + Partida
+  const vistos = {};
+  const resumenUnico = [];
+  filtrado.forEach(r=>{
+    const key = `${r.Pedido || ''}-${r.Partida || ''}`;
+    if(!vistos[key]){
+      resumenUnico.push(r);
+      vistos[key] = true;
+    }
+  });
+
+  if(!resumenUnico.length){
     tbody.innerHTML='<tr><td colspan=7>No hay datos</td></tr>';
     return;
   }
-  resumen.forEach(r=>{
+
+  resumenUnico.forEach(r=>{
     const fecha = r.DiaTurno && r.DiaTurno!=='1899-12-31' ? r.DiaTurno : (r.FechaHora? r.FechaHora.slice(0,10) : '');
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -459,6 +491,7 @@ function renderTabla(resumen){
     tbody.appendChild(tr);
   });
 }
+
 
 /* ---------- VER DETALLE (modal) ---------- */
 function verDetalle(e, area){
@@ -588,32 +621,47 @@ function renderCharts(resumen){
 
 /* ---------- Export helpers ---------- */
 function exportResumenExcel(){
-  fetchAndThenSummary((resumen)=>{
-    if(!resumen.length){ alert('No hay datos'); return; }
-    const wsData = [['Día','Área','Turno','Bloque','Kilos','Piezas']];
-    resumen.forEach(r=> wsData.push([r.DiaTurno||'', r.Area||'', r.Turno||'', r.Bloque||'', Number(r.PesoKg)||0, Number(r.Piezas)||0]));
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
-    XLSX.writeFile(wb, `resumen_produccion_${Date.now()}.xlsx`);
-  });
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
+  fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`, { credentials:'include' })
+    .then(r => r.json())
+    .then(data => {
+      const resumen = data.resumen || [];
+      if(!resumen.length){ alert('No hay datos'); return; }
+
+      const wsData = [['Día','Área','Turno','Bloque','Kilos','Piezas']];
+      resumen.forEach(r=> wsData.push([r.DiaTurno||'', r.Area||'', r.Turno||'', r.Bloque||'', Number(r.PesoKg)||0, Number(r.Piezas)||0]));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+      XLSX.writeFile(wb, `resumen_produccion_${Date.now()}.xlsx`);
+    })
+    .catch(e=>{ console.error(e); alert('Error de exportación'); });
 }
 
 function exportResumenPDF(){
-  fetchAndThenSummary((resumen)=>{
-    if(!resumen.length){ alert('No hay datos'); return; }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l','mm','a4');
-    doc.setFontSize(14);
-    doc.text('Resumen de Producción', 14, 16);
-    doc.autoTable({
-      startY:22,
-      head: [['Día','Área','Turno','Bloque','Kilos','Piezas']],
-      body: resumen.map(r=>[ r.DiaTurno||'', r.Area||'', r.Turno||'', r.Bloque||'', fnum(r.PesoKg), fnum(r.Piezas) ]),
-      styles:{fontSize:9}
-    });
-    doc.save(`resumen_produccion_${Date.now()}.pdf`);
-  });
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
+  fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`, { credentials:'include' })
+    .then(r => r.json())
+    .then(data => {
+      const resumen = data.resumen || [];
+      if(!resumen.length){ alert('No hay datos'); return; }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('l','mm','a4');
+      doc.setFontSize(14);
+      doc.text('Resumen de Producción', 14, 16);
+      doc.autoTable({
+        startY:22,
+        head: [['Día','Área','Turno','Bloque','Kilos','Piezas']],
+        body: resumen.map(r=>[ r.DiaTurno||'', r.Area||'', r.Turno||'', r.Bloque||'', fnum(r.PesoKg), fnum(r.Piezas) ]),
+        styles:{fontSize:9}
+      });
+      doc.save(`resumen_produccion_${Date.now()}.pdf`);
+    })
+    .catch(e=>{ console.error(e); alert('Error de exportación'); });
 }
 
 
@@ -630,10 +678,11 @@ function fetchAndThenSummary(cb){
 
 /* ---------- Export detalle (modal) ---------- */
 function exportDetalleExcel(){
-  const rows = Array.from(document.querySelectorAll('#tabla-detalle tbody tr')).map(tr=>{
-    return Array.from(tr.children).slice(0,6).map(td=>td.innerText);
-  });
+  const rows = Array.from(document.querySelectorAll('#tabla-detalle tbody tr')).map(tr=>
+    Array.from(tr.children).slice(0,6).map(td=>td.innerText)
+  );
   if(!rows.length){ alert('Sin detalle'); return; }
+
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([['Pedido','Partida','Descripción','Cantidad','Peso','Fecha'], ...rows]);
   XLSX.utils.book_append_sheet(wb, ws, 'Detalle');
@@ -641,13 +690,21 @@ function exportDetalleExcel(){
 }
 
 function exportDetallePDF(){
+  const rows = Array.from(document.querySelectorAll('#tabla-detalle tbody tr')).map(tr=>
+    Array.from(tr.children).slice(0,6).map(td=>td.innerText)
+  );
+  if(!rows.length){ alert('Sin detalle'); return; }
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p','mm','a4');
   doc.setFontSize(12);
   doc.text(document.getElementById('modalTitle').innerText || 'Detalle', 14, 16);
-  const rows = Array.from(document.querySelectorAll('#tabla-detalle tbody tr')).map(tr=>Array.from(tr.children).slice(0,6).map(td=>td.innerText));
-  if(!rows.length){ alert('Sin detalle'); return; }
-  doc.autoTable({ startY:22, head:[['Pedido','Partida','Descripción','Cantidad','Peso','Fecha']], body: rows, styles:{fontSize:9} });
+  doc.autoTable({
+    startY:22,
+    head:[['Pedido','Partida','Descripción','Cantidad','Peso','Fecha']],
+    body: rows,
+    styles:{fontSize:9}
+  });
   doc.save(`detalle_${Date.now()}.pdf`);
 }
 
@@ -659,7 +716,9 @@ document.getElementById('toggleTable').onclick = ()=>{
   c.style.display = c.style.display === 'none' ? 'block' : 'none';
 };
 document.getElementById('closeModal').onclick = ()=> document.getElementById('modalOverlay').style.display='none';
-document.getElementById('modalOverlay').onclick = (e)=> { if(e.target.id==='modalOverlay') document.getElementById('modalOverlay').style.display='none'; };
+document.getElementById('modalOverlay').onclick = (e)=> { 
+  if(e.target.id==='modalOverlay') document.getElementById('modalOverlay').style.display='none'; 
+};
 document.getElementById('export-resumen-excel').onclick = exportResumenExcel;
 document.getElementById('export-resumen-pdf').onclick = exportResumenPDF;
 document.getElementById('export-detalle-excel').onclick = exportDetalleExcel;
