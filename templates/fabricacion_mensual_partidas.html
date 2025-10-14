@@ -85,7 +85,6 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
   <label>Hasta <input type="date" id="f-hasta" class="input"></label>
   <button class="btn btn-accent" id="btn-actualizar">Actualizar</button>
   <button class="btn btn-accent2" id="btn-comparativa">Comparar periodos</button>
-
   <div style="margin-left:auto;display:flex;gap:8px">
     <button class="btn btn-accent" id="export-resumen-excel">Exportar Resumen Excel</button>
     <button class="btn btn-primary" id="export-resumen-pdf">Exportar Resumen PDF</button>
@@ -205,50 +204,58 @@ document.getElementById('f-hasta').value="{{ hasta }}";
 const formatoMX=new Intl.NumberFormat('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
 function fnum(x){return formatoMX.format(Number(x||0));}
 
-// --- Fetch y render (AJUSTADA) ---
+// --- Fetch y render (AJUSTADA para cargar totales de turno) ---
 function fetchResumen(){
-  const desde=document.getElementById('f-desde').value;
-  const hasta=document.getElementById('f-hasta').value;
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
 
-  // 1. Carga Resumen y Tabla
-  fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
-  .then(r=>r.json())
-  .then(data=>{
-    renderResumen(data.resumen||[]);
+  // 1. Carga Resumen y Tabla
+  fetch(`${apiResumen}?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+  .then(r=>r.json())
+  .then(data=>{
+    renderResumen(data.resumen||[]);
+    
+    // 2. Carga KPIS (Total Kg, Total Piezas) - Usa el endpoint TOTALES_PRODUCCION
+    // Utilizamos Promise.all para cargar el Total Contable y los Totales de Turno en paralelo.
     
-    // 2. Carga KPIS (Total Kg, Total Piezas) - Usa el endpoint TOTALES_PRODUCCION
-    fetch(`${apiTotales}?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
-    .then(r=>r.json())
-    .then(kpisData=>{
-      // El backend retorna el objeto simple {total_kg: X, total_piezas: Y}
-      renderKpis(kpisData); 
+    Promise.all([
+        fetch(`${apiTotales}?desde=${desde}&hasta=${hasta}`,{credentials:'include'}).then(r=>r.json()),
+        fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`,{credentials:'include'}).then(r=>r.json())
+    ])
+    .then(([kpisData, tendenciaData]) => {
+        // kpisData: {total_kg: X, total_piezas: Y} (El total contable)
+        // tendenciaData: {..., total_dia_kg: D, total_noche_kg: N} (Los subtotales por turno)
+        renderKpis(kpisData, tendenciaData); 
     });
 
-    // 3. Carga Gráficas con nuevas funciones
-    renderCharts(desde, hasta); 
-    
-  }).catch(e=>alert("Error al cargar resumen/kpis: "+e));
+
+    // 3. Carga Gráficas con nuevas funciones
+    // NOTA: Aquí ya se volvió a cargar '/api/tendencia_turnos' dentro de renderCharts.
+    // Si quieres optimizar, podrías mover el render de charts de tendencia/torta aquí.
+    renderCharts(desde, hasta); 
+    
+  }).catch(e=>alert("Error al cargar resumen/kpis: "+e));
 }
 
-// --- Render KPIS (AJUSTADA) ---
+// --- Render KPIS (ORIGINAL) ---
 function renderKpis(kpis){
-  document.getElementById('kpi-kg').textContent = fnum(kpis.total_kg || 0);
-  document.getElementById('kpi-pzas').textContent = fnum(kpis.total_piezas || 0);
+  document.getElementById('kpi-kg').textContent = fnum(kpis.total_kg || 0);
+  document.getElementById('kpi-pzas').textContent = fnum(kpis.total_piezas || 0);
 
-  const resumen = window._lastResumen || [];
-  let kgDia = 0, kgNoche = 0;
+  const resumen = window._lastResumen || [];
+  let kgDia = 0, kgNoche = 0;
 
-  // Solo contar áreas productivas
-  const areasProductivas = ['ENSAMBLE', 'CIMSA/ ENSAMBLE', 'HABILITADO', 'PERFILADO'];
+  // Solo contar áreas productivas
+  const areasProductivas = ['ENSAMBLE', 'CIMSA/ ENSAMBLE', 'HABILITADO', 'PERFILADO'];
 
-  resumen.forEach(r=>{
-    if (!areasProductivas.includes(r.Area)) return; // ❌ salta acabado
-    if (r.Turno === 'DIA') kgDia += r.PesoKg;
-    else if (r.Turno === 'NOCHE') kgNoche += r.PesoKg;
-  });
+  resumen.forEach(r=>{
+    if (!areasProductivas.includes(r.Area)) return; // ❌ salta acabado
+    if (r.Turno === 'DIA') kgDia += r.PesoKg;
+    else if (r.Turno === 'NOCHE') kgNoche += r.PesoKg;
+  });
 
-  document.getElementById('kpi-dia').textContent = fnum(kgDia);
-  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
+  document.getElementById('kpi-dia').textContent = fnum(kgDia);
+  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
 }
 
 // --- Filtrar Tabla (AJUSTADA: Usa mayúsculas y placeholder para 'Tipos') ---
