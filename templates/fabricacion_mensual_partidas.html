@@ -232,22 +232,23 @@ function fetchResumen(){
 
 // --- Render KPIS (AJUSTADA) ---
 function renderKpis(kpis){
-  // Estos KPIs vienen de /fabricacion_partidas/api/totales_produccion y solo suman áreas productivas
-  document.getElementById('kpi-kg').textContent=fnum(kpis.total_kg||0);
-  document.getElementById('kpi-pzas').textContent=fnum(kpis.total_piezas||0);
+  document.getElementById('kpi-kg').textContent = fnum(kpis.total_kg || 0);
+  document.getElementById('kpi-pzas').textContent = fnum(kpis.total_piezas || 0);
 
-  // Los KPIs por turno (Día/Noche) se calculan de la data de resumen (tabla)
-  const resumen=window._lastResumen||[];
-  let kgDia=0,kgNoche=0;
-  // Tu back retorna 'DIA' y 'NOCHE' en mayúsculas
-  resumen.forEach(r=>{if(r.Turno==='DIA')kgDia+=r.PesoKg;else if(r.Turno==='NOCHE')kgNoche+=r.PesoKg;}); 
-  document.getElementById('kpi-dia').textContent=fnum(kgDia);
-  document.getElementById('kpi-noche').textContent=fnum(kgNoche);
-}
+  const resumen = window._lastResumen || [];
+  let kgDia = 0, kgNoche = 0;
 
-function renderResumen(rows){
-  window._lastResumen = rows;
-  filtrarTabla(document.getElementById('filtro-turno').value);
+  // Solo contar áreas productivas
+  const areasProductivas = ['ENSAMBLE', 'CIMSA/ ENSAMBLE', 'HABILITADO', 'PERFILADO'];
+
+  resumen.forEach(r=>{
+    if (!areasProductivas.includes(r.Area)) return; // ❌ salta acabado
+    if (r.Turno === 'DIA') kgDia += r.PesoKg;
+    else if (r.Turno === 'NOCHE') kgNoche += r.PesoKg;
+  });
+
+  document.getElementById('kpi-dia').textContent = fnum(kgDia);
+  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
 }
 
 // --- Filtrar Tabla (AJUSTADA: Usa mayúsculas y placeholder para 'Tipos') ---
@@ -373,52 +374,58 @@ function renderCharts(desde, hasta){
   });
 }
 
-// --- Modal detalle (AJUSTADA: Usa apiDetalle que ya tiene el prefijo) ---
-function verDetalle(area, dia, bloque){
-  const tbody=document.querySelector('#tabla-detalle tbody');
-  tbody.innerHTML='<tr><td colspan=9>Cargando...</td></tr>';
-  document.getElementById('modalOverlay').style.display='flex';
+// --- Modal detalle (CORREGIDA: Ahora filtra por Bloque en el frontend) ---
+function verDetalle(area, dia, turno, bloque){ // 🚨 Nuevo parámetro: 'bloque'
+    const tbody = document.querySelector('#tabla-detalle tbody');
+    tbody.innerHTML = '<tr><td colspan=9>Cargando...</td></tr>';
+    document.getElementById('modalOverlay').style.display = 'flex';
 
-  const decArea = decodeURIComponent(area);
-  const decDia = decodeURIComponent(dia);
-  const decBloque = decodeURIComponent(bloque);
+    // Usamos los parámetros para el título y el filtro
+    const decArea = decodeURIComponent(area);
+    const decDia = decodeURIComponent(dia);
+    const decBloque = decodeURIComponent(bloque); // Descodificamos el bloque
 
-  document.getElementById('modalTitle').textContent=`Detalle ${decArea} - ${decDia} - Bloque ${decBloque}`;
-  
-  // Usamos los filtros globales de fecha y área que el backend espera
-  const desde = document.getElementById('f-desde').value;
-  const hasta = document.getElementById('f-hasta').value;
-
-  // apiDetalle ya contiene /fabricacion_partidas/api/detalle
-  fetch(`${apiDetalle}?desde=${desde}&hasta=${hasta}&area=${area}`,{credentials:'include'})
-  .then(r=>r.json())
-  .then(data=>{
-    tbody.innerHTML='';
-    const rows=Array.isArray(data.detalle)?data.detalle:[];
+    document.getElementById('modalTitle').textContent = `Detalle Partidas: ${decArea} / ${decDia} / Bloque ${decBloque}`;
     
-    // FILTRAMOS EN EL FRONT: Solo mostramos las filas que coinciden con DiaTurno y Bloque
-    const detalleFiltrado = rows.filter(r => 
-      r.DiaTurno === decDia && 
-      r.Bloque === decBloque
-    );
+    const desde = document.getElementById('f-desde').value;
+    const hasta = document.getElementById('f-hasta').value;
 
-    if(detalleFiltrado.length===0){tbody.innerHTML='<tr><td colspan=9>No hay datos</td></tr>';return;}
-    
-    detalleFiltrado.forEach(r=>{
-      const tr=document.createElement('tr');
-      // Las columnas se ajustan al nuevo backend:
-      tr.innerHTML=`<td>${r.Pedido}</td>
-                    <td>${r.Partida}</td>
-                    <td>${r.Area}</td> 
-                    <td>${r.Descripcion}</td>
-                    <td>${r.Piezas}</td>
-                    <td>${r.Turno}</td> 
-                    <td>${fnum(r.PesoKg)}</td>
-                    <td>${r.DiaTurno}</td>
-                    <td>${r.FechaHora}</td>`; 
-      tbody.appendChild(tr);
+    // El API solo necesita la fecha y el área
+    fetch(`${apiDetalle}?desde=${desde}&hasta=${hasta}&area=${area}`, {credentials:'include'})
+    .then(r=>r.json())
+    .then(data=>{
+        tbody.innerHTML = '';
+        const rows = Array.isArray(data.detalle) ? data.detalle : [];
+        
+        // 🚨 PASO CLAVE: FILTRAR EN EL FRONTEND POR DiaTurno y Bloque
+        const detalleFiltrado = rows.filter(r => 
+            r.DiaTurno === decDia && 
+            r.Bloque === decBloque
+        );
+
+        if(detalleFiltrado.length === 0){
+            tbody.innerHTML = '<tr><td colspan=9>No hay datos de partidas para este Bloque.</td></tr>';
+            return;
+        }
+        
+        detalleFiltrado.forEach(d=>{ // Usamos el detalle filtrado
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${d.Pedido}</td>
+                <td>${d.Partida}</td>
+                <td>${d.Area}</td>
+                <td>${d.Descripcion}</td>
+                <td>${fnum(d.Piezas)}</td>
+                <td>${d.Turno}</td>
+                <td>${fnum(d.PesoKg)}</td>
+                <td>${d.DiaTurno}</td>
+                <td>${d.FechaHora}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }).catch(e=>{
+        tbody.innerHTML = `<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;
     });
-  }).catch(e=>{tbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
 }
 
 // --- Export (SIN CAMBIOS) ---
@@ -598,6 +605,35 @@ document.getElementById('btn-refresh-tabla').addEventListener('click', ()=>{
   document.getElementById('btn-semana').classList.remove('btn-activo');
   filtrarTabla();
 });
+
+// Dentro de tu código JS, busca esta función:
+
+function renderResumen(resumen){
+  window._lastResumen = resumen; // Guardamos globalmente
+  const tbody = document.querySelector('#tabla-resumen tbody');
+  tbody.innerHTML = '';
+
+  if (!resumen || resumen.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8">No hay datos en este rango de fechas</td></tr>';
+    return;
+  }
+
+  resumen.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.DiaTurno || ''}</td>
+      <td>${r.Area || ''}</td>
+      <td>${r.Turno || ''}</td>
+      <td>${r.Bloque || ''}</td>
+      <td>${fnum(r.PesoKg)}</td>
+      <td>${fnum(r.Piezas)}</td>
+      <td>${r.Area && (r.Area.includes('PINTURA') || r.Area.includes('GALVANIZADO')) ? 'ACABADO' : 'PRODUCTIVO'}</td>
+      <td><button class="btn btn-accent small" onclick="verDetalle('${r.Area}','${r.DiaTurno}','${r.Turno}', '${r.Bloque}')">Ver detalle</button></td>
+        `;
+    tbody.appendChild(tr);
+  });
+}
+
 
 fetchResumen();
 </script>

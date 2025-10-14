@@ -69,7 +69,7 @@ def get_turno_case(col_fecha: str) -> str:
     """ Retorna el CASE de SQL para calcular el 'Turno' ('DIA' o 'NOCHE'). """
     return f"""
     CASE 
-        WHEN Area IN ('ENSAMBLE','CIMSA/ ENSAMBLE','PINTURA','CIMSA/ PINTURA','GALVANIZADO') 
+        WHEN Area IN ('ENSAMBLE','CIMSA/ ENSAMBLE','PINTURA','CIMSA/ PINTURA') 
              THEN CASE WHEN DATEPART(HOUR, {col_fecha}) BETWEEN 7 AND 18 THEN 'DIA' ELSE 'NOCHE' END
         ELSE CASE WHEN DATEPART(HOUR, {col_fecha}) BETWEEN 7 AND 18 THEN 'DIA' ELSE 'NOCHE' END
     END
@@ -79,7 +79,7 @@ def get_bloque_2h(col_fecha: str) -> str:
     """ Retorna el CASE de SQL para calcular el 'Bloque' de 2 horas. """
     return f"""
     CASE 
-        WHEN Area IN ('ENSAMBLE','CIMSA/ ENSAMBLE','PINTURA','CIMSA/ PINTURA','GALVANIZADO') THEN
+        WHEN Area IN ('ENSAMBLE','CIMSA/ ENSAMBLE','PINTURA','CIMSA/ PINTURA') THEN
             RIGHT('0' + CAST(((DATEPART(HOUR, {col_fecha}) - 7 + 24) % 24 / 2 * 2 + 7) % 24 AS VARCHAR(2)), 2) 
             + ':00 - ' + 
             RIGHT('0' + CAST(((DATEPART(HOUR, {col_fecha}) - 7 + 24) % 24 / 2 * 2 + 9) % 24 AS VARCHAR(2)), 2) 
@@ -97,6 +97,8 @@ def _get_resumen_data(desde: str, hasta: str) -> Dict[str, Any]:
     """ Lógica principal de consulta para el resumen agrupado por día/turno/bloque. """
     fecha_case = fecha_col_case()
 
+    prod_areas_sql = "','".join(AREAS_PRODUCTIVAS + AREAS_ACABADO)
+
     query = f"""
     WITH cte AS (
         SELECT
@@ -107,7 +109,7 @@ def _get_resumen_data(desde: str, hasta: str) -> Dict[str, Any]:
             {get_turno_case(fecha_case)} AS Turno,
             {get_bloque_2h(fecha_case)} AS Bloque
         FROM Produccion
-        WHERE AREA IN ('ENSAMBLE','CIMSA/ ENSAMBLE','HABILITADO','PERFILADO','PINTURA','CIMSA/ PINTURA','GALVANIZADO')
+        WHERE AREA IN ('{prod_areas_sql}')
           AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
     )
     SELECT DiaTurno, Turno, Bloque, Area,
@@ -122,19 +124,19 @@ def _get_resumen_data(desde: str, hasta: str) -> Dict[str, Any]:
 
     total_kg, total_pzas = 0.0, 0
     resumen = []
+
     for r in rows:
         peso = float(r.get("PesoKg") or 0)
         pzas = int(r.get("Piezas") or 0)
         area = r.get("Area")
-        
-        # Solo suma la producción de las áreas productivas (no acabados)
+
+        # Solo suma las áreas productivas, no acabados
         if area in AREAS_PRODUCTIVAS:
             total_kg += peso
             total_pzas += pzas
 
         dia = r.get("DiaTurno")
         if hasattr(dia, "strftime"):
-            # Convierte el objeto date/datetime de la BD a string
             dia = dia.strftime("%Y-%m-%d")
 
         resumen.append({
@@ -147,6 +149,7 @@ def _get_resumen_data(desde: str, hasta: str) -> Dict[str, Any]:
         })
 
     return {"kpis": {"total_kg": total_kg, "total_piezas": total_pzas}, "resumen": resumen}
+
 
 # ---------------- PAGE ----------------
 @router.get("/", response_class=HTMLResponse)
@@ -184,7 +187,7 @@ def api_resumen(desde: str = Query(None), hasta: str = Query(None), access_token
 # ---------------- API: TENDENCIA POR TURNOS ----------------
 @router.get("/api/tendencia_turnos")
 def api_tendencia_turnos(desde: str = Query(None), hasta: str = Query(None), access_token: str = Cookie(None)):
-    """ Retorna la tendencia de producción agrupada por DíaTurno y Turno. """
+    """ Retorna la tendencia de producción agrupada por DíaTurno y Turno (sin duplicar acabados). """
     payload = validar_token(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
@@ -195,63 +198,73 @@ def api_tendencia_turnos(desde: str = Query(None), hasta: str = Query(None), acc
     prod_areas_sql = "','".join(AREAS_PRODUCTIVAS)
     acabado_areas_sql = "','".join(AREAS_ACABADO)
 
+    # ✅ SOLO filtramos áreas productivas para evitar duplicidad
     query = f"""
-    WITH cte AS (
+    WITH cte_prod AS (
         SELECT
-            Area,
-            KgTotal,
-            Cantidad,
+            KgTotal, Cantidad,
             {get_diaturno_case(fecha_case)} AS DiaTurno,
             {get_turno_case(fecha_case)} AS Turno
         FROM Produccion
-        WHERE AREA IN ('{prod_areas_sql}','{acabado_areas_sql}')
+        WHERE Area IN ('{prod_areas_sql}')
+          AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
+    ),
+    cte_acabado AS (
+        SELECT
+            KgTotal, Cantidad,
+            {get_diaturno_case(fecha_case)} AS DiaTurno,
+            {get_turno_case(fecha_case)} AS Turno
+        FROM Produccion
+        WHERE Area IN ('{acabado_areas_sql}')
           AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
     )
-    SELECT DiaTurno, Turno,
-            SUM(CASE WHEN Area IN ('{prod_areas_sql}') THEN KgTotal ELSE 0 END) AS Kg_Productivo,
-            SUM(CASE WHEN Area IN ('{prod_areas_sql}') THEN Cantidad ELSE 0 END) AS Pz_Productivo,
-            SUM(CASE WHEN Area IN ('{acabado_areas_sql}') THEN KgTotal ELSE 0 END) AS Kg_Acabado,
-            SUM(CASE WHEN Area IN ('{acabado_areas_sql}') THEN Cantidad ELSE 0 END) AS Pz_Acabado
-    FROM cte
-    GROUP BY DiaTurno, Turno
-    ORDER BY DiaTurno, Turno;
+    SELECT
+        p.DiaTurno,
+        p.Turno,
+        SUM(p.KgTotal) AS Kg_Productivo,
+        SUM(p.Cantidad) AS Pz_Productivo,
+        ISNULL(SUM(a.KgTotal),0) AS Kg_Acabado,
+        ISNULL(SUM(a.Cantidad),0) AS Pz_Acabado
+    FROM cte_prod p
+    LEFT JOIN cte_acabado a
+        ON a.DiaTurno = p.DiaTurno AND a.Turno = p.Turno
+    GROUP BY p.DiaTurno, p.Turno
+    ORDER BY p.DiaTurno, p.Turno;
     """
 
     rows = ejecutar_consulta_sql(query, fetchall=True) or []
 
     suma_por_dia = {}
     dias_orden = []
+
     for r in rows:
         dia = r.get("DiaTurno")
         if hasattr(dia, "strftime"):
             dia = dia.strftime("%Y-%m-%d")
-            
+
         turno = r.get("Turno")
-        
+
         if dia not in suma_por_dia:
             suma_por_dia[dia] = {
-                "DIA": {"kg":0,"pz":0}, 
-                "NOCHE": {"kg":0,"pz":0}, 
-                "DIA_AC": {"kg":0,"pz":0}, 
-                "NOCHE_AC": {"kg":0,"pz":0}
+                "DIA": {"kg": 0, "pz": 0},
+                "NOCHE": {"kg": 0, "pz": 0},
+                "DIA_AC": {"kg": 0, "pz": 0},
+                "NOCHE_AC": {"kg": 0, "pz": 0}
             }
             dias_orden.append(dia)
-            
+
         # Producción
         suma_por_dia[dia][turno]["kg"] = float(r.get("Kg_Productivo") or 0)
         suma_por_dia[dia][turno]["pz"] = int(r.get("Pz_Productivo") or 0)
-        
-        # Acabado (se mapea a DIA_AC / NOCHE_AC)
-        turno_acabado = turno.replace("DIA","DIA_AC").replace("NOCHE","NOCHE_AC")
-        suma_por_dia[dia][turno_acabado] = {
-            "kg": float(r.get("Kg_Acabado") or 0),
-            "pz": int(r.get("Pz_Acabado") or 0)
-        }
 
-    # Asegura que los días estén ordenados para el gráfico
-    dias_orden = sorted(list(set(dias_orden))) 
-    
-    # Extrae los valores para las series del gráfico
+        # Acabado (mapeo paralelo)
+        turno_acabado = turno.replace("DIA", "DIA_AC").replace("NOCHE", "NOCHE_AC")
+        suma_por_dia[dia][turno_acabado]["kg"] = float(r.get("Kg_Acabado") or 0)
+        suma_por_dia[dia][turno_acabado]["pz"] = int(r.get("Pz_Acabado") or 0)
+
+    dias_orden = sorted(list(set(dias_orden)))
+
+    # Series para el gráfico
     dia_kg = [suma_por_dia[d]["DIA"]["kg"] for d in dias_orden]
     noche_kg = [suma_por_dia[d]["NOCHE"]["kg"] for d in dias_orden]
     dia_pz = [suma_por_dia[d]["DIA"]["pz"] for d in dias_orden]
@@ -269,10 +282,11 @@ def api_tendencia_turnos(desde: str = Query(None), hasta: str = Query(None), acc
         "dia_ac_pz": dia_ac_pz, "noche_ac_pz": noche_ac_pz
     }
 
+
 # ---------------- API: TENDENCIA POR BLOQUES ----------------
 @router.get("/api/tendencia_bloques")
 def api_tendencia_bloques(desde: str = Query(None), hasta: str = Query(None), access_token: str = Cookie(None)):
-    """ Retorna la tendencia de producción agrupada por Bloque de 2h y Turno. """
+    """ Retorna la tendencia de producción agrupada por Bloque de 2h y Turno (sin duplicar áreas de acabado). """
     payload = validar_token(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
@@ -284,39 +298,49 @@ def api_tendencia_bloques(desde: str = Query(None), hasta: str = Query(None), ac
     acabado_areas_sql = "','".join(AREAS_ACABADO)
 
     query = f"""
-    WITH cte AS (
-        SELECT Area, KgTotal, Cantidad,
-                {get_bloque_2h(fecha_case)} AS Bloque,
-                {get_turno_case(fecha_case)} AS Turno
+    WITH cte_prod AS (
+        SELECT KgTotal, Cantidad,
+               {get_bloque_2h(fecha_case)} AS Bloque,
+               {get_turno_case(fecha_case)} AS Turno
         FROM Produccion
-        WHERE AREA IN ('{prod_areas_sql}','{acabado_areas_sql}')
+        WHERE Area IN ('{prod_areas_sql}')
+          AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
+    ),
+    cte_acabado AS (
+        SELECT KgTotal, Cantidad,
+               {get_bloque_2h(fecha_case)} AS Bloque,
+               {get_turno_case(fecha_case)} AS Turno
+        FROM Produccion
+        WHERE Area IN ('{acabado_areas_sql}')
           AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
     )
-    SELECT Bloque, Turno,
-            SUM(CASE WHEN Area IN ('{prod_areas_sql}') THEN KgTotal ELSE 0 END) AS Kg_Productivo,
-            SUM(CASE WHEN Area IN ('{prod_areas_sql}') THEN Cantidad ELSE 0 END) AS Pz_Productivo,
-            SUM(CASE WHEN Area IN ('{acabado_areas_sql}') THEN KgTotal ELSE 0 END) AS Kg_Acabado,
-            SUM(CASE WHEN Area IN ('{acabado_areas_sql}') THEN Cantidad ELSE 0 END) AS Pz_Acabado
-    FROM cte
-    GROUP BY Bloque, Turno
-    ORDER BY Bloque;
+    SELECT
+        p.Bloque,
+        p.Turno,
+        SUM(p.KgTotal) AS Kg_Productivo,
+        SUM(p.Cantidad) AS Pz_Productivo,
+        ISNULL(SUM(a.KgTotal),0) AS Kg_Acabado,
+        ISNULL(SUM(a.Cantidad),0) AS Pz_Acabado
+    FROM cte_prod p
+    LEFT JOIN cte_acabado a
+        ON a.Bloque = p.Bloque AND a.Turno = p.Turno
+    GROUP BY p.Bloque, p.Turno
+    ORDER BY p.Bloque;
     """
 
     rows = ejecutar_consulta_sql(query, fetchall=True) or []
 
-    # Se ordenan los bloques para asegurar la secuencia de horas en el gráfico
-    bloques_orden = sorted(list({r["Bloque"] for r in rows if r.get("Bloque")}))
-    
+    bloques_orden = sorted(list({r["Bloque"] for r in rows if r.get("Bloque")}))    
     prod_day, prod_night, ac_day, ac_night = [], [], [], []
 
     for b in bloques_orden:
-        # Sumamos los totales de todos los días para cada bloque y turno
-        prod_day.append(sum(float(r.get("Kg_Productivo") or 0) for r in rows if r.get("Bloque")==b and r.get("Turno")=="DIA"))
-        prod_night.append(sum(float(r.get("Kg_Productivo") or 0) for r in rows if r.get("Bloque")==b and r.get("Turno")=="NOCHE"))
-        ac_day.append(sum(float(r.get("Kg_Acabado") or 0) for r in rows if r.get("Bloque")==b and r.get("Turno")=="DIA"))
-        ac_night.append(sum(float(r.get("Kg_Acabado") or 0) for r in rows if r.get("Bloque")==b and r.get("Turno")=="NOCHE"))
+        prod_day.append(sum(float(r.get("Kg_Productivo") or 0) for r in rows if r.get("Bloque") == b and r.get("Turno") == "DIA"))
+        prod_night.append(sum(float(r.get("Kg_Productivo") or 0) for r in rows if r.get("Bloque") == b and r.get("Turno") == "NOCHE"))
+        ac_day.append(sum(float(r.get("Kg_Acabado") or 0) for r in rows if r.get("Bloque") == b and r.get("Turno") == "DIA"))
+        ac_night.append(sum(float(r.get("Kg_Acabado") or 0) for r in rows if r.get("Bloque") == b and r.get("Turno") == "NOCHE"))
 
     return {"bloques": bloques_orden, "prod_day": prod_day, "prod_night": prod_night, "ac_day": ac_day, "ac_night": ac_night}
+
 
 # ---------------- API: ACABADOS ----------------
 @router.get("/api/acabados")
