@@ -322,16 +322,19 @@ function chartOptions(showLegend=true){
   };
 }
 
+
 function renderCharts(desde, hasta){
   function destroyChart(id){if(charts[id])charts[id].destroy();}
-  destroyChart('chart-area'); destroyChart('chart-bloques'); destroyChart('chart-tendencia-turno'); destroyChart('chart-torta-turno');
+  destroyChart('chart-area'); 
+  destroyChart('chart-bloques'); 
+  destroyChart('chart-tendencia-turno'); 
+  destroyChart('chart-torta-turno');
 
-  // --- Gráfica de Totales por Área (productivas + acabado) ---
+  // --- Gráfica de Totales por Área ---
   fetch(`/fabricacion_partidas/api/totales_por_area?desde=${desde}&hasta=${hasta}`, {credentials:'include'})
   .then(r=>r.json())
   .then(data => {
-    // Obtenemos todas las áreas y sus totales
-    const areas = Object.keys(data);          // ["CIMSA/ ENSAMBLE", "ENSAMBLE", ...]
+    const areas = Object.keys(data);
     const kilos = areas.map(a => data[a].Kg);
     const piezas = areas.map(a => data[a].Piezas);
 
@@ -339,64 +342,77 @@ function renderCharts(desde, hasta){
       type: 'bar',
       data: {
         labels: areas,
-        datasets: [{
-          label: 'Kilos (kg)',
-          data: kilos,
-          backgroundColor: ['#1a73e8','#34a853','#ff9800','#e8451a','#fbbc05','#9c27b0'] // puedes poner los colores que quieras
-        },
-        {
-          label: 'Piezas',
-          data: piezas,
-          backgroundColor: 'rgba(0,0,0,0.2)'
-        }]
+        datasets: [
+          { label: 'Kilos (kg)', data: kilos, backgroundColor: ['#1a73e8','#34a853','#ff9800','#e8451a','#fbbc05','#9c27b0'] },
+          { label: 'Piezas', data: piezas, backgroundColor: 'rgba(0,0,0,0.2)' }
+        ]
       },
-      options: chartOptions(true) // true para mostrar tooltip y leyenda
+      options: chartOptions(true)
     });
   });
 
-  // --- Gráfica de Línea por Bloque ---
-  fetch(`/fabricacion_partidas/api/tendencia_bloques?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
-  .then(r=>r.json())
+  // --- Gráfica de Línea por Bloque (Producción General) ---
+  fetch(`/fabricacion_partidas/api/tendencia_bloques?desde=${desde}&hasta=${hasta}`, {credentials:'include'})
+  .then(r => r.json())
   .then(data => {
-    charts['chart-bloques']=new Chart(document.getElementById('chart-bloques'),{
-      type:'line',
-      data:{
-        labels:data.bloques,
-        datasets:[
-          {label:'Prod. Día',data:data.prod_day,fill:true,backgroundColor:'rgba(26,115,232,0.15)',borderColor:'#1a73e8',tension:0.4,pointRadius:4},
-          {label:'Prod. Noche',data:data.prod_night,fill:true,backgroundColor:'rgba(255,152,0,0.15)',borderColor:'#ff9800',tension:0.4,pointRadius:4}
+    const prodGeneral = data.prod_day.map((d,i) => d + (data.prod_night[i]||0));
+
+    charts['chart-bloques'] = new Chart(document.getElementById('chart-bloques'), {
+      type: 'line',
+      data: {
+        labels: data.bloques,
+        datasets: [
+          {
+            label: 'Producción General (kg)',
+            data: prodGeneral,
+            fill: true,
+            backgroundColor: 'rgba(26,115,232,0.15)',
+            borderColor: '#1a73e8',
+            tension: 0.4,
+            pointRadius: 4
+          }
         ]
       },
-      options:chartOptions(true)
+      options: chartOptions(true)
     });
   });
 
-  // --- Gráfica de Tendencia por Día y Turno y Torta ---
-  fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
-  .then(r=>r.json())
+  // --- Gráfica de Tendencia por Día y Turno ---
+  fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`, {credentials:'include'})
+  .then(r => r.json())
   .then(data => {
-    charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno'),{
-      type:'line',
-      data:{
-        labels:data.dias,
-        datasets:[
-          {label:'Turno Día (kg)',data:data.dia_kg,borderColor:'#1a73e8',backgroundColor:'rgba(26,115,232,0.15)',fill:true,tension:0.4,pointRadius:4},
-          {label:'Turno Noche (kg)',data:data.noche_kg,borderColor:'#ff9800',backgroundColor:'rgba(255,152,0,0.15)',fill:true,tension:0.4,pointRadius:4}
+    const totalGeneral = data.dia_kg.map((d,i) => d + (data.noche_kg[i]||0));
+
+    charts['chart-tendencia-turno'] = new Chart(document.getElementById('chart-tendencia-turno'), {
+      type: 'line',
+      data: {
+        labels: data.dias,
+        datasets: [
+          { label:'Turno Día (kg)', data: data.dia_kg, borderColor:'#1a73e8', backgroundColor:'rgba(26,115,232,0.15)', fill:true, tension:0.4, pointRadius:4 },
+          { label:'Turno Noche (kg)', data: data.noche_kg, borderColor:'#ff9800', backgroundColor:'rgba(255,152,0,0.15)', fill:true, tension:0.4, pointRadius:4 },
+          { label:'Total General (kg)', data: totalGeneral, borderColor:'#34a853', backgroundColor:'rgba(52,168,83,0.15)', fill:true, tension:0.4, pointRadius:4 }
         ]
       },
-      options:chartOptions(true)
+      options: chartOptions(true)
     });
 
-    const totalDia = data.dia_kg.reduce((a,b)=>a+b,0);
-    const totalNoche = data.noche_kg.reduce((a,b)=>a+b,0);
-    charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno'),{
-      type:'doughnut',
-      data:{
-        labels:['Día','Noche'],
-        datasets:[{data:[totalDia, totalNoche],backgroundColor:['#1a73e8','#ff9800']}]
+    // --- Torta de Producción (Solo Día y Noche) ---
+    const sumDia = data.dia_kg.reduce((a,b)=>a+b,0);
+    const sumNoche = data.noche_kg.reduce((a,b)=>a+b,0);
+
+    charts['chart-torta-turno'] = new Chart(document.getElementById('chart-torta-turno'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Día','Noche'],
+        datasets:[{data:[sumDia, sumNoche], backgroundColor:['#1a73e8','#ff9800'] }]
       },
-      options:{responsive:true,plugins:{legend:{display:true,labels:{font:{size:16,weight:'700'}}}}}
+      options:{responsive:true, plugins:{legend:{display:true, labels:{font:{size:16,weight:'700'}}}}}
     });
+
+    // --- Actualizar KPIs generales ---
+    document.getElementById('kpi-dia').textContent = fnum(sumDia);
+    document.getElementById('kpi-noche').textContent = fnum(sumNoche);
+    document.getElementById('kpi-kg').textContent = fnum(sumDia+sumNoche);
   });
 }
 
