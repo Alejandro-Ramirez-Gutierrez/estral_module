@@ -346,9 +346,10 @@ def api_tendencia_turnos(desde: str = Query(None), hasta: str = Query(None), acc
 
 
 # ---------------- API: TENDENCIA POR BLOQUES (CORREGIDA) ----------------
+
 @router.get("/api/tendencia_bloques")
 def api_tendencia_bloques(desde: str = Query(None), hasta: str = Query(None), access_token: str = Cookie(None)):
-    """ Retorna la tendencia de produccion agrupada por Bloque de 2h y Turno (sin duplicar areas de acabado). """
+    """ Retorna la tendencia de producción agrupada por Bloque de 2h y Turno (sin duplicar áreas de acabado). """
     payload = validar_token(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
@@ -357,57 +358,43 @@ def api_tendencia_bloques(desde: str = Query(None), hasta: str = Query(None), ac
     fecha_case = fecha_col_case()
 
     prod_areas_sql = "','".join(AREAS_PRODUCTIVAS)
-    acabado_areas_sql = "','".join(AREAS_ACABADO) 
+    acabado_areas_sql = "','".join(AREAS_ACABADO)
 
-    # Logica para obtener Mes y Año
-    try:
-        desde_dt = datetime.strptime(desde, "%Y-%m-%d")
-        mes = desde_dt.month
-        anio = desde_dt.year
-    except ValueError:
-        today = datetime.today()
-        mes = today.month
-        anio = today.year
-
+    # 🔥 FIX: solo usamos BETWEEN, no YEAR/MONTH para evitar duplicados
     query = f"""
     WITH cte_prod AS (
-        SELECT KgTotal, Cantidad,
-                {get_bloque_2h(fecha_case)} AS Bloque,
-                {get_turno_case(fecha_case)} AS Turno
+        SELECT {get_bloque_2h(fecha_case)} AS Bloque,
+               {get_turno_case(fecha_case)} AS Turno,
+               SUM(KgTotal) AS KgTotal,
+               SUM(Cantidad) AS Cantidad
         FROM Produccion
         WHERE Area IN ('{prod_areas_sql}')
-          -- Filtro Contable: Mes y Año
-          AND YEAR(Fecha) = {anio} 
-          AND MONTH(Fecha) = {mes}
-          -- Filtro de Rango (CRITICO)
-          AND Fecha BETWEEN '{desde}' AND '{hasta}'
+          AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
+        GROUP BY {get_bloque_2h(fecha_case)}, {get_turno_case(fecha_case)}
     ),
     cte_acabado AS (
-        SELECT KgTotal, Cantidad,
-                {get_bloque_2h(fecha_case)} AS Bloque,
-                {get_turno_case(fecha_case)} AS Turno
+        SELECT {get_bloque_2h(fecha_case)} AS Bloque,
+               {get_turno_case(fecha_case)} AS Turno,
+               SUM(KgTotal) AS KgTotal,
+               SUM(Cantidad) AS Cantidad
         FROM Produccion
         WHERE Area IN ('{acabado_areas_sql}')
-          -- Filtro Contable: Mes y Año
-          AND YEAR(Fecha) = {anio} 
-          AND MONTH(Fecha) = {mes}
-          -- Filtro de Rango (CRITICO)
-          AND Fecha BETWEEN '{desde}' AND '{hasta}'
+          AND ({fecha_case}) BETWEEN '{desde}' AND '{hasta}'
+        GROUP BY {get_bloque_2h(fecha_case)}, {get_turno_case(fecha_case)}
     )
     SELECT
         p.Bloque,
         p.Turno,
-        SUM(p.KgTotal) AS Kg_Productivo,
-        SUM(p.Cantidad) AS Pz_Productivo,
-        ISNULL(SUM(a.KgTotal),0) AS Kg_Acabado,
-        ISNULL(SUM(a.Cantidad),0) AS Pz_Acabado
+        p.KgTotal AS Kg_Productivo,
+        p.Cantidad AS Pz_Productivo,
+        ISNULL(a.KgTotal,0) AS Kg_Acabado,
+        ISNULL(a.Cantidad,0) AS Pz_Acabado
     FROM cte_prod p
     LEFT JOIN cte_acabado a
         ON a.Bloque = p.Bloque AND a.Turno = p.Turno
-    GROUP BY p.Bloque, p.Turno
     ORDER BY p.Bloque;
     """
-    
+
     rows = ejecutar_consulta_sql(query, fetchall=True) or []
 
     bloques_orden = sorted(list({r["Bloque"] for r in rows if r.get("Bloque")}))
@@ -419,7 +406,14 @@ def api_tendencia_bloques(desde: str = Query(None), hasta: str = Query(None), ac
         ac_day.append(sum(float(r.get("Kg_Acabado") or 0) for r in rows if r.get("Bloque") == b and r.get("Turno") == "DIA"))
         ac_night.append(sum(float(r.get("Kg_Acabado") or 0) for r in rows if r.get("Bloque") == b and r.get("Turno") == "NOCHE"))
 
-    return {"bloques": bloques_orden, "prod_day": prod_day, "prod_night": prod_night, "ac_day": ac_day, "ac_night": ac_night}
+    return {
+        "bloques": bloques_orden,
+        "prod_day": prod_day,
+        "prod_night": prod_night,
+        "ac_day": ac_day,
+        "ac_night": ac_night
+    }
+
 
 # ---------------- API: ACABADOS ----------------
 @router.get("/api/acabados")
