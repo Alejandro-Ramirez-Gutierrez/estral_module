@@ -324,33 +324,40 @@ function chartOptions(showLegend=true){
 
 function renderCharts(desde, hasta){
   function destroyChart(id){if(charts[id])charts[id].destroy();}
-  destroyChart('chart-area');destroyChart('chart-bloques');destroyChart('chart-tendencia-turno');destroyChart('chart-torta-turno');
+  destroyChart('chart-area'); destroyChart('chart-bloques'); destroyChart('chart-tendencia-turno'); destroyChart('chart-torta-turno');
 
-  // --- Gráfica de Bloques y Áreas (Cargada de /fabricacion_partidas/api/tendencia_bloques) ---
-  // 🚨 RUTA CORREGIDA con prefijo
+  // --- Gráfica de Totales por Área (productivas + acabado) ---
+  fetch(`/fabricacion_partidas/api/totales_por_area?desde=${desde}&hasta=${hasta}`, {credentials:'include'})
+  .then(r=>r.json())
+  .then(data => {
+    // Obtenemos todas las áreas y sus totales
+    const areas = Object.keys(data);          // ["CIMSA/ ENSAMBLE", "ENSAMBLE", ...]
+    const kilos = areas.map(a => data[a].Kg);
+    const piezas = areas.map(a => data[a].Piezas);
+
+    charts['chart-area'] = new Chart(document.getElementById('chart-area'), {
+      type: 'bar',
+      data: {
+        labels: areas,
+        datasets: [{
+          label: 'Kilos (kg)',
+          data: kilos,
+          backgroundColor: ['#1a73e8','#34a853','#ff9800','#e8451a','#fbbc05','#9c27b0'] // puedes poner los colores que quieras
+        },
+        {
+          label: 'Piezas',
+          data: piezas,
+          backgroundColor: 'rgba(0,0,0,0.2)'
+        }]
+      },
+      options: chartOptions(true) // true para mostrar tooltip y leyenda
+    });
+  });
+
+  // --- Gráfica de Línea por Bloque ---
   fetch(`/fabricacion_partidas/api/tendencia_bloques?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
   .then(r=>r.json())
   .then(data => {
-    // 1. Gráfica de Barras Total por Turno (simula el "Por Área")
-    const prodDayTotal = data.prod_day.reduce((a,b)=>a+b, 0);
-    const prodNightTotal = data.prod_night.reduce((a,b)=>a+b, 0);
-    const acDayTotal = data.ac_day.reduce((a,b)=>a+b, 0);
-    const acNightTotal = data.ac_night.reduce((a,b)=>a+b, 0);
-    
-    charts['chart-area']=new Chart(document.getElementById('chart-area'),{
-      type:'bar',
-      data:{
-        labels:['Producción Día','Producción Noche', 'Acabado Día', 'Acabado Noche'],
-        datasets:[{
-          label:'Kilos (kg)',
-          data:[prodDayTotal, prodNightTotal, acDayTotal, acNightTotal],
-          backgroundColor:['#1a73e8', '#ff9800', '#34a853', '#e8451a']
-        }]
-      },
-      options:chartOptions(false)
-    });
-
-    // 2. Gráfica de Línea por Bloque
     charts['chart-bloques']=new Chart(document.getElementById('chart-bloques'),{
       type:'line',
       data:{
@@ -364,12 +371,10 @@ function renderCharts(desde, hasta){
     });
   });
 
-  // --- Gráfica de Tendencia por Día (Cargada de /fabricacion_partidas/api/tendencia_turnos) ---
-  // 🚨 RUTA CORREGIDA con prefijo
+  // --- Gráfica de Tendencia por Día y Turno y Torta ---
   fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`,{credentials:'include'})
   .then(r=>r.json())
   .then(data => {
-    // 3. Gráfica de Tendencia por Día y Turno
     charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno'),{
       type:'line',
       data:{
@@ -382,7 +387,6 @@ function renderCharts(desde, hasta){
       options:chartOptions(true)
     });
 
-    // 4. Gráfica de Torta/Doughnut por Turno
     const totalDia = data.dia_kg.reduce((a,b)=>a+b,0);
     const totalNoche = data.noche_kg.reduce((a,b)=>a+b,0);
     charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno'),{
@@ -395,6 +399,7 @@ function renderCharts(desde, hasta){
     });
   });
 }
+
 
 // --- Modal detalle (CORREGIDA: Ahora filtra por Bloque en el frontend) ---
 function verDetalle(area, dia, turno, bloque){ // 🚨 Nuevo parámetro: 'bloque'

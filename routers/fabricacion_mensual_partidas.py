@@ -560,3 +560,31 @@ def api_totales_produccion(desde: str = Query(None), hasta: str = Query(None), a
     data = _get_totales_simples_mes_actual(desde, hasta) 
     
     return data # Retorna solo {"total_kg": X, "total_piezas": Y}
+
+
+@router.get("/api/totales_por_area")
+def api_totales_por_area(desde: str = Query(None), hasta: str = Query(None), access_token: str = Cookie(None)):
+    """ Retorna los totales de Kg y piezas por cada área (productivas + acabado). """
+    payload = validar_token(access_token)
+    if not payload:
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    desde, hasta = _get_default_dates(desde, hasta)
+    
+    todas_areas = list(AREAS_PRODUCTIVAS) + list(AREAS_ACABADO)
+    areas_sql = "','".join(todas_areas)
+
+    query = f"""
+    SELECT Area, SUM(KgTotal) AS total_kg, SUM(Cantidad) AS total_piezas
+    FROM Produccion
+    WHERE Area IN ('{areas_sql}')
+      AND Fecha BETWEEN '{desde}' AND '{hasta}'
+    GROUP BY Area
+    ORDER BY Area;
+    """
+
+    rows = ejecutar_consulta_sql(query, fetchall=True) or []
+
+    resultado = {r["Area"]: {"Kg": float(r.get("total_kg") or 0), "Piezas": int(r.get("total_piezas") or 0)} for r in rows}
+    
+    return resultado
