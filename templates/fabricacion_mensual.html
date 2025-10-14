@@ -150,44 +150,60 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
 <!-- MODAL DETALLE -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" role="dialog" aria-modal="true">
+    
+    <!-- HEADER -->
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div><strong id="modalTitle">Detalle</strong></div>
       <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
     </div>
-<div class="modal-body" id="modalBody">
     
-    <div class="kpi-row" id="kpi-perfilado-row" style="margin-bottom: 20px;">
+    <div class="modal-body" id="modalBody">
+
+      <!-- KPIs -->
+      <div class="kpi-row" id="kpi-perfilado-row" style="margin-bottom: 20px;">
         <div class="kpi"><h3>Metros Lineales (m)</h3><p id="kpi-perf-metros">0</p></div>
         <div class="kpi"><h3>Peso (Ton)</h3><p id="kpi-perf-toneladas">0</p></div>
         <div class="kpi"><h3>Total Piezas</h3><p id="kpi-perf-piezas">0</p></div>
-    </div>
+      </div>
 
-    <div style="width:100%;height:350px;margin-bottom: 20px;">
+      <!-- GRAFICA PRINCIPAL -->
+      <div style="width:100%;height:350px;margin-bottom: 20px;">
         <canvas id="chart-perfilado-diario"></canvas>
-    </div>
+      </div>
 
-    <div style="display:flex;gap:12px;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:10px;">
+      <!-- BOTONES -->
+      <div style="display:flex;gap:12px;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:10px; align-items:center;">
         <button class="btn btn-primary" id="btn-perf-mensual" data-mode="mensual">Resumen Mensual</button>
-        <button class="btn" id="btn-perf-diario" data-mode="diario">Detalle Diario</button>
-    </div>
+        <button class="btn btn-secondary" id="btn-perf-diario" data-mode="diario">Detalle Diario</button>
+        <!-- NUEVO BOTÓN DETALLE MÁQUINAS -->
+        <button class="btn btn-success" id="btn-detalle-maquinas" style="margin-left:auto;">
+          Ver detalle máquinas
+        </button>
+      </div>
 
-    <div style="max-height: 40vh; overflow: auto;">
+      <!-- NUEVA GRAFICA POR MAQUINA -->
+      <div style="width:100%;height:350px;margin-bottom: 20px; display:none;" id="grafica-maquinas-container">
+        <canvas id="chart-perfilado-maquinas"></canvas>
+      </div>
+
+      <!-- TABLA DETALLE -->
+      <div style="max-height: 40vh; overflow: auto;">
         <table class="table" id="tabla-detalle">
-            <thead>
-                </thead>
-            <tbody>
-                </tbody>
+          <thead></thead>
+          <tbody></tbody>
         </table>
-    </div>
+      </div>
 
-    <div class="modal-actions">
+      <!-- ACCIONES -->
+      <div class="modal-actions">
         <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
         <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
-    </div>
+      </div>
 
-</div>
+    </div>
   </div>
 </div>
+
 
 <!-- MODAL COMPARATIVA -->
 <div class="modal-overlay" id="modalComparativa">
@@ -511,32 +527,44 @@ async function verPerfiladoMensual(area, desde, hasta){
     window._originalModalBodyContent = modalBody.innerHTML; 
     
     // Contenido del modal para Perfilado
-    modalBody.innerHTML = `
-        <div class="kpi-row" id="kpi-perfilado-row" style="margin-bottom: 20px;">
-            <div class="kpi"><h3>Metros Lineales (m)</h3><p id="kpi-perf-metros">0</p></div>
-            <div class="kpi"><h3>Peso (Ton)</h3><p id="kpi-perf-toneladas">0</p></div>
-            <div class="kpi"><h3>Total Piezas</h3><p id="kpi-perf-piezas">0</p></div>
-        </div>
+modalBody.innerHTML = `
+    <div class="kpi-row" id="kpi-perfilado-row" style="margin-bottom: 20px;">
+        <div class="kpi"><h3>Metros Lineales (m)</h3><p id="kpi-perf-metros">0</p></div>
+        <div class="kpi"><h3>Peso (Ton)</h3><p id="kpi-perf-toneladas">0</p></div>
+        <div class="kpi"><h3>Total Piezas</h3><p id="kpi-perf-piezas">0</p></div>
+    </div>
 
-        <div style="width:100%;height:350px;margin-bottom: 20px;"><canvas id="chart-perfilado-diario"></canvas></div>
+    <div style="width:100%;height:350px;margin-bottom: 20px;">
+        <canvas id="chart-perfilado-diario"></canvas>
+    </div>
 
-        <div style="display:flex;gap:12px;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:10px;">
-            <button class="btn btn-primary" id="btn-perf-mensual" data-mode="mensual">Resumen Mensual</button>
-            <button class="btn" id="btn-perf-diario" data-mode="diario">Detalle Diario</button>
-        </div>
+    <!-- BOTONES -->
+    <div style="display:flex;gap:12px;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:10px; align-items:center;">
+        <button class="btn btn-primary" id="btn-perf-mensual" data-mode="mensual">Resumen Mensual</button>
+        <button class="btn" id="btn-perf-diario" data-mode="diario">Detalle Diario</button>
+        <button class="btn btn-success" id="btn-detalle-maquinas" style="margin-left:auto;">
+            Ver detalle máquinas
+        </button>
+    </div>
 
-        <div style="max-height: 40vh; overflow: auto;">
-            <table class="table" id="tabla-detalle">
-                <thead><tr></tr></thead>
-                <tbody><tr><td colspan="6">Cargando datos...</td></tr></tbody>
-            </table>
-        </div>
+    <!-- GRAFICA POR MAQUINA OCULTA -->
+    <div style="width:100%;height:350px;margin-bottom: 20px; display:none;" id="grafica-maquinas-container">
+        <canvas id="chart-perfilado-maquinas"></canvas>
+    </div>
 
-        <div class="modal-actions">
-            <button class="btn btn-accent2" id="export-perfilado-pdf">Exportar PDF</button>
-            <button class="btn btn-primary" id="export-perfilado-excel">Exportar Excel</button>
-        </div>
-    `;
+    <div style="max-height: 40vh; overflow: auto;">
+        <table class="table" id="tabla-detalle">
+            <thead><tr></tr></thead>
+            <tbody><tr><td colspan="6">Cargando datos...</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="modal-actions">
+        <button class="btn btn-accent2" id="export-perfilado-pdf">Exportar PDF</button>
+        <button class="btn btn-primary" id="export-perfilado-excel">Exportar Excel</button>
+    </div>
+`;
+
 
     document.getElementById('modalOverlay').style.display = 'flex';
     document.getElementById('modalTitle').textContent = `PERFILADO: ${decodeURIComponent(desde)} a ${decodeURIComponent(hasta)}`;
@@ -587,6 +615,18 @@ async function verPerfiladoMensual(area, desde, hasta){
             btnMensual.classList.remove('btn-activo');
             cargarTablaPerfilado('diario');
         };
+
+        document.getElementById('btn-detalle-maquinas').onclick = () => {
+        const container = document.getElementById('grafica-maquinas-container');
+        container.style.display = container.style.display === 'none' ? 'block' : 'none';
+
+        // Renderizar tendencia diaria por máquina
+        if (window._perfiladoData && window._perfiladoData.diario) {
+         renderChartTendenciaMaquinas(window._perfiladoData.diario, 'chart-perfilado-maquinas');
+        }
+};
+
+
         
         // 7. Event listeners para Exportación
         document.getElementById('export-perfilado-excel').onclick = () => exportarTablaPerfilado('excel');
@@ -598,6 +638,72 @@ async function verPerfiladoMensual(area, desde, hasta){
         console.error("Error al cargar perfilado:", err);
     }
 }
+
+
+let chartPerfiladoMaquinas = null;
+
+function renderChartTendenciaMaquinas(data, canvasId) {
+    // 1. Agrupar datos por día y máquina
+    const agrupado = {}; // { '2025-10-14': { 'CHINA 1': 120, ... }, ... }
+    const diasSet = new Set();
+    const maquinasSet = new Set();
+
+    data.forEach(d => {
+        const dia = d.Fecha_Fabricacion || 'DESCONOCIDO';
+        const maquina = d.Estacion || 'DESCONOCIDA';
+        const metros = parseFloat(d.Metros_Lineales_Fabricados || 0);
+
+        diasSet.add(dia);
+        maquinasSet.add(maquina);
+
+        if (!agrupado[dia]) agrupado[dia] = {};
+        if (!agrupado[dia][maquina]) agrupado[dia][maquina] = 0;
+        agrupado[dia][maquina] += metros;
+    });
+
+    const dias = Array.from(diasSet).sort(); // labels X
+    const maquinas = Array.from(maquinasSet); // series
+
+    const datasets = maquinas.map((maquina, i) => {
+        const color = `hsl(${(i * 360 / maquinas.length)}, 70%, 50%)`; // colores distintos
+        return {
+            label: maquina,
+            data: dias.map(d => agrupado[d][maquina] || 0),
+            borderColor: color,
+            backgroundColor: color,
+            fill: false,
+            tension: 0.3
+        };
+    });
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+
+    if (chartPerfiladoMaquinas) chartPerfiladoMaquinas.destroy();
+
+    chartPerfiladoMaquinas = new Chart(ctx, {
+        type: 'line',
+        data: { labels: dias, datasets: datasets },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                title: { display: true, text: 'Tendencia de Metros Lineales por Máquina' },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            interaction: { mode: 'nearest', intersect: false },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Metros (m)' }
+                },
+                x: {
+                    title: { display: true, text: 'Fecha' }
+                }
+            }
+        }
+    });
+}
+
 
 
 

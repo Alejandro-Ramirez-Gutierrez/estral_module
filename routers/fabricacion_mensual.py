@@ -635,3 +635,62 @@ def api_export_json(
 
     # 4. Generar la exportación usando la función existente
     return generar_export(df, nombre, tipo)
+
+
+@router.get("/api/perfilado/maquinas")
+def api_perfilado_maquinas(desde: str = Query(...), hasta: str = Query(...), access_token: str = Cookie(None)):
+    payload = validar_token(access_token)
+    if not payload:
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    query = f"""
+    SELECT
+        es.D_Estacion AS Maquina,
+        CONVERT(date, mc.F_Movimiento) AS Fecha,
+        SUM(
+            mc.Cantidad *
+            CASE
+                WHEN C.Descripcion LIKE '%LAMINA%' AND C.Descripcion LIKE '%x%' THEN
+                    TRY_CAST(
+                        TRIM(REPLACE(REPLACE(
+                            SUBSTRING(
+                                C.Descripcion,
+                                CHARINDEX('x', C.Descripcion) + 1,
+                                CHARINDEX('mm', C.Descripcion) - CHARINDEX('x', C.Descripcion) - 1
+                            ), 'mm',''), '-', '')
+                        ) AS FLOAT) / 1000
+                ELSE
+                    TRY_CAST(
+                        TRIM(REPLACE(REPLACE(
+                            SUBSTRING(
+                                C.Descripcion,
+                                LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion)) + 2,
+                                LEN(C.Descripcion)
+                            ), 'mm',''), '-', '')
+                        ) AS FLOAT) / 1000
+            END
+        ) AS Metros_Fabricados
+    FROM Movimientos_Componentes mc
+    INNER JOIN Componentes_Partida C ON mc.K_Componente = C.K_Componente
+    INNER JOIN Estacion es ON mc.K_Estacion = es.K_Estacion
+    INNER JOIN Linea l ON es.K_Linea = l.K_Linea
+    INNER JOIN Areas a ON l.K_Area = a.K_Area
+    WHERE
+        a.D_Area = 'PERFILADO'
+        AND mc.K_Tipo_Movimiento = 2
+        AND mc.F_Movimiento >= '{desde}' AND mc.F_Movimiento < '{hasta}'
+    GROUP BY es.D_Estacion, CONVERT(date, mc.F_Movimiento)
+    ORDER BY Fecha ASC, Maquina;
+    """
+
+    rows = ejecutar_consulta_sql(query, fetchall=True) or []
+
+    data = []
+    for r in rows:
+        data.append({
+            "Maquina": r["Maquina"],
+            "Fecha": r["Fecha"].strftime("%Y-%m-%d") if hasattr(r["Fecha"], "strftime") else r["Fecha"],
+            "Metros_Fabricados": round(float(r["Metros_Fabricados"] or 0), 2)
+        })
+
+    return {"detalle_maquinas": data}
