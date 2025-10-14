@@ -147,10 +147,23 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
       <div class="close-outside" id="closeModal" title="Cerrar">✖</div>
     </div>
     <div class="modal-body" id="modalBody">
-      <table class="table" id="tabla-detalle">
-        <thead><tr><th>Pedido</th><th>Partida</th><th>Area</th><th>Descripción</th><th>Cantidad</th><th>Turno</th><th>Peso Total</th><th>Dia</th><th>Fecha/Hora</th></tr></thead>
-        <tbody></tbody>
-      </table>
+<table class="table" id="tabla-detalle">
+    <thead>
+        <tr>
+            <th>Pedido</th>
+            <th>Partida</th>
+            <th>Area</th>
+            <th>Descripción</th>
+            <th>Línea</th>
+            <th>Cantidad</th>
+            <th>Turno</th>
+            <th>Peso Total</th>
+            <th>Fecha/Hora</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
       <div class="modal-actions">
         <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
         <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
@@ -386,7 +399,7 @@ function renderCharts(desde, hasta){
 // --- Modal detalle (CORREGIDA: Ahora filtra por Bloque en el frontend) ---
 function verDetalle(area, dia, turno, bloque){ // 🚨 Nuevo parámetro: 'bloque'
     const tbody = document.querySelector('#tabla-detalle tbody');
-    tbody.innerHTML = '<tr><td colspan=9>Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan=10>Cargando...</td></tr>';
     document.getElementById('modalOverlay').style.display = 'flex';
 
     // Usamos los parámetros para el título y el filtro
@@ -401,8 +414,8 @@ function verDetalle(area, dia, turno, bloque){ // 🚨 Nuevo parámetro: 'bloque
 
     // El API solo necesita la fecha y el área
     fetch(`${apiDetalle}?desde=${desde}&hasta=${hasta}&area=${area}`, {credentials:'include'})
-    .then(r=>r.json())
-    .then(data=>{
+    .then(r => r.json())
+    .then(data => {
         tbody.innerHTML = '';
         const rows = Array.isArray(data.detalle) ? data.detalle : [];
         
@@ -413,29 +426,31 @@ function verDetalle(area, dia, turno, bloque){ // 🚨 Nuevo parámetro: 'bloque
         );
 
         if(detalleFiltrado.length === 0){
-            tbody.innerHTML = '<tr><td colspan=9>No hay datos de partidas para este Bloque.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan=10>No hay datos de partidas para este Bloque.</td></tr>';
             return;
         }
         
-        detalleFiltrado.forEach(d=>{ // Usamos el detalle filtrado
+        detalleFiltrado.forEach(d => { // Usamos el detalle filtrado
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${d.Pedido}</td>
                 <td>${d.Partida}</td>
                 <td>${d.Area}</td>
                 <td>${d.Descripcion}</td>
+                <td>${d.Linea}</td> <!-- NUEVO -->
                 <td>${fnum(d.Piezas)}</td>
                 <td>${d.Turno}</td>
                 <td>${fnum(d.PesoKg)}</td>
-                <td>${d.DiaTurno}</td>
                 <td>${d.FechaHora}</td>
             `;
             tbody.appendChild(tr);
         });
-    }).catch(e=>{
-        tbody.innerHTML = `<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;
+    })
+    .catch(e => {
+        tbody.innerHTML = `<tr><td colspan=10>Error al cargar detalle: ${e}</td></tr>`;
     });
 }
+
 
 // --- Export (SIN CAMBIOS) ---
 function exportTableToExcel(id,filename='export.xlsx'){

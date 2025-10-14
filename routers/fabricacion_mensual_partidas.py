@@ -494,7 +494,7 @@ def api_acabados(desde: str = Query(None), hasta: str = Query(None), access_toke
 # ---------------- API: DETALLE ----------------
 @router.get("/api/detalle")
 def api_detalle(desde: str = Query(None), hasta: str = Query(None), area: str = Query(None), access_token: str = Cookie(None)):
-    """ Retorna el detalle de producción sin agrupar, filtrado opcionalmente por área. """
+    """ Retorna el detalle de producción sin agrupar, filtrado opcionalmente por área, incluyendo LINEA. """
     payload = validar_token(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
@@ -502,14 +502,11 @@ def api_detalle(desde: str = Query(None), hasta: str = Query(None), area: str = 
     desde, hasta = _get_default_dates(desde, hasta)
     fecha_case = fecha_col_case()
     
-    # Previene inyección SQL básica si 'area' no está en la lista permitida, aunque ya se valida token
     areas_validas = list(AREAS_PRODUCTIVAS) + list(AREAS_ACABADO)
     area_filter = f"AND Area='{area}'" if area and area in areas_validas else ""
 
-    # Se agregan columnas adicionales del query original (Pedido, Partida, Descripcion, etc.)
-    # Asumo que Produccion tiene esas columnas.
     query = f"""
-    SELECT Pedido, Partida, Descripcion, Area, Cantidad, KgTotal, 
+    SELECT Pedido, Partida, Descripcion, Area, Cantidad, KgTotal, LINEA,
            {get_diaturno_case(fecha_case)} AS DiaTurno, 
            {get_turno_case(fecha_case)} AS Turno, 
            {get_bloque_2h(fecha_case)} AS Bloque,
@@ -538,12 +535,14 @@ def api_detalle(desde: str = Query(None), hasta: str = Query(None), area: str = 
             "Partida": r.get("Partida"),
             "Descripcion": r.get("Descripcion"),
             "Area": r.get("Area"),
+            "Linea": r.get("LINEA") or "",  
             "PesoKg": float(r.get("KgTotal") or 0),
             "Piezas": int(r.get("Cantidad") or 0),
             "FechaHora": fechahora
         })
 
     return {"detalle": detalle}
+
 
 # ---------------- API: TOTALES PRODUCCION ----------------
 # Reemplazar el bloque original:
