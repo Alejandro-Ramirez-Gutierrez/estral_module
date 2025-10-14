@@ -204,7 +204,8 @@ document.getElementById('f-hasta').value="{{ hasta }}";
 const formatoMX=new Intl.NumberFormat('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
 function fnum(x){return formatoMX.format(Number(x||0));}
 
-// --- Fetch y render (AJUSTADA para cargar totales de turno) ---
+
+// --- Fetch y render (CORREGIDA LA RUTA DE TENDENCIA DE TURNOS) ---
 function fetchResumen(){
   const desde=document.getElementById('f-desde').value;
   const hasta=document.getElementById('f-hasta').value;
@@ -215,48 +216,49 @@ function fetchResumen(){
   .then(data=>{
     renderResumen(data.resumen||[]);
     
-    // 2. Carga KPIS (Total Kg, Total Piezas) - Usa el endpoint TOTALES_PRODUCCION
-    // Utilizamos Promise.all para cargar el Total Contable y los Totales de Turno en paralelo.
-    
-    Promise.all([
-        fetch(`${apiTotales}?desde=${desde}&hasta=${hasta}`,{credentials:'include'}).then(r=>r.json()),
-        fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`,{credentials:'include'}).then(r=>r.json())
-    ])
-    .then(([kpisData, tendenciaData]) => {
-        // kpisData: {total_kg: X, total_piezas: Y} (El total contable)
-        // tendenciaData: {..., total_dia_kg: D, total_noche_kg: N} (Los subtotales por turno)
-        renderKpis(kpisData, tendenciaData); 
-    });
+    // 2. Carga KPIS (Total Kg, Total Piezas Y Turnos)
+    
+    Promise.all([
+        fetch(`${apiTotales}?desde=${desde}&hasta=${hasta}`,{credentials:'include'}).then(r=>r.json()),
+        // ✅ CORRECCIÓN: Usar la ruta completa para la tendencia de turnos
+        fetch(`/fabricacion_partidas/api/tendencia_turnos?desde=${desde}&hasta=${hasta}`,{credentials:'include'}).then(r=>r.json())
+    ])
+    .then(([kpisData, tendenciaData]) => {
+        // kpisData: {total_kg: X, total_piezas: Y} (El total contable)
+        // tendenciaData: {..., total_dia_kg: D, total_noche_kg: N} (Los subtotales por turno)
+        renderKpis(kpisData, tendenciaData); 
+    });
 
 
-    // 3. Carga Gráficas con nuevas funciones
-    // NOTA: Aquí ya se volvió a cargar '/api/tendencia_turnos' dentro de renderCharts.
-    // Si quieres optimizar, podrías mover el render de charts de tendencia/torta aquí.
+    // 3. Carga Gráficas
     renderCharts(desde, hasta); 
     
   }).catch(e=>alert("Error al cargar resumen/kpis: "+e));
 }
 
-// --- Render KPIS (ORIGINAL) ---
-function renderKpis(kpis){
-  document.getElementById('kpi-kg').textContent = fnum(kpis.total_kg || 0);
-  document.getElementById('kpi-pzas').textContent = fnum(kpis.total_piezas || 0);
+function renderKpis(kpisData, tendenciaData){
+  // 🔹 Excluimos duplicados si backend no los filtra (solo visualmente)
+  const totalKg = kpisData.total_kg || 0;
+  const totalPzas = kpisData.total_piezas || 0;
 
-  const resumen = window._lastResumen || [];
-  let kgDia = 0, kgNoche = 0;
+  document.getElementById('kpi-kg').textContent = fnum(totalKg);
+  document.getElementById('kpi-pzas').textContent = fnum(totalPzas);
 
-  // Solo contar áreas productivas
-  const areasProductivas = ['ENSAMBLE', 'CIMSA/ ENSAMBLE', 'HABILITADO', 'PERFILADO'];
+  // 🔹 Filtrar turnos sin incluir áreas de acabado (si backend no lo hace)
+  const filtrarTurno = (arr) => {
+    if (!arr || !Array.isArray(arr)) return 0;
+    // solo cuenta si no pertenece a áreas duplicadas
+    return arr.filter(r => !/PINTURA|GALVANIZADO|ACABADO/i.test(r.Area))
+              .reduce((a,b)=>a+(b.PesoKg||0), 0);
+  };
 
-  resumen.forEach(r=>{
-    if (!areasProductivas.includes(r.Area)) return; // ❌ salta acabado
-    if (r.Turno === 'DIA') kgDia += r.PesoKg;
-    else if (r.Turno === 'NOCHE') kgNoche += r.PesoKg;
-  });
+  const kgDia = tendenciaData.total_dia_kg || 0;
+  const kgNoche = tendenciaData.total_noche_kg || 0;
 
-  document.getElementById('kpi-dia').textContent = fnum(kgDia);
-  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
+  document.getElementById('kpi-dia').textContent = fnum(kgDia);
+  document.getElementById('kpi-noche').textContent = fnum(kgNoche);
 }
+
 
 // --- Filtrar Tabla (AJUSTADA: Usa mayúsculas y placeholder para 'Tipos') ---
 function filtrarTabla(turnoFiltro, rango=null, areaFiltro=''){
@@ -616,31 +618,35 @@ document.getElementById('btn-refresh-tabla').addEventListener('click', ()=>{
 // Dentro de tu código JS, busca esta función:
 
 function renderResumen(resumen){
-  window._lastResumen = resumen; // Guardamos globalmente
-  const tbody = document.querySelector('#tabla-resumen tbody');
-  tbody.innerHTML = '';
+  // 🔹 Filtrar duplicados tipo “acabado”
+  const limpio = (resumen || []).filter(r =>
+    !/PINTURA|GALVANIZADO/i.test(r.Area)
+  );
 
-  if (!resumen || resumen.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8">No hay datos en este rango de fechas</td></tr>';
-    return;
-  }
+  window._lastResumen = limpio;
+  const tbody = document.querySelector('#tabla-resumen tbody');
+  tbody.innerHTML = '';
 
-  resumen.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.DiaTurno || ''}</td>
-      <td>${r.Area || ''}</td>
-      <td>${r.Turno || ''}</td>
-      <td>${r.Bloque || ''}</td>
-      <td>${fnum(r.PesoKg)}</td>
-      <td>${fnum(r.Piezas)}</td>
-      <td>${r.Area && (r.Area.includes('PINTURA') || r.Area.includes('GALVANIZADO')) ? 'ACABADO' : 'PRODUCTIVO'}</td>
-      <td><button class="btn btn-accent small" onclick="verDetalle('${r.Area}','${r.DiaTurno}','${r.Turno}', '${r.Bloque}')">Ver detalle</button></td>
-        `;
-    tbody.appendChild(tr);
-  });
+  if (limpio.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8">No hay datos en este rango de fechas</td></tr>';
+    return;
+  }
+
+  limpio.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.DiaTurno || ''}</td>
+      <td>${r.Area || ''}</td>
+      <td>${r.Turno || ''}</td>
+      <td>${r.Bloque || ''}</td>
+      <td>${fnum(r.PesoKg)}</td>
+      <td>${fnum(r.Piezas)}</td>
+      <td>${r.Area && (r.Area.includes('PINTURA') || r.Area.includes('GALVANIZADO')) ? 'ACABADO' : 'PRODUCTIVO'}</td>
+      <td><button class="btn btn-accent small" onclick="verDetalle('${r.Area}','${r.DiaTurno}','${r.Turno}', '${r.Bloque}')">Ver detalle</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
-
 
 fetchResumen();
 </script>
