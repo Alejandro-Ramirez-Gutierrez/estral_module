@@ -297,47 +297,70 @@ function chartOptions(showLegend=true){
   };
 }
 
+
 function renderCharts(rows){
-  const byArea={},byBloq={},diaData={},nocheData={},labelsTendencia=[];
-  rows.forEach(r=>{
-    byArea[r.Area]=(byArea[r.Area]||0)+(r.PesoKg||0);
-    byBloq[r.Bloque]=(byBloq[r.Bloque]||0)+(r.PesoKg||0);
-    if(!labelsTendencia.includes(r.DiaTurno))labelsTendencia.push(r.DiaTurno);
-    if(r.Turno==='Día')diaData[r.DiaTurno]=(diaData[r.DiaTurno]||0)+r.PesoKg;
-    if(r.Turno==='Noche')nocheData[r.DiaTurno]=(nocheData[r.DiaTurno]||0)+r.PesoKg;
-  });
+  const byArea={},byBloq={},diaData={},nocheData={},labelsTendencia=[];
+  rows.forEach(r=>{
+    byArea[r.Area]=(byArea[r.Area]||0)+(r.PesoKg||0);
+    byBloq[r.Bloque]=(byBloq[r.Bloque]||0)+(r.PesoKg||0);
+    if(!labelsTendencia.includes(r.DiaTurno))labelsTendencia.push(r.DiaTurno);
+    if(r.Turno==='Día')diaData[r.DiaTurno]=(diaData[r.DiaTurno]||0)+r.PesoKg;
+    if(r.Turno==='Noche')nocheData[r.DiaTurno]=(nocheData[r.DiaTurno]||0)+r.PesoKg;
+  });
 
-  labelsTendencia.sort((a,b)=>new Date(a)-new Date(b));
+  labelsTendencia.sort((a,b)=>new Date(a)-new Date(b));
 
-  function destroyChart(id){if(charts[id])charts[id].destroy();}
-  destroyChart('chart-area');destroyChart('chart-bloques');destroyChart('chart-tendencia-turno');destroyChart('chart-torta-turno');
+  function destroyChart(id){if(charts[id])charts[id].destroy();}
+  destroyChart('chart-area');destroyChart('chart-bloques');destroyChart('chart-tendencia-turno');destroyChart('chart-torta-turno');
 
-  charts['chart-area']=new Chart(document.getElementById('chart-area'),{
-    type:'bar',
-    data:{labels:Object.keys(byArea),datasets:[{label:'Kilos (kg)',data:Object.values(byArea),backgroundColor:'#1a73e8'}]},
-    options:chartOptions(false)
-  });
+  charts['chart-area']=new Chart(document.getElementById('chart-area'),{
+    type:'bar',
+    data:{labels:Object.keys(byArea),datasets:[{label:'Kilos (kg)',data:Object.values(byArea),backgroundColor:['#1a73e8','#ff9800','#34a853','#fbbc05']}]},
+    options:{
+      responsive:true,
+      maintainAspectRatio:true,
+      onClick: (e, elements) => { 
+        if (elements.length > 0) {
+          const index = elements[0].index;
+          const area = charts['chart-area'].data.labels[index];
+          const desde = document.getElementById('f-desde').value;
+          const hasta = document.getElementById('f-hasta').value;
+          
+          // Llama a la nueva función de detalle total de área
+          verDetalleAreaTotal(area, desde, hasta);
+        }
+      },
+      plugins:{
+        legend:{display:false,labels:{font:{size:16,weight:'700'}}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${formatoMX.format(ctx.raw)} kg`}}
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{font:{size:14,weight:'700'},callback:v=>formatoMX.format(v)}},
+        x:{ticks:{font:{size:14,weight:'700'}}}
+      }
+    }
+  });
 
-  charts['chart-bloques']=new Chart(document.getElementById('chart-bloques'),{
-    type:'line',
-    data:{labels:Object.keys(byBloq),datasets:[{label:'Kilos por bloque',data:Object.values(byBloq),fill:true,backgroundColor:'rgba(75,192,192,0.15)',borderColor:'#ff9800',tension:0.4,pointRadius:4}]},
-    options:chartOptions(false)
-  });
+  charts['chart-bloques']=new Chart(document.getElementById('chart-bloques'),{
+    type:'line',
+    data:{labels:Object.keys(byBloq),datasets:[{label:'Kilos por bloque',data:Object.values(byBloq),fill:true,backgroundColor:'rgba(75,192,192,0.15)',borderColor:'#ff9800',tension:0.4,pointRadius:4}]},
+    options:chartOptions(false)
+  });
 
-  charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno'),{
-    type:'line',
-    data:{labels:labelsTendencia,datasets:[
-      {label:'Turno Día',data:labelsTendencia.map(d=>diaData[d]||0),borderColor:'#1a73e8',backgroundColor:'rgba(26,115,232,0.15)',fill:true,tension:0.4,pointRadius:4},
-      {label:'Turno Noche',data:labelsTendencia.map(d=>nocheData[d]||0),borderColor:'#ff9800',backgroundColor:'rgba(255,152,0,0.15)',fill:true,tension:0.4,pointRadius:4}
-    ]},
-    options:chartOptions(true)
-  });
+  charts['chart-tendencia-turno']=new Chart(document.getElementById('chart-tendencia-turno'),{
+    type:'line',
+    data:{labels:labelsTendencia,datasets:[
+      {label:'Turno Día',data:labelsTendencia.map(d=>diaData[d]||0),borderColor:'#1a73e8',backgroundColor:'rgba(26,115,232,0.15)',fill:true,tension:0.4,pointRadius:4},
+      {label:'Turno Noche',data:labelsTendencia.map(d=>nocheData[d]||0),borderColor:'#ff9800',backgroundColor:'rgba(255,152,0,0.15)',fill:true,tension:0.4,pointRadius:4}
+    ]},
+    options:chartOptions(true)
+  });
 
-  charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno'),{
-    type:'doughnut',
-    data:{labels:['Día','Noche'],datasets:[{data:[Object.values(diaData).reduce((a,b)=>a+b,0),Object.values(nocheData).reduce((a,b)=>a+b,0)],backgroundColor:['#1a73e8','#ff9800']}]},
-    options:{responsive:true,plugins:{legend:{display:true,labels:{font:{size:16,weight:'700'}}}}}
-  });
+  charts['chart-torta-turno']=new Chart(document.getElementById('chart-torta-turno'),{
+    type:'doughnut',
+    data:{labels:['Día','Noche'],datasets:[{data:[Object.values(diaData).reduce((a,b)=>a+b,0),Object.values(nocheData).reduce((a,b)=>a+b,0)],backgroundColor:['#1a73e8','#ff9800']}]},
+    options:{responsive:true,plugins:{legend:{display:true,labels:{font:{size:16,weight:'700'}}}}}
+  });
 }
 
 // --- Modal detalle ---
@@ -358,6 +381,32 @@ function verDetalle(area,dia,bloque){
       tbody.appendChild(tr);
     });
   }).catch(e=>{tbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
+}
+
+// --- Modal detalle de Area Completa (desde/hasta) ---
+function verDetalleAreaTotal(area, desde, hasta){
+  const tbody=document.querySelector('#tabla-detalle tbody');
+  tbody.innerHTML='<tr><td colspan=9>Cargando detalle completo...</td></tr>';
+  document.getElementById('modalOverlay').style.display='flex';
+  document.getElementById('modalTitle').textContent=`Detalle Total ${decodeURIComponent(area)}: ${decodeURIComponent(desde)} a ${decodeURIComponent(hasta)}`;
+
+  // Usamos el endpoint que creaste: /api/detalle_area
+  fetch(`/fabricacion/api/detalle_area?area=${area}&desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+  .then(r=>r.json())
+  .then(data=>{
+    tbody.innerHTML='';
+    const rows=Array.isArray(data.detalle)?data.detalle:[];
+    if(rows.length===0){tbody.innerHTML='<tr><td colspan=9>No hay datos</td></tr>';return;}
+    
+    // Guardamos los datos para la exportación si fuera necesario
+    window._currentDetalleData = rows; 
+
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${r.Pedido}</td><td>${r.Partida}</td><td>${r.Componente}</td><td>${r.Descripcion}</td><td>${r.Cantidad}</td><td>${r.Peso}</td><td>${r.PesoTotal}</td><td>${r.Fecha}</td><td>${r.Maquina}</td>`;
+      tbody.appendChild(tr);
+    });
+  }).catch(e=>{tbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
 }
 
 // --- Export ---

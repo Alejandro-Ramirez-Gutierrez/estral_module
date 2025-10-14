@@ -179,6 +179,57 @@ def api_detalle(area: str = Query(...), dia: str = Query(...), bloque: str = Que
         })
     return {"detalle": result}
 
+# ---------------- API: Detalle Crudo por Área y Rango (para click en gráfica) ----------------
+@router.get("/api/detalle_area")
+def api_detalle_area(area: str = Query(...), desde: str = Query(...), hasta: str = Query(...), access_token: str = Cookie(None)):
+    payload = validar_token(access_token)
+    if not payload:
+        return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
+
+    # Usamos DATEADD(DAY, 1, '{hasta}') para incluir todo el día 'hasta'
+    query = f"""
+    SELECT
+      p.Pedido_Estral AS Pedido,
+      pa.Partida_Estral AS Partida,
+      cop.No AS Componente,
+      cp.Descripcion,
+      mc.Cantidad,
+      mc.F_Movimiento AS Fecha,
+      mp.D_Estacion AS Maquina,
+      a.D_Area AS Area_Produccion,
+      cp.Peso,
+      (cp.Peso * mc.Cantidad) AS PesoTotal
+    FROM Movimientos_Componentes mc
+    JOIN Componentes_Partida cp ON mc.K_Componente = cp.K_Componente
+    JOIN Estacion mp ON mc.K_Estacion = mp.K_Estacion
+    JOIN Linea l ON mp.K_Linea = l.K_Linea
+    JOIN Areas a ON l.K_Area = a.K_Area
+    LEFT JOIN Pedidos p ON mc.K_Pedido = p.K_Pedido
+    JOIN Partidas pa ON mc.K_Partida = pa.K_Partida
+    JOIN Componentes_Partida cop ON mc.K_Componente = cop.K_Componente
+    WHERE mc.K_Tipo_Movimiento = 2
+      AND a.D_Area = '{area}'
+      AND mc.F_Movimiento >= '{desde}' AND mc.F_Movimiento < DATEADD(DAY, 1, '{hasta}')
+    ORDER BY mc.F_Movimiento ASC
+    """
+
+    rows = ejecutar_consulta_sql(query, fetchall=True) or []
+    result = []
+    for d in rows:
+        result.append({
+            "Pedido": d["Pedido"],
+            "Partida": d["Partida"],
+            "Componente": d["Componente"],
+            "Descripcion": d["Descripcion"],
+            "Cantidad": d["Cantidad"],
+            "Peso": float(d["Peso"] or 0),
+            "PesoTotal": float(d["PesoTotal"] or 0),
+            "Fecha": d["Fecha"].strftime("%Y-%m-%d %H:%M:%S") if hasattr(d["Fecha"], "strftime") else d["Fecha"],
+            "Maquina": d["Maquina"],
+            "Area": d["Area_Produccion"]
+        })
+    return {"detalle": result}
+
 # ---------------- EXPORT (resumen / detalle) ----------------
 def generar_export(df: pd.DataFrame, nombre: str, tipo: str):
     from fpdf import FPDF
@@ -356,3 +407,217 @@ def api_export(mode: str = Query("resumen"), tipo: str = Query("excel"),
 
     else:
         return JSONResponse(status_code=400, content={"error":"mode debe ser resumen o detalle"})
+
+# NUEVO ENDPOINT
+@router.get("/api/perfilado/mensual")
+def api_perfilado_mensual(desde: str = Query(...), hasta: str = Query(...), access_token: str = Cookie(None)):
+    payload = validar_token(access_token)
+    if not payload:
+        return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
+
+    # Usamos la lógica de tu query SQL, reemplazando @Año y @Mes por el rango de fechas
+    query = f"""
+    SELECT
+        -- 🔹 descripción corta
+        LTRIM(RTRIM(
+            LEFT(C.Descripcion,
+                LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion))
+            )
+        )) AS Descripcion_Corta,
+
+        es.D_Estacion AS Estacion,
+
+        -- 🔹 cantidad total fabricada
+        SUM(mc.Cantidad) AS Cantidad_Fabricada,
+
+        -- 🔹 metros lineales fabricados (ajuste para “LAMINA” vs “PERFILES”)
+        SUM(
+            mc.Cantidad *
+            CASE
+                WHEN C.Descripcion LIKE '%LAMINA%' AND C.Descripcion LIKE '%x%' THEN
+                    TRY_CAST(
+                        TRIM(
+                            REPLACE(
+                                REPLACE(
+                                    SUBSTRING(
+                                        C.Descripcion,
+                                        CHARINDEX('x', C.Descripcion) + 1,
+                                        CHARINDEX('mm', C.Descripcion) - CHARINDEX('x', C.Descripcion) - 1
+                                    ),
+                                    'mm', ''
+                                ),
+                                '-', ''
+                            )
+                        ) AS FLOAT
+                    ) / 1000
+                ELSE
+                    TRY_CAST(
+                        TRIM(
+                            REPLACE(
+                                REPLACE(
+                                    SUBSTRING(
+                                        C.Descripcion,
+                                        LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion)) + 2,
+                                        LEN(C.Descripcion)
+                                    ),
+                                    'mm', ''
+                                ),
+                                '-', ''
+                            )
+                        ) AS FLOAT
+                    ) / 1000
+            END
+        ) AS Metros_Lineales_Fabricados,
+
+        -- 🔹 peso total fabricado (en toneladas)
+        SUM(mc.Cantidad * C.Peso) / 1000 AS Peso_Fabricado_Tons
+
+    FROM Movimientos_Componentes mc
+    LEFT JOIN Componentes_Partida C
+        ON mc.K_Componente = C.K_Componente
+    LEFT JOIN Estacion es
+        ON mc.K_Estacion = es.K_Estacion
+    LEFT JOIN Linea l
+        ON es.K_Linea = l.K_Linea
+    LEFT JOIN Areas a
+        ON l.K_Area = a.K_Area
+    WHERE
+        a.D_Area = 'PERFILADO'
+        AND mc.K_Tipo_Movimiento IN (2)
+        AND mc.F_Movimiento >= '{desde}' AND mc.F_Movimiento < '{hasta}'
+    GROUP BY
+        C.SKU,
+        LTRIM(RTRIM(
+            LEFT(C.Descripcion,
+                LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion))
+            )
+        )),
+        es.D_Estacion
+    ORDER BY
+        Metros_Lineales_Fabricados DESC;
+    """
+
+    rows = ejecutar_consulta_sql(query, fetchall=True) or []
+    
+    # Mapeo de resultados
+    resumen = []
+    for r in rows:
+        resumen.append({
+            "Descripcion_Corta": r["Descripcion_Corta"],
+            "Estacion": r["Estacion"],
+            "Cantidad_Fabricada": int(r["Cantidad_Fabricada"] or 0),
+            # Aseguramos que los valores sean float para el frontend
+            "Metros_Lineales_Fabricados": float(r["Metros_Lineales_Fabricados"] or 0),
+            "Peso_Fabricado_Tons": float(r["Peso_Fabricado_Tons"] or 0),
+        })
+
+    return {"resumen_mensual_perfilado": resumen}
+
+
+# NUEVO ENDPOINT
+@router.get("/api/perfilado/diario")
+def api_perfilado_diario(desde: str = Query(...), hasta: str = Query(...), access_token: str = Cookie(None)):
+    payload = validar_token(access_token)
+    if not payload:
+        return JSONResponse(status_code=403, content={"error":"Acceso denegado"})
+
+    # Usamos la lógica de tu query SQL
+    query = f"""
+    SELECT
+        CONVERT(date, mc.F_Movimiento) AS Fecha_Fabricacion,
+
+        -- 🔹 descripción corta
+        LTRIM(RTRIM(
+            LEFT(C.Descripcion,
+                LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion))
+            )
+        )) AS Descripcion_Corta,
+
+        es.D_Estacion AS Estacion,
+
+        -- 🔹 cantidad total fabricada por día
+        SUM(mc.Cantidad) AS Cantidad_Fabricada,
+
+        -- 🔹 metros lineales fabricados (ajuste “LAMINA” vs “PERFILES”)
+        SUM(
+            mc.Cantidad *
+            CASE
+                WHEN C.Descripcion LIKE '%LAMINA%' AND C.Descripcion LIKE '%x%' THEN
+                    TRY_CAST(
+                        TRIM(
+                            REPLACE(
+                                REPLACE(
+                                    SUBSTRING(
+                                        C.Descripcion,
+                                        CHARINDEX('x', C.Descripcion) + 1,
+                                        CHARINDEX('mm', C.Descripcion) - CHARINDEX('x', C.Descripcion) - 1
+                                    ),
+                                    'mm', ''
+                                ),
+                                '-', ''
+                            )
+                        ) AS FLOAT
+                    ) / 1000
+                ELSE
+                    TRY_CAST(
+                        TRIM(
+                            REPLACE(
+                                REPLACE(
+                                    SUBSTRING(
+                                        C.Descripcion,
+                                        LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion)) + 2,
+                                        LEN(C.Descripcion)
+                                    ),
+                                    'mm', ''
+                                ),
+                                '-', ''
+                            )
+                        ) AS FLOAT
+                    ) / 1000
+            END
+        ) AS Metros_Lineales_Fabricados,
+
+        -- 🔹 peso total fabricado (en toneladas)
+        SUM(mc.Cantidad * C.Peso) / 1000 AS Peso_Fabricado_Tons
+
+    FROM Movimientos_Componentes mc
+    LEFT JOIN Componentes_Partida C
+        ON mc.K_Componente = C.K_Componente
+    LEFT JOIN Estacion es
+        ON mc.K_Estacion = es.K_Estacion
+    LEFT JOIN Linea l
+        ON es.K_Linea = l.K_Linea
+    LEFT JOIN Areas a
+        ON l.K_Area = a.K_Area
+    WHERE
+        a.D_Area = 'PERFILADO'
+        AND mc.K_Tipo_Movimiento IN (2)
+        AND mc.F_Movimiento >= '{desde}' AND mc.F_Movimiento < '{hasta}'
+    GROUP BY
+        CONVERT(date, mc.F_Movimiento),
+        LTRIM(RTRIM(
+            LEFT(C.Descripcion,
+                LEN(C.Descripcion) - CHARINDEX('-', REVERSE(C.Descripcion))
+            )
+        )),
+        es.D_Estacion
+    ORDER BY
+        Fecha_Fabricacion,
+        Metros_Lineales_Fabricados DESC;
+    """
+
+    rows = ejecutar_consulta_sql(query, fetchall=True) or []
+    
+    # Mapeo de resultados
+    detalle = []
+    for r in rows:
+        detalle.append({
+            "Fecha_Fabricacion": r["Fecha_Fabricacion"].strftime("%Y-%m-%d") if hasattr(r["Fecha_Fabricacion"], "strftime") else r["Fecha_Fabricacion"],
+            "Descripcion_Corta": r["Descripcion_Corta"],
+            "Estacion": r["Estacion"],
+            "Cantidad_Fabricada": int(r["Cantidad_Fabricada"] or 0),
+            "Metros_Lineales_Fabricados": float(r["Metros_Lineales_Fabricados"] or 0),
+            "Peso_Fabricado_Tons": float(r["Peso_Fabricado_Tons"] or 0),
+        })
+
+    return {"detalle_diario_perfilado": detalle}
