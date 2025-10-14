@@ -354,7 +354,11 @@ function renderCharts(rows){
           const desde = document.getElementById('f-desde').value;
           const hasta = document.getElementById('f-hasta').value;
 
-          // --- 🚀 AQUÍ ESTÁ LA MAGIA ---
+                    // 🚀 AQUÍ ESTÁ LA MAGIA --- AÑADIMOS LA RESTRICCIÓN
+          if (area === "HABILITADO") {
+            // No hace nada, tal como lo pediste.
+            return; 
+          }
           if(area === "PERFILADO"){
             await verPerfiladoMensual(area, desde, hasta);
           }else{
@@ -396,50 +400,105 @@ function renderCharts(rows){
 }
 
 
-// --- Modal detalle ---
+
+// REEMPLAZA esta función en tu código:
+
 function verDetalle(area,dia,bloque){
-  const tbody=document.querySelector('#tabla-detalle tbody');
-  tbody.innerHTML='<tr><td colspan=9>Cargando...</td></tr>';
-  document.getElementById('modalOverlay').style.display='flex';
-  document.getElementById('modalTitle').textContent=`Detalle ${decodeURIComponent(area)} - ${decodeURIComponent(dia)} - Bloque ${decodeURIComponent(bloque)}`;
-  fetch(`${apiDetalle}?area=${area}&dia=${dia}&bloque=${bloque}`,{credentials:'include'})
-  .then(r=>r.json())
-  .then(data=>{
-    tbody.innerHTML='';
-    const rows=Array.isArray(data.detalle)?data.detalle:[];
-    if(rows.length===0){tbody.innerHTML='<tr><td colspan=9>No hay datos</td></tr>';return;}
-    rows.forEach(r=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.Pedido}</td><td>${r.Partida}</td><td>${r.Componente}</td><td>${r.Descripcion}</td><td>${r.Cantidad}</td><td>${r.Peso}</td><td>${r.PesoTotal}</td><td>${r.Fecha}</td><td>${r.Maquina}</td>`;
-      tbody.appendChild(tr);
-    });
-  }).catch(e=>{tbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
+    
+    document.getElementById('modalOverlay').style.display = 'flex';
+    document.getElementById('modalTitle').textContent = `Detalle ${decodeURIComponent(area)} - ${decodeURIComponent(dia)} - Bloque ${decodeURIComponent(bloque)}`;
+    
+    // 🚀 CAMBIO CLAVE 1: Restaurar la estructura interna del modal (igual que el anterior)
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <div style="max-height: 70vh; overflow: auto;">
+            <table class="table" id="tabla-detalle">
+                <thead><tr><th>Pedido</th><th>Partida</th><th>Componente</th><th>Descripción</th><th>Cantidad</th><th>Peso</th><th>PesoTotal</th><th>Fecha</th><th>Máquina</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
+            <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
+        </div>
+    `;
+
+    // Volvemos a referenciar el tbody después de re-renderizar el modalBody
+    const newTbody = document.querySelector('#tabla-detalle tbody'); 
+    newTbody.innerHTML = '<tr><td colspan=9>Cargando...</td></tr>';
+    
+    fetch(`${apiDetalle}?area=${area}&dia=${dia}&bloque=${bloque}`,{credentials:'include'})
+    .then(r=>r.json())
+    .then(data=>{
+        newTbody.innerHTML = ''; // Usar newTbody
+        const rows = Array.isArray(data.detalle)?data.detalle:[];
+        if(rows.length===0){newTbody.innerHTML='<tr><td colspan=9>No hay datos</td></tr>';return;}
+        
+        window._currentDetalleData = rows;
+        window._currentDetalleMode = 'detalle_generico';
+        
+        rows.forEach(r=>{
+            const tr=document.createElement('tr');
+            tr.innerHTML=`<td>${r.Pedido}</td><td>${r.Partida}</td><td>${r.Componente}</td><td>${r.Descripcion}</td><td>${r.Cantidad}</td><td>${r.Peso}</td><td>${r.PesoTotal}</td><td>${r.Fecha}</td><td>${r.Maquina}</td>`;
+            newTbody.appendChild(tr);
+        });
+
+        // 🚀 CAMBIO CLAVE 2: Volver a asignar los event listeners de exportación (ya que re-creamos los botones)
+        document.getElementById('export-detalle-excel').addEventListener('click',()=>exportTableToExcel('tabla-detalle','detalle.xlsx'));
+        document.getElementById('export-detalle-pdf').addEventListener('click',()=>exportTableToPDF('tabla-detalle','Detalle'));
+
+    }).catch(e=>{newTbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
 }
 
-// --- Modal detalle de Area Completa (desde/hasta) ---
+
 function verDetalleAreaTotal(area, desde, hasta){
-  const tbody=document.querySelector('#tabla-detalle tbody');
-  tbody.innerHTML='<tr><td colspan=9>Cargando detalle completo...</td></tr>';
-  document.getElementById('modalOverlay').style.display='flex';
-  document.getElementById('modalTitle').textContent=`Detalle Total ${decodeURIComponent(area)}: ${decodeURIComponent(desde)} a ${decodeURIComponent(hasta)}`;
+    const tbody = document.querySelector('#tabla-detalle tbody');
+    tbody.innerHTML = '<tr><td colspan=9>Cargando detalle completo...</td></tr>';
+    document.getElementById('modalOverlay').style.display = 'flex';
+    document.getElementById('modalTitle').textContent = `Detalle Total ${decodeURIComponent(area)}: ${decodeURIComponent(desde)} a ${decodeURIComponent(hasta)}`;
 
-  // Usamos el endpoint que creaste: /api/detalle_area
-  fetch(`/fabricacion/api/detalle_area?area=${area}&desde=${desde}&hasta=${hasta}`,{credentials:'include'})
-  .then(r=>r.json())
-  .then(data=>{
-    tbody.innerHTML='';
-    const rows=Array.isArray(data.detalle)?data.detalle:[];
-    if(rows.length===0){tbody.innerHTML='<tr><td colspan=9>No hay datos</td></tr>';return;}
-    
-    // Guardamos los datos para la exportación si fuera necesario
-    window._currentDetalleData = rows; 
+    // 🚀 CAMBIO CLAVE 1: Restaurar la estructura interna del modal
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <div style="max-height: 70vh; overflow: auto;">
+            <table class="table" id="tabla-detalle">
+                <thead><tr><th>Pedido</th><th>Partida</th><th>Componente</th><th>Descripción</th><th>Cantidad</th><th>Peso</th><th>PesoTotal</th><th>Fecha</th><th>Máquina</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-accent2" id="export-detalle-pdf">Exportar PDF</button>
+            <button class="btn btn-primary" id="export-detalle-excel">Exportar Excel</button>
+        </div>
+    `;
+    
+    // Volvemos a referenciar el tbody después de re-renderizar el modalBody
+    const newTbody = document.querySelector('#tabla-detalle tbody'); 
+    newTbody.innerHTML = '<tr><td colspan=9>Cargando detalle completo...</td></tr>';
 
-    rows.forEach(r=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${r.Pedido}</td><td>${r.Partida}</td><td>${r.Componente}</td><td>${r.Descripcion}</td><td>${r.Cantidad}</td><td>${r.Peso}</td><td>${r.PesoTotal}</td><td>${r.Fecha}</td><td>${r.Maquina}</td>`;
-      tbody.appendChild(tr);
-    });
-  }).catch(e=>{tbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
+    // Usamos el endpoint que creaste: /api/detalle_area
+    fetch(`/fabricacion/api/detalle_area?area=${area}&desde=${desde}&hasta=${hasta}`,{credentials:'include'})
+    .then(r=>r.json())
+    .then(data=>{
+        newTbody.innerHTML = ''; // Usar newTbody
+        const rows = Array.isArray(data.detalle)?data.detalle:[];
+        if(rows.length===0){newTbody.innerHTML = '<tr><td colspan=9>No hay datos</td></tr>';return;}
+        
+        // Guardamos los datos para la exportación si fuera necesario
+        window._currentDetalleData = rows; 
+        window._currentDetalleMode = 'detalle_generico';
+
+        rows.forEach(r=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.Pedido}</td><td>${r.Partida}</td><td>${r.Componente}</td><td>${r.Descripcion}</td><td>${r.Cantidad}</td><td>${r.Peso}</td><td>${r.PesoTotal}</td><td>${r.Fecha}</td><td>${r.Maquina}</td>`;
+            newTbody.appendChild(tr);
+        });
+
+        // 🚀 CAMBIO CLAVE 2: Volver a asignar los event listeners de exportación (ya que re-creamos los botones)
+        document.getElementById('export-detalle-excel').addEventListener('click',()=>exportTableToExcel('tabla-detalle','detalle.xlsx'));
+        document.getElementById('export-detalle-pdf').addEventListener('click',()=>exportTableToPDF('tabla-detalle','Detalle'));
+
+    }).catch(e=>{newTbody.innerHTML=`<tr><td colspan=9>Error al cargar detalle: ${e}</td></tr>`;});
 }
 
 async function verPerfiladoMensual(area, desde, hasta){
@@ -545,12 +604,20 @@ async function verPerfiladoMensual(area, desde, hasta){
 function cargarTablaPerfilado(mode) {
     const tbody = document.querySelector('#tabla-detalle tbody');
     const thead = document.querySelector('#tabla-detalle thead tr');
-    const data = (window._perfiladoData && window._perfiladoData[mode]) || [];
+    let data = (window._perfiladoData && window._perfiladoData[mode]) || [];
     tbody.innerHTML = '';
-    window._currentDetalleMode = `perfilado_${mode}`; // Guardar el modo actual para la exportación
+    window._currentDetalleMode = `perfilado_${mode}`; 
 
     // 1. Definir encabezado y filas según el modo
     if (mode === 'mensual') {
+        
+        // 🚀 CAMBIO 1: Ordenar por Metros Lineales Fabricados (mayor a menor)
+        data.sort((a, b) => {
+            const metrosA = Number(a.Metros_Lineales_Fabricados || 0);
+            const metrosB = Number(b.Metros_Lineales_Fabricados || 0);
+            return metrosB - metrosA; // Mayor a menor
+        });
+
         thead.innerHTML = `
             <th>Descripción Corta</th>
             <th>Estación</th>
@@ -657,16 +724,15 @@ function exportarTablaPerfilado(tipo) {
     window.open(`/fabricacion/api/export_json?mode=${mode}&tipo=${tipo}&desde=${desde}&hasta=${hasta}&data=${dataString}&columns=${columnsString}`, '_blank');
 }
 
-let chartPerfiladoDiario = null; // Asegúrate que esta línea esté al inicio de tu script
+let chartPerfiladoDiario = null; 
 
 function renderChartPerfilado(rows, elementId) {
     if (chartPerfiladoDiario) chartPerfiladoDiario.destroy();
 
-    // Agrupar por fecha y sumar el peso
+    // 🚀 CAMBIO 2: Agrupar por fecha y sumar los Metros Lineales (m)
     const dataByDate = {};
     rows.forEach(r => {
-        // Usa Fecha_Fabricacion del detalle diario
-        dataByDate[r.Fecha_Fabricacion] = (dataByDate[r.Fecha_Fabricacion] || 0) + Number(r.Peso_Fabricado_Tons || 0);
+        dataByDate[r.Fecha_Fabricacion] = (dataByDate[r.Fecha_Fabricacion] || 0) + Number(r.Metros_Lineales_Fabricados || 0);
     });
 
     const labels = Object.keys(dataByDate).sort((a, b) => new Date(a) - new Date(b));
@@ -677,10 +743,11 @@ function renderChartPerfilado(rows, elementId) {
         data: {
             labels,
             datasets: [{
-                label: 'Peso Fabricado (Ton)',
+                // 🚀 CAMBIO 2: Etiqueta y color
+                label: 'Metros Lineales (m)',
                 data,
-                borderColor: '#34a853',
-                backgroundColor: 'rgba(52, 168, 83, 0.15)',
+                borderColor: '#1a73e8', // Cambié el color a azul para distinguirlo mejor
+                backgroundColor: 'rgba(26, 115, 232, 0.15)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4
@@ -691,10 +758,16 @@ function renderChartPerfilado(rows, elementId) {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatoMX.format(ctx.raw)} Ton` } }
+                // 🚀 CAMBIO 2: Tooltip
+                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatoMX.format(ctx.raw)} m` } }
             },
             scales: {
-                y: { beginAtZero: true, title: { display: true, text: 'Toneladas' }, ticks: { callback: v => formatoMX.format(v) } },
+                y: { 
+                    beginAtZero: true, 
+                    // 🚀 CAMBIO 2: Título del eje Y
+                    title: { display: true, text: 'Metros' }, 
+                    ticks: { callback: v => formatoMX.format(v) } 
+                },
                 x: { title: { display: true, text: 'Fecha' } }
             }
         }
@@ -753,6 +826,9 @@ function generarFechas(periodo){
     throw new Error('Formato inválido: usa YYYY o YYYY-MM');
   }
 }
+
+//------------------------------------------
+
 
 // Renderiza gráfica comparativa
 function renderComparativa(periodoA, periodoB, dataA, dataB){
