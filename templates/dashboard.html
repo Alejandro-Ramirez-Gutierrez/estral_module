@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard - Estral Módulo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Dashboard - Estral Módulo</title>
 <style>
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f7f9; margin:0; padding:0;}
 
@@ -138,7 +138,7 @@ button.cancelar:hover { background-color:#c82333; }
     margin:30px auto;
     padding:40px 30px;
     border-radius:16px;
-    width:95%;             
+    width:95%;              
     min-height:550px;
     text-align:center;
     display:flex;
@@ -151,24 +151,10 @@ button.cancelar:hover { background-color:#c82333; }
 #modalContent button {
     font-size:32px; 
     padding:28px 0;
-    width:100%;               
+    width:100%;              
     border-radius:12px;
     font-weight:bold;
     cursor:pointer;
-}
-
-/* Media Query para celulares */
-@media (max-width:480px){
-    .orden-card { padding:25px; flex-direction:column; }
-    .orden-actions { flex-direction:column; gap:25px; }
-    button.autorizar, button.cancelar { font-size:36px; padding:35px 0; }
-    #modalContent { width:98%; min-height:600px; padding:35px 20px; gap:35px; }
-    #modalContent h3 { font-size:36px; }
-    #modalContent button { font-size:36px; padding:35px 0; width:100%; }
-    #modalContent select { font-size:28px; padding:20px; }
-    .pdf-icon-container { width:100%; flex-direction:row; justify-content:center; padding:15px; }
-    .pdf-icon { width:120px; height:120px; font-size:40px; }
-    .pdf-text { font-size:20px; }
 }
 
 /* Dropdown navbar */
@@ -227,21 +213,158 @@ button.cancelar:hover { background-color:#c82333; }
     display: flex;
 }
 
+/* --- NUEVOS ESTILOS PARA MENÚ MÓVIL (SOBRESCRIBEN O COMPLEMENTAN) --- */
+
+.menu-toggle {
+    display: none; /* Oculto por defecto */
+    cursor: pointer;
+    font-size: 30px;
+    margin-right: 15px;
+    color: white;
+}
+
+#mobileMenu {
+    position: fixed;
+    top: 0;
+    left: -100%; /* Inicia fuera de la pantalla */
+    width: 280px;
+    height: 100%;
+    background-color: #2c3e50; /* Azul oscuro para contraste */
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.3);
+    transition: left 0.3s ease-in-out;
+    z-index: 2001;
+    padding-top: 60px;
+    overflow-y: auto; /* Para scroll si hay muchos links */
+}
+
+#mobileMenu.open {
+    left: 0; /* Se desliza a la vista */
+}
+
+#mobileMenu a, #mobileMenu .dropbtn-mobile {
+    display: block;
+    color: white;
+    padding: 15px 25px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+}
+
+#mobileMenu a:hover, #mobileMenu .dropbtn-mobile:hover {
+    background-color: #34495e;
+}
+
+/* Estilo para el Dropdown en móvil */
+#mobileMenu .dropdown-mobile-content {
+    background-color: #34495e;
+    padding-left: 15px;
+    display: none;
+}
+#mobileMenu .dropdown-mobile-content a {
+    padding-left: 40px;
+    border-bottom: none;
+}
+#mobileMenu .dropdown-mobile.open .dropdown-mobile-content {
+    display: block;
+}
+.dropbtn-mobile {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+body.no-scroll {
+    overflow: hidden; /* Evita scroll en el fondo al abrir el menú */
+}
+
+/* Media Query principal para adaptar la navegación */
+@media (max-width: 768px) {
+    /* Mostrar Icono Hamburguesa y ocultar tabs grandes */
+    nav .menu-toggle {
+        display: block;
+        order: -1;
+    }
+    nav .tabs {
+        display: none;
+    }
+    nav .logo {
+        flex-grow: 1;
+        text-align: center;
+        margin-left: 0;
+        font-size: 20px;
+    }
+    nav button {
+        font-size: 14px;
+        padding: 8px 15px;
+    }
+    
+    .orden-flex {
+        flex-direction: column;
+    }
+    .pdf-icon-container {
+        width: 100%;
+        margin-top: 15px;
+        order: -1; /* Mover el PDF arriba en el móvil */
+        flex-direction: row; /* Hago que el icono y texto estén en línea en móvil */
+        justify-content: space-around;
+        gap: 10px;
+    }
+    .pdf-icon {
+        width: 80px; /* Tamaño reducido para fila */
+        height: 80px;
+        font-size: 30px;
+    }
+    .pdf-text {
+        font-size: 18px;
+        margin-top: 0;
+        align-self: center;
+    }
+}
+
+
+/* Media Query para celulares (el que tenías) */
+@media (max-width:480px){
+    .orden-card { padding:25px; flex-direction:column; }
+    .orden-actions { flex-direction:column; gap:25px; }
+    button.autorizar, button.cancelar { font-size:36px; padding:35px 0; }
+    #modalContent { width:98%; min-height:600px; padding:35px 20px; gap:35px; }
+    #modalContent h3 { font-size:36px; }
+    #modalContent button { font-size:36px; padding:35px 0; width:100%; }
+    #modalContent select { font-size:28px; padding:20px; }
+    /* Las siguientes líneas las ajustamos arriba en 768px, las comentamos o eliminamos si se duplican. */
+    /*.pdf-icon-container { width:100%; flex-direction:row; justify-content:center; padding:15px; }
+    .pdf-icon { width:120px; height:120px; font-size:40px; }
+    .pdf-text { font-size:20px; }*/
+}
 
 </style>
 </head>
 <body>
 
-<!-- Navbar -->
+<div id="mobileMenu">
+    <a href="/dashboard" class="active">🏠 Dashboard</a>
+    <a href="/valance">📊 KPIS - Compras</a>
+    <a href="/quejas">💬 Quejas</a>
+    <a href="/embarques">🚚 Embarques</a> <div class="dropdown-mobile" id="mobileDropdownPlaneacion">
+        <button class="dropbtn-mobile">📋 Planeación ▾</button>
+        <div class="dropdown-mobile-content">
+            <a href="/planeacion">Programa mensual</a>
+            <a href="/fabricacion">Fabricación mensual Componentes</a>
+            <a href="/fabricacion_partidas">Fabricación mensual partidas</a>
+        </div>
+    </div>
+</div>
+
 <nav>
-    <div class="logo">ESTRAL Ordenes de compra</div>
+    <div class="menu-toggle" onclick="toggleMenu()">☰</div> <div class="logo">ESTRAL Ordenes de compra</div>
     <div class="tabs">
         <a href="/dashboard" class="active">🏠 Dashboard</a>
         <a href="/valance">📊 KPIS - Compras</a>
 
         <a href="/quejas">💬 Quejas</a>
-
-        <div class="dropdown">
+        <a href="/embarques">🚚 Embarques</a> <div class="dropdown">
             <button class="dropbtn">📋 Planeación ▾</button>
             <div class="dropdown-content">
                 <a href="/planeacion">Programa mensual</a>
@@ -295,7 +418,6 @@ button.cancelar:hover { background-color:#c82333; }
 {% endif %}
 </main>
 
-<!-- Modal Cancelación -->
 <div id="modalCancelacion">
 <div id="modalContent">
 <h3>Motivo de Cancelación</h3>
@@ -305,7 +427,6 @@ button.cancelar:hover { background-color:#c82333; }
 </div>
 </div>
 
-<!-- Modal Confirmar Autorizar -->
 <div id="modalAutorizarConfirm">
 <div id="modalContent">
 <h3>Confirmar Autorización</h3>
@@ -380,6 +501,7 @@ async function autorizarOrdenConfirm() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Lógica del Dropdown de Escritorio
     const dropdown = document.querySelector('.dropdown');
     const btn = dropdown.querySelector('.dropbtn');
 
@@ -392,7 +514,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => {
         dropdown.classList.remove('show');
     });
+    
+    // --- Lógica para el Menú Móvil ---
+    const mobileDropdownPlaneacion = document.getElementById('mobileDropdownPlaneacion');
+    
+    if (mobileDropdownPlaneacion) {
+        mobileDropdownPlaneacion.addEventListener('click', function(e) {
+            // Solo expande/contrae si el clic fue en el botón, no en un enlace hijo
+            if (e.target.tagName === 'BUTTON') {
+                this.classList.toggle('open');
+            }
+        });
+    }
+
+    // Cerrar menú si se hace clic en cualquier enlace (para una mejor UX)
+    document.querySelectorAll('#mobileMenu a').forEach(link => {
+        link.addEventListener('click', () => {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.remove('open');
+            document.body.classList.remove('no-scroll');
+        });
+    });
 });
+
+// --- FUNCIONES MÓVILES ---
+function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.toggle('open');
+    document.body.classList.toggle('no-scroll'); 
+}
 
 </script>
 </body>

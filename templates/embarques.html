@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Embarques - Estral</title>
+
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+
+    <style>
+        :root {
+            --estral-blue: #1a73e8;
+            --estral-green: #28a745;
+            --estral-gray: #f5f7fb;
+            --estral-dark: #2f3e46;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            background: var(--estral-gray);
+            color: #333;
+        }
+
+        nav {
+            background: var(--estral-blue);
+            color: #fff;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+
+        .nav-buttons button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: #fff;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .nav-buttons button:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .content {
+            padding: 25px 40px;
+            max-width: 1400px;
+            margin: auto;
+        }
+
+        h2 {
+            color: var(--estral-blue);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .selector-box {
+            background: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--estral-blue);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .selector-box select {
+            padding: 6px 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+            background-color: #f8f9fa;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .kpi-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .kpi-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .kpi-blue { border-top: 5px solid var(--estral-blue); color: var(--estral-blue); }
+        .kpi-green { border-top: 5px solid var(--estral-green); color: var(--estral-green); }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 25px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+
+        .chart-container h3 {
+            color: var(--estral-dark);
+            margin-bottom: 15px;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 380px;
+        }
+
+        table.dataTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .tabla-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 25px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+
+        table.dataTable thead th {
+            background: var(--estral-blue);
+            color: white;
+            padding: 10px;
+        }
+
+        table.dataTable tbody td {
+            padding: 10px;
+        }
+
+        .kg-total { font-weight: bold; color: var(--estral-green); }
+        .viajes-total { font-weight: bold; color: var(--estral-blue); }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 900px;
+            width: 90%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 30px;
+            color: #999;
+            cursor: pointer;
+        }
+
+        .close-btn:hover { color: var(--estral-blue); }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">🚛 Estral | Dashboard de Embarques</div>
+        <div class="nav-buttons">
+            <button onclick="location.href='/dashboard'">🏠 Dashboard</button>
+            <button onclick="location.href='/logout'">Cerrar sesión</button>
+        </div>
+    </nav>
+
+    <div class="content">
+        <h2>Reporte de Embarques - {{ nombre_mes }} {{ anio }}</h2>
+
+        <div class="selector-box">
+            <label>Periodo:</label>
+            <select id="mes-select" onchange="actualizarPeriodo()">
+                {% set meses_espanol = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}
+                {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>{{ meses_espanol[m-1] }}</option>
+                {% endfor %}
+            </select>
+            <select id="anio-select" onchange="actualizarPeriodo()">
+                <option value="{{ anio }}" selected>{{ anio }}</option>
+                <option value="{{ anio - 1 }}">{{ anio - 1 }}</option>
+                <option value="{{ anio - 2 }}">{{ anio - 2 }}</option>
+            </select>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card kpi-blue">
+                <div class="kpi-value">{{ progreso_total.get('Embarques_Mes', 0) }}</div>
+                <div class="kpi-title">Viajes del Mes</div>
+            </div>
+            <div class="kpi-card kpi-green" onclick="abrirModalTendencia()">
+                <div class="kpi-value">{{ "{:,.0f}".format(progreso_total.get('Kg_Mes', 0)) }}</div>
+                <div class="kpi-title">Kilos Embarcados (Click para ver año)</div>
+            </div>
+            <div class="kpi-card kpi-blue">
+                <div class="kpi-value">{{ progreso_total.get('Embarques_Historico', 0) }}</div>
+                <div class="kpi-title">Viajes Históricos</div>
+            </div>
+            <div class="kpi-card kpi-green">
+                <div class="kpi-value">{{ "{:,.0f}".format(progreso_total.get('Kg_Historico', 0)) }}</div>
+                <div class="kpi-title">Kilos Históricos</div>
+            </div>
+        </div>
+
+        <!-- Gráfica diaria -->
+        <div class="chart-container">
+            <h3>📈 Tendencia Diaria ({{ nombre_mes }})</h3>
+            <div class="chart-box">
+                <canvas id="dailyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabla progreso -->
+        <div class="tabla-container">
+            <h3>📦 Avance por Pedido Programado</h3>
+            <table id="tablaProgreso" class="display">
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Viajes Mes</th>
+                        <th>Kgs Mes</th>
+                        <th>Viajes Históricos</th>
+                        <th>Kgs Históricos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in progreso_detalle %}
+                    <tr>
+                        <td>{{ item.Pedido }}</td>
+                        <td class="viajes-total">{{ item.Embarques_Mes }}</td>
+                        <td class="kg-total">{{ "{:,.0f}".format(item.Kg_Mes) }}</td>
+                        <td>{{ item.Embarques_Historico }}</td>
+                        <td>{{ "{:,.0f}".format(item.Kg_Historico) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tabla diaria -->
+        <div class="tabla-container">
+            <h3>🚚 Detalle Diario de Operación</h3>
+            <table id="tablaDiarios" class="display">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        <th>Planta</th>
+                        <th>Viajes</th>
+                        <th>Total Kg</th>
+                        <th>Pedidos</th>
+                        <th>Lista Pedidos</th>
+                        <th>Remisiones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data_diarios %}
+                    <tr>
+                        <td>{{ item.DiaEmbarque }}</td>
+                        <td>{{ item.Planta }}</td>
+                        <td class="viajes-total">{{ item.Total_de_Viajes }}</td>
+                        <td class="kg-total">{{ "{:,.0f}".format(item.Total_Kg_Dia) }}</td>
+                        <td>{{ item.Total_Pedidos }}</td>
+                        <td style="font-size:0.85em">{{ item.Lista_Pedidos }}</td>
+                        <td style="font-size:0.85em">{{ item.Lista_Remisiones }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modalTendencia" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="cerrarModalTendencia()">&times;</span>
+            <h3>📊 Tendencia Anual de Kilos Embarcados</h3>
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let dailyChart, monthlyChart;
+
+        const formatNumber = n => new Intl.NumberFormat('es-MX').format(n);
+
+        function actualizarPeriodo() {
+            const mes = document.getElementById("mes-select").value;
+            const anio = document.getElementById("anio-select").value;
+            window.location.href = `/embarques?mes=${mes}&anio=${anio}`;
+        }
+
+        function drawDailyChart() {
+            const data = {{ data_diarios | tojson }};
+            const grouped = {};
+
+            data.forEach(item => {
+                const dia = item.DiaEmbarque?.slice(8, 10) || '00';
+                grouped[dia] = (grouped[dia] || 0) + item.Total_Kg_Dia;
+            });
+
+            const labels = Object.keys(grouped).sort((a,b)=>a-b);
+            const kilos = labels.map(k=>grouped[k]);
+
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            if (dailyChart) dailyChart.destroy();
+
+            dailyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.map(l=>`Día ${l}`),
+                    datasets: [{
+                        label: 'Kilos Totales',
+                        data: kilos,
+                        backgroundColor: 'rgba(26,115,232,0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        async function abrirModalTendencia() {
+            const anio = document.getElementById("anio-select").value;
+            document.getElementById("modalTendencia").style.display = 'flex';
+
+            const res = await fetch(`/embarques/tendencia_anual?anio=${anio}`);
+            const data = await res.json();
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const labels = data.tendencia_mensual.map(d => meses[d.Mes - 1]);
+            const valores = data.tendencia_mensual.map(d => d.Total_Kg);
+
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if (monthlyChart) monthlyChart.destroy();
+
+            monthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Kilos Embarcados',
+                        data: valores,
+                        fill: true,
+                        borderColor: 'rgba(26,115,232,1)',
+                        backgroundColor: 'rgba(26,115,232,0.1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function cerrarModalTendencia() {
+            document.getElementById("modalTendencia").style.display = 'none';
+        }
+
+        $(document).ready(function(){
+            drawDailyChart();
+            $('#tablaProgreso, #tablaDiarios').DataTable({
+                language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
+                pageLength: 10
+            });
+        });
+    </script>
+</body>
+</html>
