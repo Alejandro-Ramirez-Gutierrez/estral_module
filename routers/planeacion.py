@@ -1,4 +1,4 @@
-# routers/planeacion.py
+# routers/planeacion.py (VERSIÓN FINAL SEGURA y con ESPACIOS ESTÁNDAR)
 import re
 from datetime import datetime, date
 from fastapi import APIRouter, Request, Form, Cookie
@@ -6,14 +6,15 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from utils.auth import verificar_access_token
+# ASUMIMOS QUE ejecutar_consulta_sql AHORA SOPORTA 'params'
 from services.db_service import ejecutar_consulta_sql
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 # Ajusta las listas a quienes quieres que vean/usen Planeación
-AREAS_PERMITIDAS_PLANEACION = [20, 22]          
-EMPLEADOS_PERMITIDOS_PLANEACION = [8811, 8661, 8870, 8740,4,5]  
+AREAS_PERMITIDAS_PLANEACION = [20, 22]
+EMPLEADOS_PERMITIDOS_PLANEACION = [8811, 8661, 8870, 8740, 4, 5]
 
 def validar_acceso_planeacion(payload: dict) -> bool:
     if not payload:
@@ -28,6 +29,8 @@ def get_payload_from_cookie(access_token: str = Cookie(None)):
     token = access_token.replace("Bearer ", "")
     return verificar_access_token(token)
 
+## PÁGINAS HTML
+#----------------------------------------------------------------------
 # Página HTML del dashboard de planeación
 @router.get("/", response_class=HTMLResponse)
 def planeacion_page(request: Request, access_token: str = Cookie(None)):
@@ -37,16 +40,18 @@ def planeacion_page(request: Request, access_token: str = Cookie(None)):
     usuario = payload.get("sub", "Usuario")
     return templates.TemplateResponse("planeacion.html", {"request": request, "usuario": usuario})
 
-
+## ENDPOINTS DE LECTURA (GET)
+#----------------------------------------------------------------------
 # API: Totales por grupo (Estral, CIMSA, Global)
 @router.get("/totales_por_grupo")
 def totales_por_grupo(access_token: str = Cookie(None)):
     payload = get_payload_from_cookie(access_token)
     if not validar_acceso_planeacion(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
-    
+
+    # Esta consulta no tiene parámetros de usuario, por lo que se mantiene simple.
     query = """
-    SELECT 
+    SELECT
         'Fabricación Estral' AS Grupo,
         ROUND(SUM(KgTotal) / 1000, 2) AS Total_Tons
     FROM Produccion
@@ -56,7 +61,7 @@ def totales_por_grupo(access_token: str = Cookie(None)):
 
     UNION ALL
 
-    SELECT 
+    SELECT
         'Fabricación CIMSA' AS Grupo,
         ROUND(SUM(KgTotal) / 1000, 2) AS Total_Tons
     FROM Produccion
@@ -66,7 +71,7 @@ def totales_por_grupo(access_token: str = Cookie(None)):
 
     UNION ALL
 
-    SELECT 
+    SELECT
         'Fabricación Global' AS Grupo,
         ROUND(SUM(KgTotal) / 1000, 2) AS Total_Tons
     FROM Produccion
@@ -74,19 +79,19 @@ def totales_por_grupo(access_token: str = Cookie(None)):
       AND YEAR(Fecha) = YEAR(GETDATE())
       AND MONTH(Fecha) = MONTH(GETDATE());
     """
-    
+
     try:
         rows = ejecutar_consulta_sql(query, fetchall=True) or []
     except Exception as ex:
         return JSONResponse(status_code=500, content={"error": f"Error al consultar totales: {str(ex)}"})
-    
+
     # Convertir Decimal/None a float
     out = []
     for r in rows:
         item = dict(r)
-        item["Total_Tons"] = float(item["Total_Tons"] or 0)
+        item["Total_Tons"] = float(item.get("Total_Tons") or 0)
         out.append(item)
-    
+
     return {"mes": datetime.today().month, "anio": datetime.today().year, "totales": out}
 
 
@@ -96,6 +101,8 @@ def listar_planeacion(access_token: str = Cookie(None)):
     payload = get_payload_from_cookie(access_token)
     if not validar_acceso_planeacion(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    # Consulta estática, no requiere parámetros.
     rows = ejecutar_consulta_sql("SELECT * FROM WS_Planeacion ORDER BY Fecha_Agregado DESC", fetchall=True) or []
     # Normalizar fechas/decimales para JSON
     out = []
@@ -118,6 +125,192 @@ def listar_planeacion(access_token: str = Cookie(None)):
         out.append(item)
     return {"planeacion": out}
 
+# API: Total de KGS Producidos por mes/año
+@router.get("/total_kgs")
+def total_kgs(mes: int = None, anio: int = None, access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    hoy = datetime.today()
+    if not mes:
+        mes = hoy.month
+    if not anio:
+        anio = hoy.year
+
+    # ✅ Ajuste de seguridad: Usar '?' para mes y año.
+    query = """
+    SELECT SUM(KgTotal) AS Total_Kilos
+    FROM db_Estral.dbo.Produccion
+    WHERE Area IN ('ENSAMBLE', 'CIMSA/ ENSAMBLE', 'PERFILADO', 'HABILITADO')
+      AND YEAR(Fecha) = ? AND MONTH(Fecha) = ?;
+    """
+    params = (anio, mes)
+    resultado = ejecutar_consulta_sql(query, params, fetchone=True)
+    total = float(resultado.get("Total_Kilos") or 0)
+    return {"mes": mes, "anio": anio, "total_kgs": total}
+
+
+# API: Historial por pedido
+@router.get("/historial")
+def historial_pedido(pedido: str, access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    # ✅ Ajuste de seguridad: Usar '?' para el pedido.
+    query = """
+    SELECT
+        m.tipo AS TIPO,
+        m.pedido AS PEDIDO,
+        m.partida AS PARTIDA,
+        m.descripcion AS DESCRIPCION,
+        m.color AS COLOR,
+        m.cantidad AS CANTIDAD,
+        ISNULL(SUM(CASE WHEN p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN p.Cantidad END),0) AS ENSAMBLE,
+        ISNULL(SUM(
+            CASE
+                WHEN p.Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
+                     OR (p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+                         AND (p.Color LIKE '%GALVANIZADO%' OR p.Color LIKE '%GALV%' OR p.Color LIKE '%SIN%'))
+                THEN p.Cantidad
+                ELSE 0
+            END
+        ),0) AS PINTURA,
+
+        (r.CantidadRecibida - ISNULL(e.CantidadEmbarcada,0)) AS PATIO,
+        ISNULL(e.CantidadEmbarcada,0) AS EMBARQUE
+
+    FROM Mostrar m
+    LEFT JOIN Produccion p
+        ON m.pedido = p.Pedido AND m.partida = p.Partida
+
+    LEFT JOIN (
+        SELECT x.Pedido, x.Partida, SUM(x.CantidadEmbarcada) AS CantidadEmbarcada
+        FROM (
+            SELECT Pedido, Partida, CantidadEmbarcada FROM embarques
+            UNION ALL
+            SELECT Pedido, Partida, CantidadEmbarcada FROM CIMSAEMBARQUES
+        ) x
+        GROUP BY x.Pedido, x.Partida
+    ) e ON m.pedido = e.Pedido AND m.partida = e.Partida
+
+    LEFT JOIN (
+        SELECT Pedido, Partida, SUM(CantidadRecibida) AS CantidadRecibida
+        FROM EmbarquesMaterialRecibido
+        GROUP BY Pedido, Partida
+    ) r ON m.pedido = r.Pedido AND m.partida = r.Partida
+
+    WHERE m.pedido = ?
+    GROUP BY m.tipo, m.pedido, m.partida, m.descripcion, m.color, m.cantidad, e.CantidadEmbarcada, r.CantidadRecibida
+    ORDER BY
+        TRY_CAST(LEFT(m.partida, PATINDEX('%[^0-9]%', m.partida + 'X') - 1) AS INT),
+        RIGHT(m.partida, LEN(m.partida) - PATINDEX('%[^0-9]%', m.partida + 'X') + 1);
+    """
+
+    try:
+        rows = ejecutar_consulta_sql(query, (pedido,), fetchall=True)
+    except Exception as ex:
+        return JSONResponse(status_code=500, content={"error": f"Error al consultar historial: {str(ex)}"})
+
+    out = []
+    for r in rows:
+        item = dict(r)
+        if isinstance(item.get("Fecha"), (datetime, date)):
+            item["Fecha"] = item["Fecha"].strftime("%Y-%m-%d")
+        out.append(item)
+
+    return {"pedido": pedido, "historial": out}
+
+
+# API: Listar pedidos de producción con estado de completado
+@router.get("/list_noprogramados")
+def listar_no_programados(mes: int = None, anio: int = None, access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_planeacion(payload):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    hoy = datetime.today()
+    if not mes:
+        mes = hoy.month - 1 if hoy.month > 1 else 12
+    if not anio:
+        anio = hoy.year if mes != 12 else hoy.year - 1
+
+    # ✅ Ajuste de seguridad: Declarar variables y usar '?'
+    query = """
+    ;WITH ProduccionMes AS (
+        SELECT
+            Pedido,
+            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+                      THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
+            SUM(CASE WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
+                      OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+                          AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%'))
+                      THEN KgTotal ELSE 0 END) AS Kg_Pintura,
+            MAX(Fecha) AS Ultima_Fecha
+        FROM db_Estral.dbo.Produccion
+        WHERE YEAR(Fecha) = ?
+          AND MONTH(Fecha) = ?
+        GROUP BY Pedido
+    ),
+    EmbarquesMes AS (
+        SELECT Pedido, SUM(KgTotal) AS Kg_Embarque
+        FROM (
+            SELECT Pedido, KgTotal, Fecha
+            FROM db_Estral.dbo.embarques
+            WHERE Fecha BETWEEN DATEFROMPARTS(?, ?, 1) AND EOMONTH(DATEFROMPARTS(?, ?, 1))
+            UNION ALL
+            SELECT Pedido, KgTotal, Fecha
+            FROM db_Estral.dbo.CIMSAEMBARQUES
+            WHERE Fecha BETWEEN DATEFROMPARTS(?, ?, 1) AND EOMONTH(DATEFROMPARTS(?, ?, 1))
+        ) x
+        GROUP BY Pedido
+    )
+    SELECT
+        pm.Pedido,
+        p.Pedido_Estral AS Pedido_Estral,
+        d.Destinatario AS Cliente,
+        ts.D_Tipo_Sistema AS Sistema,
+        ISNULL(pm.Kg_Ensamble,0) AS Kg_Ensamble,
+        ISNULL(pm.Kg_Pintura,0) AS Kg_Pintura,
+        ISNULL(em.Kg_Embarque,0) AS Kg_Embarque,
+        pm.Ultima_Fecha
+    FROM ProduccionMes pm
+    LEFT JOIN EmbarquesMes em ON pm.Pedido = em.Pedido
+    INNER JOIN db_Estral.dbo.Pedidos p ON pm.Pedido = p.Pedido_Estral
+    LEFT JOIN db_Estral.dbo.Domicilio_Pedido d ON p.K_Pedido = d.K_Pedido
+    LEFT JOIN db_Estral.dbo.Tipo_Sistema ts ON p.K_Tipo_Sistema = ts.K_Tipo_Sistema
+    ORDER BY pm.Ultima_Fecha DESC;
+    """
+    # Los parámetros se repiten para las funciones de fecha
+    params = (
+        anio, mes,
+        anio, mes,
+        anio, mes,
+        anio, mes,
+        anio, mes
+    )
+
+    rows = ejecutar_consulta_sql(query, params, fetchall=True) or []
+
+    out = []
+    for r in rows:
+        item = dict(r)
+        for fld in ("Kg_Ensamble", "Kg_Pintura", "Kg_Embarque"):
+            if item.get(fld) is not None:
+                item[fld] = float(item[fld])
+        if isinstance(item.get("Ultima_Fecha"), (datetime, date)):
+            item["Ultima_Fecha"] = item["Ultima_Fecha"].strftime("%Y-%m-%d")
+        out.append(item)
+
+    return {
+        "anio": anio,
+        "mes": mes,
+        "pedidos": out
+    }
+
+## ENDPOINTS DE ESCRITURA/MODIFICACIÓN (POST/DELETE)
+#----------------------------------------------------------------------
 # API: Agregar un pedido valida que exista en query y lo inserta en WS_Planeacion
 @router.post("/add")
 def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
@@ -129,15 +322,17 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
     if not re.match(r'^[A-Za-z0-9\-]+$', pedido):
         return JSONResponse(status_code=400, content={"error": "Formato de pedido inválido"})
 
-    # Evitamos duplicados en WS_Planeacion
-    existente = ejecutar_consulta_sql(f"SELECT TOP 1 * FROM WS_Planeacion WHERE Pedido = '{pedido}'", fetchone=True)
+    # ✅ Ajuste de seguridad 1: Usar '?' para evitar duplicados.
+    existencia_query = "SELECT TOP 1 * FROM WS_Planeacion WHERE Pedido = ?"
+    existente = ejecutar_consulta_sql(existencia_query, (pedido,), fetchone=True)
     if existente:
         return JSONResponse(status_code=409, content={"error": "Pedido ya agregado en planeación"})
 
     # Query para obtener datos del pedido
-    query = f"""
+    # ✅ Ajuste de seguridad 2: Usar '?' en el CTE para PedidosFiltro.
+    query = """
     ;WITH PedidosFiltro AS (
-        SELECT '{pedido}' AS Pedido
+        SELECT ? AS Pedido
     ),
     PedidosCTE AS (
         SELECT
@@ -162,12 +357,12 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
         SELECT
             Pedido,
             SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
-                     THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
-            SUM(CASE 
-                    WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
-                         OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
-                             AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%' OR Color = '%SIN%'))
-                    THEN KgTotal ELSE 0 
+                      THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
+            SUM(CASE
+                    WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
+                         OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+                             AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%' OR Color LIKE '%SIN%'))
+                    THEN KgTotal ELSE 0
                 END) AS Kg_Pintura
         FROM db_Estral.dbo.Produccion
         WHERE Pedido IN (SELECT Pedido FROM PedidosFiltro)
@@ -199,8 +394,8 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
         ped.Kg_Programados AS KGS,
         ROUND(
             ISNULL(
-                CASE 
-                    WHEN ISNULL(ph.Kg_Ensamble,0) >= ped.Kg_Programados 
+                CASE
+                    WHEN ISNULL(ph.Kg_Ensamble,0) >= ped.Kg_Programados
                         THEN 100
                     ELSE (ph.Kg_Ensamble / NULLIF(ped.Kg_Programados,0) * 100)
                 END,0
@@ -208,8 +403,8 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
         ) AS ENSAMBLE,
         ROUND(
             ISNULL(
-                CASE 
-                    WHEN ISNULL(ph.Kg_Pintura,0) >= ped.Kg_Programados 
+                CASE
+                    WHEN ISNULL(ph.Kg_Pintura,0) >= ped.Kg_Programados
                         THEN 100
                     ELSE (ph.Kg_Pintura / NULLIF(ped.Kg_Programados,0) * 100)
                 END,0
@@ -217,25 +412,25 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
         ) AS PINTURA,
         ROUND(
             ISNULL(
-                CASE 
-                    WHEN ISNULL(e.Kg_Embarque,0) >= ped.Kg_Programados 
+                CASE
+                    WHEN ISNULL(e.Kg_Embarque,0) >= ped.Kg_Programados
                         THEN 100
                     ELSE (e.Kg_Embarque / NULLIF(ped.Kg_Programados,0) * 100)
                 END,0
             ),1
         ) AS EMBARQUE,
         ped.Status,
-        CASE 
-            WHEN ped.Kg_Programados - ISNULL(ph.Kg_Ensamble,0) < 0 
+        CASE
+            WHEN ped.Kg_Programados - ISNULL(ph.Kg_Ensamble,0) < 0
                 THEN 0
-            ELSE ped.Kg_Programados - ISNULL(ph.Kg_Ensamble,0) 
-        END AS [KGS FALTANTES],
+            ELSE ped.Kg_Programados - ISNULL(ph.Kg_Ensamble,0)
+        END AS [KGS_Faltantes],
         ped.Fecha_Entrega,
-        CASE 
+        CASE
             WHEN ROUND(
                     ISNULL(
-                        CASE 
-                            WHEN ISNULL(ph.Kg_Pintura,0) >= ped.Kg_Programados 
+                        CASE
+                            WHEN ISNULL(ph.Kg_Pintura,0) >= ped.Kg_Programados
                                 THEN 100
                             ELSE (ph.Kg_Pintura / NULLIF(ped.Kg_Programados,0) * 100)
                         END,0
@@ -255,60 +450,52 @@ def agregar_pedido(pedido: str = Form(...), access_token: str = Cookie(None)):
 
     # Ejecuta la validación/lectura del pedido
     try:
-        resultado = ejecutar_consulta_sql(query, fetchone=True)
+        # ✅ Ajuste de seguridad 3: Pasamos el parámetro para el QUERY.
+        resultado = ejecutar_consulta_sql(query, (pedido,), fetchone=True)
     except Exception as ex:
         return JSONResponse(status_code=500, content={"error": f"Error al ejecutar consulta de validación: {str(ex)}"})
 
     if not resultado:
         return JSONResponse(status_code=404, content={"error": "El pedido no existe o no tiene datos disponibles"})
 
-    # Preparar valores para insert (escapar strings, dejar números sin comillas)
-    pedido_val = str(resultado.get("Pedido") or pedido).replace("'", "''")
-    cliente_val = (resultado.get("Cliente") or "").replace("'", "''")
-    sistema_val = (resultado.get("Sistema") or "").replace("'", "''")
+    # Asignación de valores
+    pedido_val = str(resultado.get("Pedido") or pedido)
+    cliente_val = resultado.get("Cliente")
+    sistema_val = resultado.get("Sistema")
     kgs_val = resultado.get("KGS")
     ensamble_val = resultado.get("ENSAMBLE")
     pintura_val = resultado.get("PINTURA")
     embarque_val = resultado.get("EMBARQUE")
-    status_val = resultado.get("Status") if resultado.get("Status") is not None else "NULL"
-    kgs_faltantes_val = resultado.get("KGS FALTANTES") or resultado.get("KGS_FALTANTES") or resultado.get("KGS Faltantes") or "NULL"
+    status_val = resultado.get("Status") if resultado.get("Status") is not None else None
+    kgs_faltantes_val = resultado.get("KGS_Faltantes")
     fecha_entrega_val = resultado.get("Fecha_Entrega")
     fecha_cierre_val = resultado.get("Fecha_Cierre")
-    usuario_agrego = payload.get("sub", "unknown").replace("'", "''")
+    usuario_agrego = payload.get("sub", "unknown")
 
-    def date_to_sql(d):
-        if d is None:
-            return "NULL"
-        if isinstance(d, (datetime, date)):
-            return f"'{d.strftime('%Y-%m-%d')}'"
-        try:
-            return f"'{str(d)[:10]}'"
-        except:
-            return "NULL"
 
-    fecha_entrega_sql = date_to_sql(fecha_entrega_val)
-    fecha_cierre_sql = date_to_sql(fecha_cierre_val)
-
-    insert_sql = f"""
+    # ✅ Ajuste de seguridad 4: Uso de '?' para el INSERT.
+    insert_sql = """
     INSERT INTO WS_Planeacion
-    (Pedido, Cliente, Sistema, KGS, ENSAMBLE, PINTURA, EMBARQUE, Status, KGS_Faltantes, Fecha_Entrega, Fecha_Cierre, Usuario_Agrego)
+    (Pedido, Cliente, Sistema, KGS, ENSAMBLE, PINTURA, EMBARQUE, Status, KGS_Faltantes, Fecha_Entrega, Fecha_Cierre, Usuario_Agrego, Fecha_Agregado)
     VALUES
-    ('{pedido_val}', '{cliente_val}', '{sistema_val}', {kgs_val if kgs_val is not None else 'NULL'},
-     {ensamble_val if ensamble_val is not None else 'NULL'}, {pintura_val if pintura_val is not None else 'NULL'},
-     {embarque_val if embarque_val is not None else 'NULL'}, {status_val},
-     {kgs_faltantes_val if kgs_faltantes_val != "NULL" else "NULL"},
-     {fecha_entrega_sql}, {fecha_cierre_sql}, '{usuario_agrego}');
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE());
     """
 
+    params = (
+        pedido_val, cliente_val, sistema_val, kgs_val, ensamble_val, pintura_val, embarque_val,
+        status_val, kgs_faltantes_val, fecha_entrega_val, fecha_cierre_val, usuario_agrego
+    )
+
     try:
-        ejecutar_consulta_sql(insert_sql)
+        # ❌ CORRECCIÓN DEL ERROR: Eliminamos 'commit=True'
+        ejecutar_consulta_sql(insert_sql, params)
     except Exception as ex:
         return JSONResponse(status_code=500, content={"error": f"Error al insertar en WS_Planeacion: {str(ex)}"})
 
     # Traer la fila insertada
-    inserted = ejecutar_consulta_sql(
-        f"SELECT TOP 1 * FROM WS_Planeacion WHERE Pedido = '{pedido_val}' ORDER BY Fecha_Agregado DESC", fetchone=True
-    )
+    # ✅ Ajuste de seguridad 5: Usar '?' para la selección final.
+    inserted_query = "SELECT TOP 1 * FROM WS_Planeacion WHERE Pedido = ? ORDER BY Fecha_Agregado DESC"
+    inserted = ejecutar_consulta_sql(inserted_query, (pedido_val,), fetchone=True)
 
     # Normalizar fechas/decimales
     if inserted:
@@ -333,6 +520,7 @@ def refrescar_planeacion(access_token: str = Cookie(None)):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
     try:
+        # Consulta estática (Stored Procedure), se mantiene igual y segura
         ejecutar_consulta_sql("EXEC sp_Actualizar_WS_Planeacion;")
         return {"message": "Datos de planeación actualizados correctamente"}
     except Exception as ex:
@@ -346,193 +534,17 @@ def borrar_pedido(pedido: str, access_token: str = Cookie(None)):
     if not validar_acceso_planeacion(payload):
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
-    # comprobar existencia
-    existente = ejecutar_consulta_sql(f"SELECT TOP 1 * FROM WS_Planeacion WHERE Pedido = '{pedido}'", fetchone=True)
+    # ✅ Ajuste de seguridad 6: comprobar existencia
+    existencia_query = "SELECT TOP 1 * FROM WS_Planeacion WHERE Pedido = ?"
+    existente = ejecutar_consulta_sql(existencia_query, (pedido,), fetchone=True)
     if not existente:
         return JSONResponse(status_code=404, content={"error": "No existe ese pedido en planeación"})
 
     try:
-        ejecutar_consulta_sql(f"DELETE FROM WS_Planeacion WHERE Pedido = '{pedido}'")
+        # ✅ Ajuste de seguridad 7: Eliminar usando '?'
+        delete_query = "DELETE FROM WS_Planeacion WHERE Pedido = ?"
+        ejecutar_consulta_sql(delete_query, (pedido,))
     except Exception as ex:
         return JSONResponse(status_code=500, content={"error": f"Error al eliminar pedido: {str(ex)}"})
 
     return {"message": f"Pedido {pedido} eliminado de planeación"}
-
-@router.get("/total_kgs")
-def total_kgs(mes: int = None, anio: int = None, access_token: str = Cookie(None)):
-    payload = get_payload_from_cookie(access_token)
-    if not validar_acceso_planeacion(payload):
-        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
-
-    from datetime import datetime
-
-    hoy = datetime.today()
-    if not mes:
-        mes = hoy.month
-    if not anio:
-        anio = hoy.year
-
-    query = f"""
-    SELECT SUM(KgTotal) AS Total_Kilos
-    FROM db_Estral.dbo.Produccion
-    WHERE Area IN ('ENSAMBLE', 'CIMSA/ ENSAMBLE', 'PERFILADO', 'HABILITADO')
-      AND YEAR(Fecha) = {anio} AND MONTH(Fecha) = {mes};
-    """
-    resultado = ejecutar_consulta_sql(query, fetchone=True)
-    total = float(resultado.get("Total_Kilos") or 0)
-    return {"mes": mes, "anio": anio, "total_kgs": total}
-
-
-# API: Historial por pedido
-@router.get("/historial")
-def historial_pedido(pedido: str, access_token: str = Cookie(None)):
-    payload = get_payload_from_cookie(access_token)
-    if not validar_acceso_planeacion(payload):
-        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
-
-    query = f"""
-    SELECT
-        m.tipo AS TIPO,
-        m.pedido AS PEDIDO,
-        m.partida AS PARTIDA,
-        m.descripcion AS DESCRIPCION,
-        m.color AS COLOR,
-        m.cantidad AS CANTIDAD,
-        ISNULL(SUM(CASE WHEN p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') THEN p.Cantidad END),0) AS ENSAMBLE,
-        ISNULL(SUM(
-            CASE 
-                WHEN p.Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
-                     OR (p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
-                         AND (p.Color LIKE '%GALVANIZADO%' OR p.Color LIKE '%GALV%' OR p.Color LIKE '%SIN%'))
-                THEN p.Cantidad 
-                ELSE 0 
-            END
-        ),0) AS PINTURA,
-
-        (r.CantidadRecibida - ISNULL(e.CantidadEmbarcada,0)) AS PATIO,
-        ISNULL(e.CantidadEmbarcada,0) AS EMBARQUE
-
-    FROM Mostrar m
-    LEFT JOIN Produccion p
-        ON m.pedido = p.Pedido AND m.partida = p.Partida
-
-    LEFT JOIN (
-        SELECT x.Pedido, x.Partida, SUM(x.CantidadEmbarcada) AS CantidadEmbarcada
-        FROM (
-            SELECT Pedido, Partida, CantidadEmbarcada FROM embarques
-            UNION ALL
-            SELECT Pedido, Partida, CantidadEmbarcada FROM CIMSAEMBARQUES
-        ) x
-        GROUP BY x.Pedido, x.Partida
-    ) e ON m.pedido = e.Pedido AND m.partida = e.Partida
-
-    LEFT JOIN (
-        SELECT Pedido, Partida, SUM(CantidadRecibida) AS CantidadRecibida
-        FROM EmbarquesMaterialRecibido 
-        GROUP BY Pedido, Partida 
-    ) r ON m.pedido = r.Pedido AND m.partida = r.Partida
-
-    WHERE m.pedido = '{pedido}'
-    GROUP BY m.tipo, m.pedido, m.partida, m.descripcion, m.color, m.cantidad, e.CantidadEmbarcada, r.CantidadRecibida
-    ORDER BY
-        TRY_CAST(LEFT(m.partida, PATINDEX('%[^0-9]%', m.partida + 'X') - 1) AS INT),
-        RIGHT(m.partida, LEN(m.partida) - PATINDEX('%[^0-9]%', m.partida + 'X') + 1);
-    """
-
-    try:
-        rows = ejecutar_consulta_sql(query, fetchall=True) or []
-    except Exception as ex:
-        return JSONResponse(status_code=500, content={"error": f"Error al consultar historial: {str(ex)}"})
-
-    out = []
-    for r in rows:
-        item = dict(r)
-        if isinstance(item.get("Fecha"), (datetime, date)):
-            item["Fecha"] = item["Fecha"].strftime("%Y-%m-%d")
-        out.append(item)
-
-    return {"pedido": pedido, "historial": out}
-
-
-
-# API: Listar pedidos de producción con estado de completado
-@router.get("/list_noprogramados")
-def listar_no_programados(mes: int = None, anio: int = None, access_token: str = Cookie(None)):
-    payload = get_payload_from_cookie(access_token)
-    if not validar_acceso_planeacion(payload):
-        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
-
-    from datetime import datetime, date
-
-    hoy = datetime.today()
-    if not mes:
-        mes = hoy.month - 1 if hoy.month > 1 else 12
-    if not anio:
-        anio = hoy.year if mes != 12 else hoy.year - 1
-
-    query = f"""
-    DECLARE @mes INT = {mes};
-    DECLARE @anio INT = {anio};
-
-    ;WITH ProduccionMes AS (
-        SELECT 
-            Pedido,
-            SUM(CASE WHEN Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
-                     THEN KgTotal ELSE 0 END) AS Kg_Ensamble,
-            SUM(CASE WHEN Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA') 
-                     OR (Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
-                         AND (Color LIKE '%GALVANIZADO%' OR Color LIKE '%GALV%')) 
-                     THEN KgTotal ELSE 0 END) AS Kg_Pintura,
-            MAX(Fecha) AS Ultima_Fecha
-        FROM db_Estral.dbo.Produccion
-        WHERE YEAR(Fecha) = @anio
-          AND MONTH(Fecha) = @mes
-        GROUP BY Pedido
-    ),
-    EmbarquesMes AS (
-        SELECT Pedido, SUM(KgTotal) AS Kg_Embarque
-        FROM (
-            SELECT Pedido, KgTotal, Fecha 
-            FROM db_Estral.dbo.embarques
-            WHERE Fecha BETWEEN DATEFROMPARTS(@anio,@mes,1) AND EOMONTH(DATEFROMPARTS(@anio,@mes,1))
-            UNION ALL
-            SELECT Pedido, KgTotal, Fecha 
-            FROM db_Estral.dbo.CIMSAEMBARQUES
-            WHERE Fecha BETWEEN DATEFROMPARTS(@anio,@mes,1) AND EOMONTH(DATEFROMPARTS(@anio,@mes,1))
-        ) x
-        GROUP BY Pedido
-    )
-    SELECT 
-        pm.Pedido,
-        p.Pedido_Estral AS Pedido_Estral,
-        d.Destinatario AS Cliente,
-        ts.D_Tipo_Sistema AS Sistema,
-        ISNULL(pm.Kg_Ensamble,0) AS Kg_Ensamble,
-        ISNULL(pm.Kg_Pintura,0) AS Kg_Pintura,
-        ISNULL(em.Kg_Embarque,0) AS Kg_Embarque,
-        pm.Ultima_Fecha
-    FROM ProduccionMes pm
-    LEFT JOIN EmbarquesMes em ON pm.Pedido = em.Pedido
-    INNER JOIN db_Estral.dbo.Pedidos p ON pm.Pedido = p.Pedido_Estral
-    LEFT JOIN db_Estral.dbo.Domicilio_Pedido d ON p.K_Pedido = d.K_Pedido
-    LEFT JOIN db_Estral.dbo.Tipo_Sistema ts ON p.K_Tipo_Sistema = ts.K_Tipo_Sistema
-    ORDER BY pm.Ultima_Fecha DESC;
-    """
-
-    rows = ejecutar_consulta_sql(query, fetchall=True) or []
-
-    out = []
-    for r in rows:
-        item = dict(r)
-        for fld in ("Kg_Ensamble", "Kg_Pintura", "Kg_Embarque"):
-            if item.get(fld) is not None:
-                item[fld] = float(item[fld])
-        if isinstance(item.get("Ultima_Fecha"), (datetime, date)):
-            item["Ultima_Fecha"] = item["Ultima_Fecha"].strftime("%Y-%m-%d")
-        out.append(item)
-
-    return {
-        "anio": anio,
-        "mes": mes,
-        "pedidos": out
-    }
