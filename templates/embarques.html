@@ -8,7 +8,7 @@
     <!-- Librerías -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
 
     <style>
@@ -33,16 +33,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
         }
 
-        .logo {
-            font-weight: bold;
-            font-size: 1.3em;
-        }
+        .logo { font-weight: bold; font-size: 1.3em; }
 
         .nav-buttons button {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.2);
             border: none;
             color: #fff;
             padding: 8px 15px;
@@ -52,9 +49,7 @@
             font-weight: 600;
         }
 
-        .nav-buttons button:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
+        .nav-buttons button:hover { background: rgba(255,255,255,0.4); }
 
         .content {
             padding: 25px 40px;
@@ -78,6 +73,7 @@
             margin-bottom: 20px;
             border-left: 5px solid var(--estral-blue);
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            flex-wrap: wrap;
         }
 
         .selector-box select {
@@ -86,6 +82,21 @@
             border: 1px solid #ddd;
             font-size: 1em;
             background-color: #f8f9fa;
+        }
+
+        .selector-box button {
+            background: var(--estral-blue);
+            border: none;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .selector-box button:hover {
+            background: #155ab6;
         }
 
         .kpi-grid {
@@ -104,9 +115,7 @@
             transition: transform 0.2s;
         }
 
-        .kpi-card:hover {
-            transform: translateY(-3px);
-        }
+        .kpi-card:hover { transform: translateY(-3px); }
 
         .kpi-value {
             font-size: 1.8em;
@@ -172,10 +181,7 @@
             display: none;
             position: fixed;
             z-index: 9999;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.6);
             justify-content: center;
             align-items: center;
@@ -228,6 +234,8 @@
                 <option value="{{ anio - 1 }}">{{ anio - 1 }}</option>
                 <option value="{{ anio - 2 }}">{{ anio - 2 }}</option>
             </select>
+
+            <button onclick="abrirModalTendencia()">📈 Ver gráfica anual</button>
         </div>
 
         <!-- KPIs -->
@@ -236,9 +244,9 @@
                 <div class="kpi-value">{{ progreso_total.get('Embarques_Mes', 0) }}</div>
                 <div class="kpi-title">Viajes del Mes</div>
             </div>
-            <div class="kpi-card kpi-green" onclick="abrirModalTendencia()">
+            <div class="kpi-card kpi-green">
                 <div class="kpi-value">{{ "{:,.0f}".format(progreso_total.get('Kg_Mes', 0)) }}</div>
-                <div class="kpi-title">Kilos Embarcados (Click para ver año)</div>
+                <div class="kpi-title">Kilos Embarcados</div>
             </div>
             <div class="kpi-card kpi-blue">
                 <div class="kpi-value">{{ progreso_total.get('Embarques_Historico', 0) }}</div>
@@ -258,7 +266,7 @@
             </div>
         </div>
 
-        <!-- Tabla progreso -->
+        <!-- Tablas -->
         <div class="tabla-container">
             <h3>📦 Avance por Pedido Programado</h3>
             <table id="tablaProgreso" class="display">
@@ -285,7 +293,6 @@
             </table>
         </div>
 
-        <!-- Tabla diaria -->
         <div class="tabla-container">
             <h3>🚚 Detalle Diario de Operación</h3>
             <table id="tablaDiarios" class="display">
@@ -328,7 +335,6 @@
 
     <script>
         let dailyChart, monthlyChart;
-
         const formatNumber = n => new Intl.NumberFormat('es-MX').format(n);
 
         function actualizarPeriodo() {
@@ -353,19 +359,36 @@
             if (dailyChart) dailyChart.destroy();
 
             dailyChart = new Chart(ctx, {
-                type: 'bar',
+                type: 'line',
                 data: {
-                    labels: labels.map(l=>`Día ${l}`),
+                    labels: labels.map(l => `Día ${l}`),
                     datasets: [{
                         label: 'Kilos Totales',
                         data: kilos,
-                        backgroundColor: 'rgba(26,115,232,0.8)'
+                        fill: true,
+                        borderColor: 'rgba(26,115,232,1)',
+                        backgroundColor: 'rgba(26,115,232,0.1)',
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'rgba(26,115,232,1)',
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${formatNumber(context.parsed.y)} kg`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: (value) => formatNumber(value) }
+                        }
+                    }
                 }
             });
         }
@@ -398,7 +421,13 @@
                 },
                 options: {
                     plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                    scales: { 
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { callback: (value) => formatNumber(value) }
+                        } 
+                    },
+                    responsive: true
                 }
             });
         }
@@ -409,8 +438,29 @@
 
         $(document).ready(function(){
             drawDailyChart();
+
+            const langES = {
+                decimal: ",",
+                thousands: ".",
+                processing: "Procesando...",
+                search: "Buscar:",
+                lengthMenu: "Mostrar _MENU_ registros",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                infoEmpty: "Mostrando 0 a 0 de 0 registros",
+                infoFiltered: "(filtrado de _MAX_ registros totales)",
+                loadingRecords: "Cargando...",
+                zeroRecords: "No se encontraron resultados",
+                emptyTable: "No hay datos disponibles",
+                paginate: {
+                    first: "Primero",
+                    previous: "Anterior",
+                    next: "Siguiente",
+                    last: "Último"
+                }
+            };
+
             $('#tablaProgreso, #tablaDiarios').DataTable({
-                language: { url: "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" },
+                language: langES,
                 pageLength: 10
             });
         });
