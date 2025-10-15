@@ -218,25 +218,46 @@ def autorizar_orden(k_orden, k_empleado):
         cursor.close()
         conn.close()
 
-# -------------------- Consulta SQL genérica --------------------
-def ejecutar_consulta_sql(query: str, fetchone: bool = False, fetchall: bool = False):
+# -------------------- Consulta SQL genérica (¡AJUSTADA!) --------------------
+def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetchall: bool = False):
+    """
+    Ejecuta una consulta SQL genérica.
+    Acepta 'params' (lista o tupla) para consultas parametrizadas seguras.
+    """
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute(query)
+        if params:
+            # ✅ Solución al Error 07002: Llama a execute con el query Y los parámetros.
+            cursor.execute(query, params)
+        else:
+            # Para queries que no necesitan parámetros (como en tu dashboard)
+            cursor.execute(query) 
+            
         columns = [col[0] for col in cursor.description] if cursor.description else []
+        
         if fetchone:
             row = safe_fetch(cursor)
             return dict(zip(columns, row)) if row else {}
+        
         if fetchall:
             rows = cursor.fetchall()
             return [dict(zip(columns, r)) for r in rows]
+            
         conn.commit()
         return {}
+        
     except Exception as e:
         print("ERROR ejecutar_consulta_sql:", e)
         traceback.print_exc()
+        # Devuelve [] si se pide fetchall para evitar errores en el endpoint
+        if fetchall:
+             return [] 
         return {}
+        
     finally:
-        cursor.close()
-        conn.close()
+        # Asegura el cierre del cursor y la conexión
+        if cursor:
+             cursor.close()
+        if conn:
+             conn.close()

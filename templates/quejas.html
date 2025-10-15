@@ -6,223 +6,213 @@
     <title>Gestión de Quejas - Estral Módulo</title>
 
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
-    
     <style>
-        /* --- COLORES BASE ESTRAL --- */
         :root {
-            --estral-blue: #1a73e8; /* Azul principal de Estral */
-            --estral-red: #d32f2f;  /* Rojo para errores/alerta */
-            --color-bg: #f4f7ff;    /* Fondo claro */
+            --estral-blue: #1a73e8;
+            --estral-red: #d32f2f;
+            --estral-green: #1e8449;
+            --color-bg: #f4f7ff;
             --color-text: #333;
         }
 
-        /* --- ESTILOS GENERALES --- */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 0;
-            background-color: var(--color-bg);
+            background: var(--color-bg);
             color: var(--color-text);
         }
-        .content {
-            padding: 20px 40px;
-            max-width: 1400px;
-            margin: 0 auto;
+
+        nav {
+            background: var(--estral-blue);
+            color: white;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .nav-button {
+            border: none;
+            color: white;
+            background: rgba(255,255,255,0.15);
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all .2s;
+        }
+        .nav-button:hover { background: rgba(255,255,255,0.3); }
+        .btn-excel { background: #2e7d32; }
+        .btn-excel:hover { background: #1b5e20; }
+        .btn-atras { background: #6c757d; }
+        .btn-atras:hover { background: #5a6268; }
+        .btn-logout { background: var(--estral-red); }
+        .btn-logout:hover { background: #b71c1c; }
+
+        .content {
+            padding: 25px;
+            max-width: 1300px;
+            margin: auto;
+        }
+
         h2 {
             color: var(--estral-blue);
             border-bottom: 3px solid var(--estral-blue);
             padding-bottom: 10px;
-            margin-top: 30px;
-        }
-        
-        /* --- ESTILOS DE NAVEGACIÓN (Adaptados de tu Dashboard) --- */
-        nav {
-            background-color: var(--estral-blue);
-            color: white;
-            padding: 15px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .logo { font-size: 1.5em; font-weight: bold; }
-        .nav-buttons { display: flex; gap: 10px; }
-        .nav-button {
+
+        .badge-usuario {
+            background: var(--estral-blue);
             color: white;
-            text-decoration: none;
-            padding: 10px 18px;
-            border-radius: 8px;
-            transition: background-color 0.2s;
-            cursor: pointer;
-            border: none;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
             font-weight: 600;
-            font-size: 1em;
-            background: rgba(255, 255, 255, 0.2);
-        }
-        .nav-button:hover {
-            background-color: rgba(255, 255, 255, 0.4);
         }
 
-        .btn-atras {
-            background-color: #6c757d; 
-        }
-        .btn-atras:hover {
-            background-color: #5a6268;
-        }
-        .btn-logout {
-            background-color: var(--estral-red); 
-        }
-        .btn-logout:hover {
-            background-color: #e53935;
-        }
-        .btn-excel {
-            background-color: #2e7d32; /* Verde Excel */
-        }
-        .btn-excel:hover {
-            background-color: #1b5e20;
+        .selector-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-left: 5px solid var(--estral-blue);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
         }
 
-        /* --- ESTILOS DE ESTATUS --- */
+        .selector-box label {
+            font-weight: 600;
+            color: var(--estral-blue);
+        }
+
+        .selector-box select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .kpi-grid {
+            display: flex;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .kpi-card {
+            flex: 1;
+            min-width: 230px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+            text-align: center;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+        .kpi-card:hover { transform: translateY(-3px); }
+        .kpi-value {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .kpi-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .color-total { border-top: 5px solid var(--estral-blue); color: var(--estral-blue); }
+        .color-cerrada { border-top: 5px solid var(--estral-green); color: var(--estral-green); }
+        .color-proceso { border-top: 5px solid #f7a01f; color: #f7a01f; }
+        .color-pendiente { border-top: 5px solid var(--estral-red); color: var(--estral-red); }
+
+        /* Tablas */
+        #tablaQuejas_wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        table.dataTable th {
+            background-color: var(--estral-blue);
+            color: white;
+            font-weight: 600;
+        }
+
         .estatus-badge {
             display: inline-block;
             padding: 4px 10px;
             border-radius: 15px;
             font-size: 0.8em;
             font-weight: bold;
-            text-align: center;
-            min-width: 100px;
         }
-        
-        /* CERRADA: Verde sutil */
-        .estatus-cerrada { 
-            background-color: #e6f4ea; 
-            color: #1e8449;
-            border: 1px solid #c8e6c9;
-        }
-        
-        /* EN PROCESO / ACTIVA (SIN AVANCE): Amarillo/Naranja sutil */
-        .estatus-en-proceso, .estatus-activa-sin-avance { 
-            background-color: #fff9e6; 
-            color: #f7a01f;
-            border: 1px solid #ffe0b2;
-        }
-        
-        /* PENDIENTE DE INGENIERIA: Azul de Estral más suave */
-        .estatus-pendiente-de-ingenieria { 
-            background-color: #e3f2fd; 
-            color: var(--estral-blue);
-            border: 1px solid #bbdefb;
-        }
-        
-        /* --- Estilos de KPI --- */
-        .kpi-grid {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .kpi-card {
-            flex: 1;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            transition: transform 0.2s;
-        }
-        .kpi-card:hover {
-             transform: translateY(-3px);
-        }
-        .kpi-value {
-            font-size: 2.8em;
-            font-weight: 700;
-            line-height: 1;
-            margin-bottom: 5px;
-        }
-        .kpi-title {
-            font-size: 0.9em;
-            font-weight: 600;
-            opacity: 0.8;
+        .estatus-cerrada { background: #e6f4ea; color: var(--estral-green); }
+        .estatus-en-proceso, .estatus-activa-sin-avance { background: #fff9e6; color: #f7a01f; }
+        .estatus-pendiente-de-ingenieria { background: #e3f2fd; color: var(--estral-blue); }
+
+        /* 📱 Responsive */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            nav { flex-direction: column; gap: 10px; }
+            .nav-buttons { flex-wrap: wrap; justify-content: center; }
+            h2 { flex-direction: column; text-align: center; gap: 8px; font-size: 1.3rem; }
+            .selector-box { flex-direction: column; align-items: stretch; }
+            .kpi-grid { flex-direction: column; }
+            table { font-size: 0.85rem; }
+            #tablaQuejas_wrapper { overflow-x: auto; }
         }
 
-        /* Colores KPI */
-        .color-total { background-color: white; border-top: 5px solid var(--estral-blue); }
-        .color-total .kpi-value, .color-total .kpi-title { color: var(--estral-blue); }
-
-        .color-cerrada { background-color: white; border-top: 5px solid #1e8449; }
-        .color-cerrada .kpi-value, .color-cerrada .kpi-title { color: #1e8449; }
-
-        .color-proceso { background-color: white; border-top: 5px solid #f7a01f; }
-        .color-proceso .kpi-value, .color-proceso .kpi-title { color: #f7a01f; }
-
-        .color-pendiente { background-color: white; border-top: 5px solid var(--estral-red); }
-        .color-pendiente .kpi-value, .color-pendiente .kpi-title { color: var(--estral-red); }
-
-        /* Selectores */
-        .selector-box {
-            background-color: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            font-size: 1em;
-            margin-bottom: 20px;
-            border-left: 5px solid var(--estral-blue);
+        #modalHistorial::-webkit-scrollbar {
+            width: 6px;
         }
-        .selector-box label {
-            font-weight: 600;
-            color: var(--estral-blue);
-        }
-        .selector-box select {
-            padding: 8px 12px;
-            border-radius: 5px;
-            border: 1px solid #ced4da;
-            background-color: #f8f9fa;
-            font-size: 1em;
-            cursor: pointer;
-        }
-        
-        /* Estilos para DataTables */
-        #tablaQuejas_wrapper {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        #modalHistorial::-webkit-scrollbar-thumb {
+            background-color: rgba(26,115,232,0.5);
+            border-radius: 3px;
         }
 
     </style>
 </head>
 <body>
-    
     <nav>
         <div class="logo">ESTRAL - Gestión de Quejas</div>
         <div class="nav-buttons">
-            <button class="nav-button btn-excel" onclick="exportarExcel()">
-                💾 Exportar a Excel
-            </button>
-            <button class="nav-button btn-atras" onclick="location.href='/dashboard'">
-                🏠 Dashboard
-            </button>
-            <button class="nav-button btn-logout" onclick="location.href='/logout'">
-                Cerrar sesión
-            </button>
+            <button class="nav-button btn-excel" onclick="exportarExcel()">💾 Excel</button>
+            <button class="nav-button btn-atras" onclick="location.href='/dashboard'">🏠 Dashboard</button>
+            <button class="nav-button btn-logout" onclick="location.href='/logout'">Salir</button>
         </div>
     </nav>
 
     <div class="content">
-        <h2>Reporte de Quejas: **{{ nombre_mes_anio }}** <small style="color:#6c757d; font-size:0.6em; margin-left:10px;">Usuario: {{ usuario }}</small></h2>
+        <h2>
+            Reporte de Quejas — {{ nombre_mes_anio }}
+            <span class="badge-usuario">{{ usuario }}</span>
+        </h2>
 
         <div class="selector-box">
-            <label for="mes-select">Periodo a Consultar:</label>
+            <label>Periodo:</label>
             <select id="mes-select" onchange="cambiarMes()">
-                <option value="0" {% if mes_actual == 0 %}selected{% endif %}>--- Todos (Histórico) ---</option>
-                
+                <option value="0" {% if mes_actual == 0 %}selected{% endif %}>--- Histórico ---</option>
                 {% set meses_espanol = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
                 {% for m in range(1, 13) %}
                     <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>{{ meses_espanol[m-1] }}</option>
                 {% endfor %}
             </select>
+
             <select id="anio-select" onchange="cambiarMes()">
                 <option value="{{ anio_actual }}" selected>{{ anio_actual }}</option>
                 <option value="{{ anio_actual - 1 }}">{{ anio_actual - 1 }}</option>
@@ -232,31 +222,26 @@
         </div>
 
         <div class="kpi-grid">
-            
             <div class="kpi-card color-total">
-                <div class="kpi-value">{{ resumen.get('TOTAL QUEJAS MES', 0) }}</div>
+                <div class="kpi-value">{{ "{:,.0f}".format(resumen.get('TOTAL QUEJAS MES', 0)) }}</div>
                 <div class="kpi-title">TOTAL DE QUEJAS</div>
             </div>
-
             <div class="kpi-card color-cerrada">
-                <div class="kpi-value">{{ resumen.get('CERRADA', 0) }}</div>
+                <div class="kpi-value">{{ "{:,.0f}".format(resumen.get('CERRADA', 0)) }}</div>
                 <div class="kpi-title">QUEJAS CERRADAS</div>
             </div>
-
             {% set activas = resumen.get('ACTIVA (SIN AVANCE)', 0) + resumen.get('EN PROCESO', 0) %}
             <div class="kpi-card color-proceso">
-                <div class="kpi-value">{{ activas }}</div>
+                <div class="kpi-value">{{ "{:,.0f}".format(activas) }}</div>
                 <div class="kpi-title">EN PROCESO / ACTIVAS</div>
             </div>
-
             <div class="kpi-card color-pendiente">
-                <div class="kpi-value">{{ resumen.get('PENDIENTE DE INGENIERIA', 0) }}</div>
+                <div class="kpi-value">{{ "{:,.0f}".format(resumen.get('PENDIENTE DE INGENIERIA', 0)) }}</div>
                 <div class="kpi-title">PENDIENTE INGENIERÍA</div>
             </div>
-            
         </div>
 
-        <h3>Detalle de Quejas ({{ detalle | length }} Registros)</h3>
+        <h3>Detalle de Quejas ({{ detalle | length }} registros)</h3>
         <table id="tablaQuejas" class="display" style="width:100%">
             <thead>
                 <tr>
@@ -272,66 +257,165 @@
             </thead>
             <tbody>
                 {% for queja in detalle %}
+                {% set estatus_class = queja.Estatus_Queja | replace(' ', '-') | replace('(', '') | replace(')', '') | lower %}
                 <tr>
-                    {% set estatus_class = queja.Estatus_Queja | replace(' ', '-') | replace('(', '') | replace(')', '') | lower %}
                     <td><span class="estatus-badge estatus-{{ estatus_class }}">{{ queja.Estatus_Queja }}</span></td>
-                    <td><a href="/pedidos/{{ queja.Pedido_Estral }}" target="_blank" style="color: var(--estral-blue); text-decoration: none;">**{{ queja.Pedido_Estral }}**</a></td>
+                    <td>
+                        <a href="javascript:void(0);" 
+                            onclick="mostrarHistorial('{{ queja.Pedido_Estral }}')" 
+                            style="color: var(--estral-blue); text-decoration:none; font-weight:600; cursor:pointer;">
+                            {{ queja.Pedido_Estral }}
+                        </a>
+                    </td>
+
                     <td>{{ queja.Fecha_Formato }}</td>
                     <td>{{ queja.Cliente }}</td>
-                    <td>{{ "{:,.2f}".format(queja.Kg_Queja | float) }} Kg</td>
-                    <td>{{ "{:,.2f}".format(queja.Kg_Produccion | float) }} Kg</td>
-                    <td>{{ queja.Pzas_Queja }}</td>
-                    <td>{{ queja.Pzas_Produccion }}</td>
+                    <td>{{ "{:,.2f}".format(queja.Kg_Queja | float) }} kg</td>
+                    <td>{{ "{:,.2f}".format(queja.Kg_Produccion | float) }} kg</td>
+                    <td>{{ "{:,.0f}".format(queja.Pzas_Queja | float) }}</td>
+                    <td>{{ "{:,.0f}".format(queja.Pzas_Produccion | float) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    <!-- 🪟 Modal Historial Pedido -->
+<div id="modalHistorial" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:9999;">
+    <div style="background:white; width:90%; max-width:900px; border-radius:10px; padding:20px; box-shadow:0 4px 10px rgba(0,0,0,0.3); overflow-y:auto; max-height:90vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="color:#1a73e8;">Historial del Pedido <span id="histPedido" style="font-weight:700;"></span></h3>
+            <button onclick="cerrarModalHistorial()" style="background:#d32f2f; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">Cerrar ✖️</button>
+        </div>
+        <table id="tablaHistorial" style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="background:#1a73e8; color:white;">
+                    <th>Tipo</th>
+                    <th>Pedido</th>
+                    <th>Partida</th>
+                    <th>Descripción</th>
+                    <th>Color</th>
+                    <th>Cant</th>
+                    <th>Ens.</th>
+                    <th>Pint.</th>
+                    <th>Patio</th>
+                    <th>Emb.</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyHistorial">
+                <tr><td colspan="10" style="text-align:center;">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
-
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#tablaQuejas').DataTable({
-                "language": {
-                    "processing": "Procesando...",
-                    "lengthMenu": "Mostrar _MENU_ registros",
-                    "zeroRecords": "No se encontraron resultados",
-                    "emptyTable": "Ningún dato disponible en esta tabla",
-                    "info": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
-                    "infoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-                    "infoFiltered": "(filtrado de un total de _MAX_ registros)",
-                    "search": "Buscar:",
-                    "paginate": {
-                        "first": "Primero",
-                        "last": "Último",
-                        "next": "Siguiente",
-                        "previous": "Anterior"
-                    },
-                    "aria": {
-                        "sortAscending": ": Activar para ordenar la columna de manera ascendente",
-                        "sortDescending": ": Activar para ordenar la columna de manera descendente"
-                    }
-                },
-                "order": [[ 2, "desc" ]],
-                "pageLength": 10, 
-                "lengthMenu": [ [10, 25, 50, -1], [10, 25, 50, "Todos"] ]
-            });
+    $(document).ready(() => {
+        $('#tablaQuejas').DataTable({
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-MX.json'
+            },
+            order: [[2, "desc"]],
+            pageLength: 10
         });
+    });
 
-        function cambiarMes() {
-            const mes = document.getElementById('mes-select').value;
-            const anio = document.getElementById('anio-select').value;
-            // Si el mes es "0", mandamos solo el mes=0, el año se mantiene pero el backend lo ignora
-            window.location.href = `/quejas?mes=${mes}&anio=${anio}`;
+    function cambiarMes() {
+        const mes = document.getElementById('mes-select').value;
+        const anio = document.getElementById('anio-select').value;
+        window.location.href = `/quejas?mes=${mes}&anio=${anio}`;
+    }
+
+    function exportarExcel() {
+        const mes = document.getElementById('mes-select').value;
+        const anio = document.getElementById('anio-select').value;
+        window.location.href = `/quejas/exportar?mes=${mes}&anio=${anio}`;
+    }
+
+    function cerrarModalHistorial() {
+        document.getElementById("modalHistorial").style.display = "none";
+        document.getElementById("tbodyHistorial").innerHTML = "";
+    }
+
+    // función mostrarHistorial
+
+async function mostrarHistorial(pedido) {
+    const modal = document.getElementById("modalHistorial");
+    const tbody = document.getElementById("tbodyHistorial");
+    document.getElementById("histPedido").textContent = pedido;
+    modal.style.display = "flex";
+    tbody.innerHTML = "<tr><td colspan='10' style='text-align:center;'>Cargando...</td></tr>";
+
+    try {
+        const res = await fetch(`/quejas/historial?pedido=${pedido}`);
+
+        if (!res.ok) {
+            // Si el backend devuelve un error 500, leemos el JSON de error
+            const errorData = await res.json();
+            const errorMessage = errorData.error || `Error ${res.status}: Fallo de conexión o del servidor.`;
+            
+            // Mostrar el error directamente en el modal para el usuario
+            tbody.innerHTML = `<tr><td colspan='10' style='text-align:center; color: red; font-weight: bold;'>
+                                ❌ Error del Servidor: ${errorMessage}
+                                </td></tr>`;
+            
+            // Lanzamos el error para que el 'catch' lo registre en la consola
+            throw new Error(`Error en el backend: ${errorMessage}`);
         }
 
-        function exportarExcel() {
-            const mes = document.getElementById('mes-select').value;
-            const anio = document.getElementById('anio-select').value;
-            window.location.href = `/quejas/exportar?mes=${mes}&anio=${anio}`;
+        const data = await res.json();
+        tbody.innerHTML = "";
+
+        if (data.historial && data.historial.length) {
+            data.historial.forEach(r => {
+                const tr = document.createElement("tr");
+                const cant = parseFloat(r.CANTIDAD || 0);
+                const ens = parseFloat(r.ENSAMBLE || 0);
+                const pint = parseFloat(r.PINTURA || 0);
+                const patio = parseFloat(r.PATIO || 0);
+                const emb = parseFloat(r.EMBARQUE || 0);
+
+                // ✅ Formateo en estilo mexicano
+                const fmt = n => n.toLocaleString('es-MX');
+
+                const clase = (valor, total) => {
+                    if (valor === 0) return "background:#ffcccc;";
+                    if (valor === total && total > 0) return "background:#ccffcc;"; // Solo si es > 0
+                    if (valor > 0 && valor < total) return "background:#fff8cc;";
+                    return ""; // Sin fondo si valor=total=0
+                };
+
+                tr.innerHTML = `
+                    <td>${r.TIPO || ""}</td>
+                    <td>${r.PEDIDO || ""}</td>
+                    <td>${r.PARTIDA || ""}</td>
+                    <td style="text-align:left;">${r.DESCRIPCION || ""}</td>
+                    <td>${r.COLOR || ""}</td>
+                    <td>${fmt(Math.round(cant))}</td>
+                    <td style="${clase(ens, cant)}">${fmt(Math.round(ens))}</td>
+                    <td style="${clase(pint, cant)}">${fmt(Math.round(pint))}</td>
+                    <td style="${clase(patio, cant)}">${fmt(Math.round(patio))}</td>
+                    <td style="${clase(emb, cant)}">${fmt(Math.round(emb))}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = "<tr><td colspan='10' style='text-align:center;'>No hay historial disponible</td></tr>";
         }
-    </script>
+    } catch (err) {
+        // Solo para errores que no fueron de la respuesta HTTP (ej. error de red)
+        if (!err.message.includes('Error del backend')) {
+            tbody.innerHTML = "<tr><td colspan='10' style='text-align:center; color: red;'>Error al cargar historial (Revisa la consola del navegador)</td></tr>";
+            console.error("Error al obtener el historial (Network o parseo):", err);
+        }
+       
+    }
+}
+
+</script>
+
 </body>
 </html>

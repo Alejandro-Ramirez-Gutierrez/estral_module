@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from utils.auth import verificar_access_token # Asegúrate de que esta ruta sea correcta
 from services.db_service import ejecutar_consulta_sql # Asegúrate de que esta ruta sea correcta
-from datetime import datetime
+from datetime import datetime, date
 from io import BytesIO
 import openpyxl # Asegúrate de tener: pip install openpyxl
 
@@ -14,6 +14,8 @@ templates = Jinja2Templates(directory="templates")
 
 # Permisos: Solo los empleados con estos K_Empleado tendrán acceso al dashboard de Quejas
 EMPLEADOS_PERMITIDOS = [8811, 8661, 8870, 8740, 4, 5]
+
+# --- FUNCIONES DE SOPORTE DE ACCESO ---
 
 def validar_token_quejas(access_token: str):
     """Verifica el token y el K_Empleado contra la lista de permitidos."""
@@ -29,10 +31,25 @@ def validar_token_quejas(access_token: str):
         return payload
     return None
 
+def get_payload_from_cookie(access_token: str = Cookie(None)):
+    """Extrae el payload del token sin validar permisos."""
+    if not access_token:
+        return None
+    token = access_token.replace("Bearer ", "")
+    return verificar_access_token(token)
+
+def validar_acceso_quejas(payload: dict) -> bool:
+    """Lógica simple para validar que haya un payload válido."""
+    if not payload:
+        return False
+    # En un entorno real, aquí iría una lógica más robusta si fuera necesario,
+    # pero para este caso, la validación principal es validar_token_quejas.
+    return True 
+
 # --- LÓGICA SQL: Construcción de Consultas (FINAL) ---
 
 def get_detalle_quejas_query(mes: int, anio: int) -> str:
-    """Retorna el SQL para obtener el detalle de todas las quejas. Si mes=0, trae todos."""
+    """Retorna el SQL para obtener el detalle de todas las quejas."""
     
     # 1. Base del WHERE: Siempre filtra por Pedido_Estral '%S%' o '%Q%'
     where_clausula = "(p.Pedido_Estral LIKE '%S%' OR p.Pedido_Estral LIKE '%Q%')"
@@ -74,7 +91,7 @@ def get_detalle_quejas_query(mes: int, anio: int) -> str:
     """
 
 def get_resumen_quejas_query(mes: int, anio: int) -> str:
-    """Retorna el SQL para obtener el resumen (contadores) de quejas. Si mes=0, trae todos."""
+    """Retorna el SQL para obtener el resumen (contadores) de quejas."""
     
     # 1. Cláusula WHERE para los subqueries (filtrando por fecha si mes != 0)
     where_clausula_sub = "(p.Pedido_Estral LIKE '%S%' OR p.Pedido_Estral LIKE '%Q%')"
@@ -249,3 +266,89 @@ def exportar_quejas_excel(
             'Content-Disposition': f'attachment; filename="{filename}"'
         }
     )
+
+# --- RUTA DE HISTORIAL POR PEDIDO (GET /quejas/historial) ---
+@router.get("/historial")
+def historial_pedido(pedido: str, access_token: str = Cookie(None)):
+    
+    # 1. Validación de acceso
+    if not validar_token_quejas(access_token):
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    # 2. Consulta SQL segura
+    # El query usa '?' para la sustitución de parámetros.
+    query = """
+    SELECT
+        m.tipo AS TIPO,
+        m.pedido AS PEDIDO,
+        m.partida AS PARTIDA,
+        m.descripcion AS DESCRIPCION,
+        m.color AS COLOR,
+        m.cantidad AS CANTIDAD,
+        
+        -- Producción
+        ISNULL(SUM(CASE WHEN p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE') 
+                         THEN p.Cantidad END),0) AS ENSAMBLE,
+        ISNULL(SUM(
+            CASE 
+                WHEN p.Area IN ('PINTURA','pintura plan','CIMSA/ PINTURA')
+                         OR (p.Area IN ('ENSAMBLE','PERFILADO','HABILITADO','CIMSA/ ENSAMBLE')
+                              AND (p.Color LIKE '%GALVANIZADO%' OR p.Color LIKE '%GALV%' OR p.Color LIKE '%SIN%'))
+                THEN p.Cantidad 
+                ELSE 0 
+            END
+        ),0) AS PINTURA,
+
+        -- Embarques
+        ISNULL(r.CantidadRecibida,0) - ISNULL(e.CantidadEmbarcada,0) AS PATIO,
+        ISNULL(e.CantidadEmbarcada,0) AS EMBARQUE,
+
+        -- Flags para debug
+        CASE WHEN SUM(p.Cantidad) IS NULL THEN 0 ELSE 1 END AS ExisteEnProduccion,
+        CASE WHEN e.CantidadEmbarcada IS NULL AND r.CantidadRecibida IS NULL THEN 0 ELSE 1 END AS ExisteEnEmbarques
+
+    FROM Mostrar m
+    LEFT JOIN Produccion p
+        ON m.pedido = p.Pedido AND m.partida = p.Partida
+    LEFT JOIN (
+        SELECT x.Pedido, x.Partida, SUM(x.CantidadEmbarcada) AS CantidadEmbarcada
+        FROM (
+            SELECT Pedido, Partida, CantidadEmbarcada FROM embarques
+            UNION ALL
+            SELECT Pedido, Partida, CantidadEmbarcada FROM CIMSAEMBARQUES
+        ) x
+        GROUP BY x.Pedido, x.Partida
+    ) e ON m.pedido = e.Pedido AND m.partida = e.Partida
+    LEFT JOIN (
+        SELECT Pedido, Partida, SUM(CantidadRecibida) AS CantidadRecibida
+        FROM EmbarquesMaterialRecibido 
+        GROUP BY Pedido, Partida 
+    ) r ON m.pedido = r.Pedido AND m.partida = r.Partida
+
+    WHERE m.pedido = ? 
+    GROUP BY m.tipo, m.pedido, m.partida, m.descripcion, m.color, m.cantidad, e.CantidadEmbarcada, r.CantidadRecibida
+    ORDER BY
+        TRY_CAST(LEFT(m.partida, PATINDEX('%[^0-9]%', m.partida + 'X') - 1) AS INT),
+        RIGHT(m.partida, LEN(m.partida) - PATINDEX('%[^0-9]%', m.partida + 'X') + 1);
+    """
+
+    # 3. Ejecución con manejo de errores (¡LLamada correcta!)
+    try:
+        # ✅ Se pasa el parámetro (pedido,) como el segundo argumento (params)
+        rows = ejecutar_consulta_sql(query, (pedido,), fetchall=True) or []
+    except Exception as ex:
+        import traceback
+        print("ERROR HISTORIAL:", traceback.format_exc())
+        return JSONResponse(status_code=500, content={"error": f"Error al consultar historial: {str(ex)}"  })
+
+
+    # 4. Normalización y respuesta
+    out = []
+    for r in rows:
+        item = dict(r)
+        # Convierte flags a booleanos
+        item["ExisteEnProduccion"] = bool(item.get("ExisteEnProduccion"))
+        item["ExisteEnEmbarques"] = bool(item.get("ExisteEnEmbarques"))
+        out.append(item)
+
+    return {"pedido": pedido, "historial": out}
