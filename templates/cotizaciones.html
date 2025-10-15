@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Cotizaciones</title>
+    <style>
+        /* Estilos básicos para la tabla y el formulario */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .date-form { margin-bottom: 20px; display: flex; align-items: flex-end; gap: 10px; }
+        .date-form label { font-weight: bold; }
+        .date-form input, .date-form button { padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
+        .date-form button { background-color: #007bff; color: white; cursor: pointer; border: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .loading { text-align: center; color: #666; font-style: italic; display: none; }
+        .total-row { font-weight: bold; background-color: #ffe0b2 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Resumen de Métricas de Cotizaciones</h1>
+
+        <form id="dateForm" class="date-form">
+            <label for="fecha">Mes y Año (YYYYMM):</label>
+            <input type="text" id="fecha" name="fecha" pattern="\d{6}" placeholder="Ej: 202510" required 
+                    value="{{ today_ym }}" title="Formato YYYYMM (ej: 202510)">
+            <button type="submit">Cargar Métricas</button>
+        </form>
+
+        <p class="loading" id="loadingMessage">Cargando datos...</p>
+        
+        <table id="metricsTable">
+            <thead>
+                <tr>
+                    <th>Clasificación</th>
+                    <th>Total Cotizaciones</th>
+                    <th>Total Kilos (Kg)</th>
+                    <th>Total Monto</th>
+                    <th>Precio Promedio por Kg</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="5" style="text-align: center;">Inicia la carga de métricas...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const form = document.getElementById('dateForm');
+        const tableBody = document.getElementById('metricsTable').querySelector('tbody');
+        const loadingMessage = document.getElementById('loadingMessage');
+
+        /**
+         * Función principal para consumir el endpoint y renderizar los datos.
+         */
+        async function fetchMetrics(fecha) {
+            // Se usa el prefix /cotizaciones/resumen_metricas
+            const url = `/cotizaciones/resumen_metricas?fecha=${fecha}`;
+            
+            // 1. Mostrar estado de carga
+            tableBody.innerHTML = '';
+            loadingMessage.style.display = 'block';
+
+            try {
+                // 2. Realizar la petición
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
+
+                // 3. Manejar la respuesta del servidor (especialmente 302/403 de tu validación)
+                if (response.status === 302 || response.status === 403) {
+                    const errorDetail = await response.json().catch(() => ({detail: 'Error de autenticación o permisos.'}));
+                    // En un entorno real, la respuesta HTTP 302 de tu backend ya debería forzar la redirección.
+                    // Si no lo hace automáticamente (e.g. por CORS o peticiones Fetch), podemos forzarla.
+                    if (response.status === 302) {
+                        alert("Sesión expirada o no autorizado. Redirigiendo al login.");
+                        window.location.href = response.headers.get('Location') || '/auth/login';
+                        return;
+                    }
+                    tableBody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">${errorDetail.detail}</td></tr>`;
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Error ${response.status}: ${errorText}`);
+                }
+
+                // 4. Procesar los datos
+                const data = await response.json();
+
+                // 5. Renderizar la tabla
+                renderTable(data);
+
+            } catch (error) {
+                console.error("Error al obtener las métricas:", error);
+                tableBody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">
+                    Hubo un problema al cargar los datos. Revisa la consola o intenta más tarde.
+                </td></tr>`;
+            } finally {
+                // 6. Ocultar estado de carga
+                loadingMessage.style.display = 'none';
+            }
+        }
+
+        /**
+         * Inyecta los datos en el cuerpo de la tabla.
+         */
+        function renderTable(data) {
+            tableBody.innerHTML = ''; // Limpiar la tabla
+            if (data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No se encontraron datos para la fecha seleccionada.</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                // Aplica una clase especial a la fila de "TOTAL GENERAL"
+                if (item.Clasificacion === 'TOTAL GENERAL') {
+                    row.classList.add('total-row');
+                }
+
+                // Construye la fila
+                row.innerHTML = `
+                    <td>${item.Clasificacion || ''}</td>
+                    <td>${item.Total_Cotizaciones !== null ? item.Total_Cotizaciones : ''}</td>
+                    <td>${item.Total_Kilos || ''}</td>
+                    <td>${item.Total_Monto || ''}</td>
+                    <td>${item.Precio_Promedio_Kg || ''}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 7. Event Listener para el formulario
+        form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Detener el envío normal del formulario
+            const fechaInput = document.getElementById('fecha');
+            const fecha = fechaInput.value.trim();
+
+            if (fecha.length === 6) {
+                fetchMetrics(fecha);
+            } else {
+                alert("Por favor, introduce una fecha válida en formato YYYYMM (6 dígitos).");
+            }
+        });
+
+        // 8. Cargar las métricas al iniciar con la fecha por defecto ({{ today_ym }})
+        window.addEventListener('load', () => {
+            const defaultFecha = document.getElementById('fecha').value;
+            if (defaultFecha) {
+                fetchMetrics(defaultFecha);
+            }
+        });
+
+    </script>
+</body>
+</html>

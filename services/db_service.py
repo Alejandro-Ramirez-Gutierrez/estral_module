@@ -1,5 +1,5 @@
 # services/db_service.py
-from config import get_connection
+from config import get_connection,get_mysql_connection
 import requests
 import pyodbc
 import os
@@ -261,3 +261,32 @@ def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetch
              cursor.close()
         if conn:
              conn.close()
+
+
+# -------------------- Consulta SQL Genérica para MySQL --------------------
+def ejecutar_consulta_mysql(query: str, fetchall: bool = True):
+    """
+    Ejecuta un query genérico en MySQL y devuelve resultados como lista de diccionarios.
+    Ya no usa .next_result() para evitar errores con dictionary=True
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_mysql_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query)
+
+        resultados = cursor.fetchall() if fetchall else cursor.fetchone()
+
+        conn.commit()
+        return resultados
+
+    except Exception as e:
+        print(f"ERROR ejecutar_consulta_mysql: {e}")
+        return [] if fetchall else {}
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

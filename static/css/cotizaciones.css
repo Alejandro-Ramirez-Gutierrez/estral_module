@@ -1,0 +1,51 @@
+/* static/css/cotizaciones.css */
+
+/* Colores Estral (Ajusta los colores a tu branding real) */
+.text-primary { color: #007bff !important; } /* Azul Principal */
+.bg-primary { background-color: #007bff !important; }
+.border-left-primary { border-left: 0.25rem solid #007bff !important; }
+
+/* Estilos de Estado y Éxito */
+.text-success { color: #28a745 !important; } /* Vendida (Éxito) */
+.border-left-success { border-left: 0.25rem solid #28a745 !important; }
+.text-info { color: #17a2b8 !important; } /* Abierta */
+.border-left-info { border-left: 0.25rem solid #17a2b8 !important; }
+
+/* Estilos de Advertencia y Peligro */
+.text-warning { color: #ffc107 !important; } /* Cerrada (Requiere atención) */
+.border-left-warning { border-left: 0.25rem solid #ffc107 !important; }
+.text-danger { color: #dc3545 !important; } /* Riesgo / Retraso */
+.border-left-danger { border-left: 0.25rem solid #dc3545 !important; }
+
+/* Estilo para el Total General */
+.text-secondary { color: #6c757d !important; }
+.border-left-secondary { border-left: 0.25rem solid #6c757d !important; }
+
+
+/* Estilo de Tarjetas KPI */
+#resumen-kpis .card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 0.5rem;
+}
+
+#resumen-kpis .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.h5.mb-0 {
+    font-size: 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Estilos para que la tabla también se vea limpia */
+.table th, .table td {
+    vertical-align: middle;
+}
+
+/* Iconos para decorar */
+.fa-2x {
+    font-size: 2.5rem;
+}
