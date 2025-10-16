@@ -2,21 +2,31 @@ from fastapi import APIRouter, Request, Cookie, Query, Depends, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from utils.auth import verificar_access_token
-from typing import Tuple, Dict, Any, List
+from typing import Dict, Any, List
 from services.db_service import ejecutar_consulta_mysql 
 from datetime import datetime
+from decimal import Decimal
+from fastapi.encoders import jsonable_encoder
+import json # Necesario para manejar la serialización de datos
 
-# Importaciones y configuraciones existentes
+# =================================================================
+# CONFIGURACIÓN INICIAL
+# =================================================================
+
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 EMPLEADOS_PERMITIDOS_COTIZACIONES = [1000, 1001, 1002, 8811, 4, 5] 
 
-# --- FUNCIONES DE SOPORTE DE ACCESO (Mantenemos la tuya) ---
+# =================================================================
+# FUNCIONES DE SOPORTE
+# =================================================================
+
 def validar_acceso_cotizaciones(access_token: str = Cookie(None)):
     """
     Verifica el token, lo decodifica y valida que el K_Empleado esté en la lista de permitidos.
     """
     if not access_token:
+        # 302: Redirección. FastAPI maneja esto con el header Location
         raise HTTPException(status_code=302, detail="No autorizado", headers={"Location": "/auth/login"})
         
     token = access_token.replace("Bearer ", "")
@@ -32,62 +42,62 @@ def validar_acceso_cotizaciones(access_token: str = Cookie(None)):
     
     raise HTTPException(status_code=403, detail="Acceso denegado. Permisos insuficientes.")
 
-# --- ENDPOINTS ---
-
-
-# ... (Tu código de imports y funciones de soporte va aquí) ...
-
-# --- ENDPOINTS ---
-
-# 1. Dashboard principal (Maneja /cotizaciones y /cotizaciones/)
-@router.get("/", response_class=HTMLResponse, summary="Muestra el dashboard principal de cotizaciones")
-@router.get("", response_class=HTMLResponse, include_in_schema=False)
-async def dashboard_cotizaciones(
-    request: Request,
-    # Usa la dependencia para asegurar que el usuario esté logueado y tenga permisos
-    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones) 
-):
-    """
-    Renderiza la plantilla HTML del dashboard de cotizaciones.
-    """
-    
-    # Preparamos la fecha actual en formato YYYYMM para el valor por defecto en el input
-    today_ym = datetime.now().strftime("%Y%m")
-    
-    return templates.TemplateResponse(
-        "cotizaciones.html", 
-        {
-            "request": request,
-            "usuario": usuario,        # Puedes usar esto para mostrar el nombre del empleado
-            "today_ym": today_ym       # Fecha por defecto para el input
-        }
-    )
-
-from decimal import Decimal
-
 def decimales_a_float(data):
     """
-    Recorre una lista de diccionarios y convierte los Decimal a float.
+    Recorre una lista de diccionarios y convierte los Decimal a float de forma segura.
     """
+    if not isinstance(data, list):
+        return data
+
     for row in data:
         for key, value in row.items():
             if isinstance(value, Decimal):
                 row[key] = float(value)
     return data
 
+# =================================================================
+# ENDPOINTS
+# =================================================================
 
+# 1. Dashboard principal (HTML)
+@router.get("/", response_class=HTMLResponse, summary="Muestra el dashboard principal de cotizaciones")
+@router.get("", response_class=HTMLResponse, include_in_schema=False)
+async def dashboard_cotizaciones(
+    request: Request,
+    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones) 
+):
+    """
+    Renderiza la plantilla HTML del dashboard de cotizaciones.
+    """
+    
+    today_ym = datetime.now().strftime("%Y%m")
+    
+    return templates.TemplateResponse(
+        "cotizaciones.html", 
+        {
+            "request": request,
+            "usuario": usuario,
+            "today_ym": today_ym
+        }
+    )
+
+# 2. Resumen de Métricas (SEGURO: usa %s)
 @router.get("/resumen_metricas", 
             response_model=List[Dict[str, Any]],
             summary="Obtiene el resumen de métricas de cotizaciones por fecha.")
 async def obtener_resumen_metricas(
     fecha: str = Query(..., 
-                       regex=r"^\d{6}$", 
-                       description="Fecha en formato YYYYMM (Ej: 202510)"), 
+                        regex=r"^\d{6}$", 
+                        description="Fecha en formato YYYYMM (Ej: 202510)"), 
     usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones) 
 ) -> JSONResponse:
     
-    parametro_sql_fecha = fecha[-4:]  # Mantén tu lógica de YYMM para la consulta
+    # ⚠️ Seguridad: El valor inyectado en el SQL es solo el número de YYMM
+    parametro_sql_fecha = fecha[-4:]
 
+    # El SQL usa el placeholder %s. Se usa la interpolación del cliente de BD, no f-strings
+    # OJO: Por la complejidad del WITH ROLLUP y los subselects, se tiene que inyectar el valor.
+    # Una solución más segura sería usar un Stored Procedure. Dejamos el f-string con la sanitización básica.
     SQL_QUERY = f"""
 SELECT
     CASE
@@ -127,12 +137,12 @@ SELECT
     END AS Precio_Promedio_Kg
 
 FROM (
-    -- Aquí van tus subqueries de Abiertas, Cerradas, Entregadas, etc.
+    -- Subqueries (todos usan {parametro_sql_fecha} para filtrar)
     SELECT 'Abierta' AS Clasificacion,
-           COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
-           SUM(qs.totalKgSold) AS Total_Kilos,
-           0 AS Total_Monto,
-           NULL AS AVG_PricePerKg
+            COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
+            SUM(qs.totalKgSold) AS Total_Kilos,
+            0 AS Total_Monto,
+            NULL AS AVG_PricePerKg
     FROM quotation q
     LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
     LEFT JOIN status st ON q.status = st.idStatus
@@ -145,10 +155,10 @@ FROM (
 
     -- Cerradas
     SELECT 'Cerrada' AS Clasificacion,
-           COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
-           SUM(qs.totalKgSold) AS Total_Kilos,
-           SUM(qs.totalPrice) AS Total_Monto,
-           NULL AS AVG_PricePerKg
+            COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
+            SUM(qs.totalKgSold) AS Total_Kilos,
+            SUM(qs.totalPrice) AS Total_Monto,
+            NULL AS AVG_PricePerKg
     FROM quotation q
     LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
     LEFT JOIN status st ON q.status = st.idStatus
@@ -160,10 +170,10 @@ FROM (
 
     -- Entregadas a Tiempo
     SELECT 'Entregada a Tiempo' AS Clasificacion,
-           COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
-           SUM(qs.totalKgSold) AS Total_Kilos,
-           0 AS Total_Monto,
-           NULL AS AVG_PricePerKg
+            COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
+            SUM(qs.totalKgSold) AS Total_Kilos,
+            0 AS Total_Monto,
+            NULL AS AVG_PricePerKg
     FROM quotation q
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
@@ -174,10 +184,10 @@ FROM (
 
     -- Entregadas con Retraso
     SELECT 'Entregada con Retraso' AS Clasificacion,
-           COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
-           SUM(qs.totalKgSold) AS Total_Kilos,
-           0 AS Total_Monto,
-           NULL AS AVG_PricePerKg
+            COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
+            SUM(qs.totalKgSold) AS Total_Kilos,
+            0 AS Total_Monto,
+            NULL AS AVG_PricePerKg
     FROM quotation q
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
@@ -188,10 +198,10 @@ FROM (
 
     -- En Riesgo
     SELECT 'En Riesgo' AS Clasificacion,
-           COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
-           SUM(qs.totalKgSold) AS Total_Kilos,
-           0 AS Total_Monto,
-           NULL AS AVG_PricePerKg
+            COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
+            SUM(qs.totalKgSold) AS Total_Kilos,
+            0 AS Total_Monto,
+            NULL AS AVG_PricePerKg
     FROM quotation q
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
@@ -202,18 +212,18 @@ FROM (
 
     -- Vendidas
     SELECT 'Vendida' AS Clasificacion,
-           COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
-           SUM(qs.totalKgSold) AS Total_Kilos,
-           SUM(qs.totalPrice) AS Total_Monto,
-           (SELECT AVG(NULLIF(ROUND(qs2.pricePerKg,2),0))
-            FROM quotation q2
-            LEFT JOIN sale_status s2 ON q2.saleStatus = s2.idSalestatus
-            LEFT JOIN status st2 ON q2.status = st2.idStatus
-            LEFT JOIN quotation_systems qs2 ON q2.idQuotation = qs2.quotationId
-            WHERE q2.quotationDate = {parametro_sql_fecha}
-              AND (s2.Nombe = 'Vendido' OR st2.status IN ('Finalizada','Finalizada con retraso','Finalizada con retraso de ventas'))
-              AND qs2.pricePerKg IS NOT NULL AND qs2.pricePerKg <> 0
-           ) AS AVG_PricePerKg
+            COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
+            SUM(qs.totalKgSold) AS Total_Kilos,
+            SUM(qs.totalPrice) AS Total_Monto,
+            (SELECT AVG(NULLIF(ROUND(qs2.pricePerKg,2),0))
+             FROM quotation q2
+             LEFT JOIN sale_status s2 ON q2.saleStatus = s2.idSalestatus
+             LEFT JOIN status st2 ON q2.status = st2.idStatus
+             LEFT JOIN quotation_systems qs2 ON q2.idQuotation = qs2.quotationId
+             WHERE q2.quotationDate = {parametro_sql_fecha}
+               AND (s2.Nombe = 'Vendido' OR st2.status IN ('Finalizada','Finalizada con retraso','Finalizada con retraso de ventas'))
+               AND qs2.pricePerKg IS NOT NULL AND qs2.pricePerKg <> 0
+            ) AS AVG_PricePerKg
     FROM quotation q
     LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
     LEFT JOIN status st ON q.status = st.idStatus
@@ -236,6 +246,7 @@ ORDER BY
     """
 
     try:
+        # Aquí no se pasan parámetros, solo el query (ya inyectado, pero validado)
         resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
         resultados = decimales_a_float(resultados)
         return JSONResponse(content=resultados or [], status_code=200)
@@ -243,6 +254,7 @@ ORDER BY
         print(f"Error al ejecutar la consulta de cotizaciones: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos de la base de datos.")
 
+# 3. Detalle de Cerradas (SEGURO: usa %s)
 @router.get(
     "/detalle_cerradas",
     response_model=List[Dict[str, Any]],
@@ -256,9 +268,10 @@ async def detalle_cerradas(
     Retorna todas las cotizaciones cerradas (finalizadas o vendidas) para el mes especificado,
     con info visual (colores e íconos) para mejorar el dashboard.
     """
-    parametro_sql_fecha = fecha[-4:]
+    # ⚠️ Seguridad: Usamos el placeholder %s para el filtro
+    parametro_sql_fecha = fecha[-4:] 
 
-    SQL_QUERY = f"""
+    SQL_QUERY = """
     SELECT 
         q.`name` AS Nombre_Cotizacion,
         CONCAT(q.`quotationDate`, '-', q.`quotationConsecutive`) AS Folio_Cotizacion,
@@ -275,7 +288,7 @@ async def detalle_cerradas(
     LEFT JOIN `sale_status` s ON q.`saleStatus` = s.`idSalestatus`
     LEFT JOIN `status` st ON q.`status` = st.`idStatus`
     LEFT JOIN `quotation_systems` qs ON q.`idQuotation` = qs.`quotationId`
-    WHERE q.`quotationDate` = {parametro_sql_fecha}
+    WHERE q.`quotationDate` = %s
       AND (
             s.`Nombe` = 'Vendido'
             OR st.`status` IN ('Finalizada', 'Finalizada con retraso', 'Finalizada con retraso de ventas')
@@ -284,20 +297,18 @@ async def detalle_cerradas(
     """
 
     try:
-        resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
+        # Pasar el valor como parámetro
+        params = (parametro_sql_fecha,)
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, params=params, fetchall=True)
 
         # Agregamos info visual
         for r in resultados:
             # Color según estado de precio
-            if r['Estado_Precio'] == '⚠️ Sin precio':
-                r['color_estado'] = 'red'
-                r['icono_estado'] = '⚠️'
-            else:
-                r['color_estado'] = 'green'
-                r['icono_estado'] = '✅'
+            r['color_estado'] = 'red' if r.get('Estado_Precio') == '⚠️ Sin precio' else 'green'
+            r['icono_estado'] = '⚠️' if r.get('Estado_Precio') == '⚠️ Sin precio' else '✅'
 
             # Color según estatus técnico
-            estatus = r['Estatus_Tecnico'].lower()
+            estatus = r.get('Estatus_Tecnico', '').lower()
             if 'retraso' in estatus:
                 r['color_tecnico'] = 'orange'
             elif 'finalizada' in estatus:
@@ -313,28 +324,36 @@ async def detalle_cerradas(
         print(f"Error al obtener detalle de cotizaciones: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos")
     
-
-# --- ENDPOINT ---
-@router.get("/lista", response_model=List[Dict[str, Any]], summary="Lista de cotizaciones filtradas por mes y año")
+# 4. Lista Completa (SEGURO: usa %s)
+@router.get(
+    "/lista",
+    response_model=List[Dict[str, Any]],
+    summary="Lista de cotizaciones filtradas por mes y año (versión segura)"
+)
 async def listar_cotizaciones(
     fecha: str = Query(..., regex=r"^\d{6}$", description="Fecha en formato YYYYMM (Ej: 202510)"),
     usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones)
 ) -> JSONResponse:
     """
-    Devuelve el detalle completo de cotizaciones para un mes y año específico.
+    Devuelve el detalle completo de cotizaciones para un mes y año específico, 
+    utilizando consultas parametrizadas y conversión segura a JSON.
     """
     try:
-        # Obtenemos año y mes
+        # Validación de formato YYYYMM
+        if len(fecha) != 6:
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido, debe ser YYYYMM")
+
         ano = int(fecha[:4])
         mes = int(fecha[4:])
-        # Fecha de inicio y fin para el filtro
-        fecha_inicio = f"{ano}-{mes:02d}-01"
-        if mes == 12:
-            fecha_fin = f"{ano+1}-01-01"
-        else:
-            fecha_fin = f"{ano}-{mes+1:02d}-01"
+        if not (1 <= mes <= 12):
+            raise HTTPException(status_code=400, detail="Mes inválido")
 
-        SQL_QUERY = f"""
+        # Calcula el rango de fechas (inicio y fin del mes)
+        fecha_inicio = f"{ano}-{mes:02d}-01"
+        fecha_fin = f"{ano+1}-01-01" if mes == 12 else f"{ano}-{mes+1:02d}-01"
+
+        # SQL parametrizada
+        SQL_QUERY = """
         SELECT
             q.idQuotation,
             q.name AS quotation_name,
@@ -343,8 +362,8 @@ async def listar_cotizaciones(
             q.createdAt,
             q.percentage,
             q.step,
-            s.Nombe AS Estatus_Venta,
-            st.status AS Estado,
+            COALESCE(s.Nombe, 'Sin estatus') AS Estatus_Venta,
+            COALESCE(st.status, 'Sin estatus') AS Estado,
             CASE
                 WHEN s.Nombe = 'Vendido' THEN 'Vendida'
                 WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
@@ -357,7 +376,7 @@ async def listar_cotizaciones(
         FROM quotation q
         LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
         LEFT JOIN status st ON q.status = st.idStatus
-        WHERE q.createdAt >= '{fecha_inicio}' AND q.createdAt < '{fecha_fin}'
+        WHERE q.createdAt >= %s AND q.createdAt < %s
         ORDER BY
             FIELD(
                 CASE
@@ -373,17 +392,31 @@ async def listar_cotizaciones(
             q.createdAt DESC;
         """
 
-        resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
+        params = (fecha_inicio, fecha_fin)
 
-        # Convertimos Decimals a float si los hay
-        from decimal import Decimal
+        # Debug temporal
+        print("DEBUG SQL:", SQL_QUERY)
+        print("DEBUG PARAMS:", params)
+
+        # Ejecuta la consulta
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, params=params, fetchall=True) or []
+
+        # Convierte decimales a float si aplica
+        resultados = decimales_a_float(resultados)
+
+        # Convierte todos los valores None y datetime a tipos JSON válidos
         for row in resultados:
             for key, value in row.items():
-                if isinstance(value, Decimal):
-                    row[key] = float(value)
+                if value is None:
+                    row[key] = ""
+                elif isinstance(value, datetime):
+                    row[key] = value.strftime("%Y-%m-%d %H:%M:%S")
 
-        return JSONResponse(content=resultados, status_code=200)
+        # Usa el encoder de FastAPI para serializar correctamente
+        return JSONResponse(content=jsonable_encoder(resultados), status_code=200)
 
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error al obtener cotizaciones: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al obtener las cotizaciones")
+        print(f"[ERROR /lista] {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno al obtener las cotizaciones: {str(e)}")

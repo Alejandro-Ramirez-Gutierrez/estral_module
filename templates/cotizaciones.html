@@ -6,89 +6,165 @@
 <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
 <title>Dashboard de Cotizaciones</title>
 <style>
-    body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f9; }
-    .container { max-width: 1200px; margin: auto; padding: 20px; }
-    h1 { color: #333; text-align: center; margin-bottom: 20px; }
+    :root {
+        --primary: #007bff;
+        --success: #28a745;
+        --info: #17a2b8;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --dark: #343a40;
+        --light-bg: #f4f4f9;
+        --light-card: #fff;
+        --light-text: #333;
+        --light-subtext: #555;
+        --light-border: #ccc;
+        --dark-bg: #181a1b;
+        --dark-card: #242526;
+        --dark-text: #eee;
+        --dark-subtext: #bbb;
+        --dark-border: #444;
+    }
 
-    /* Formulario de fecha */
-    .date-form { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
-    .date-form select, .date-form button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-    .date-form button { background-color: #007bff; color: #fff; border: none; cursor: pointer; transition: 0.2s; }
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        margin: 0;
+        background-color: var(--light-bg);
+        color: var(--light-text);
+        transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+        background-color: var(--dark-bg);
+        color: var(--dark-text);
+    }
+
+    .container { max-width: 1200px; margin: auto; padding: 20px; position: relative; }
+
+    h1 { text-align: center; margin-bottom: 20px; font-weight: 700; }
+
+    .theme-toggle {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.6rem;
+        transition: transform 0.2s;
+    }
+    .theme-toggle:hover { transform: scale(1.2); }
+
+    /* Formulario */
+    .date-form {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 30px;
+    }
+    .date-form select, .date-form button {
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid var(--light-border);
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    body.dark .date-form select, body.dark .date-form button {
+        border: 1px solid var(--dark-border);
+        background-color: var(--dark-card);
+        color: var(--dark-text);
+    }
+    .date-form button {
+        background-color: var(--primary);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
     .date-form button:hover { background-color: #0056b3; }
 
-    /* Cards de KPIs */
+    /* KPI */
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-    .kpi-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
-    .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
-
-    .kpi-title { font-weight: bold; margin-bottom: 10px; font-size: 1rem; color: #555; }
+    .kpi-card {
+        background: var(--light-card);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: default;
+    }
+    body.dark .kpi-card { background: var(--dark-card); }
+    .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+    .kpi-title { font-weight: bold; margin-bottom: 8px; }
     .kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
-    .kpi-subtext { font-size: 0.9rem; color: #777; }
-
-    /* Colores por tipo */
-    .abierta { border-top: 4px solid #17a2b8; }
-    .cerrada { border-top: 4px solid #28a745; cursor: pointer; }
-    .entregada-tiempo { border-top: 4px solid #ffc107; }
+    .abierta { border-top: 4px solid var(--info); }
+    .cerrada { border-top: 4px solid var(--success); cursor: pointer; }
+    .entregada-tiempo { border-top: 4px solid var(--warning); }
     .entregada-retraso { border-top: 4px solid #fd7e14; }
-    .en-riesgo { border-top: 4px solid #dc3545; }
+    .en-riesgo { border-top: 4px solid var(--danger); }
     .vendida { border-top: 4px solid #6610f2; }
-    .total-general { border-top: 4px solid #343a40; }
+    .total-general { border-top: 4px solid var(--dark); }
 
-    .loading { text-align: center; color: #666; font-style: italic; margin-bottom: 20px; display: none; }
+    /* Tabla */
+    .table-search { text-align: right; margin-bottom: 10px; }
+    .table-search input {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--light-border);
+        font-size: 0.9rem;
+    }
+    body.dark .table-search input {
+        background: var(--dark-card);
+        border: 1px solid var(--dark-border);
+        color: var(--dark-text);
+    }
+
+    table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    thead tr { background: var(--primary); color: #fff; }
+    tbody tr { background: var(--light-card); transition: background 0.2s; }
+    tbody tr:hover { background: #e9f3ff; }
+    body.dark tbody tr { background: var(--dark-card); }
+    body.dark tbody tr:hover { background: #2c2f33; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: left; font-size: 0.9rem; }
+
+    .chip { padding: 3px 8px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; color: #fff; display: inline-block; }
+    .chip-success { background: var(--success); }
+    .chip-info { background: var(--info); }
+    .chip-warning { background: var(--warning); color: #222; }
+    .chip-danger { background: var(--danger); }
+    .progress-container { background: #e9ecef; border-radius: 8px; height: 10px; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--primary); width: 0; transition: width 1s ease-in-out; }
 
     /* Modal */
-    #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
-        background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; 
-        animation: fadeIn 0.3s; }
-    #detalleModal .modal-content { background:#fff; border-radius:12px; max-width:950px; width:90%; max-height:80%; 
-        overflow:auto; padding:20px; position:relative; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-    #detalleModal .modal-content table { width:100%; border-collapse: collapse; min-width: 800px; }
-    #detalleModal .modal-content th, td { border:1px solid #ddd; padding:10px; text-align:left; font-size:0.9rem; }
-    #detalleModal .modal-content th { background-color:#007bff; color:#fff; position: sticky; top:0; z-index:1; }
-    #detalleModal button#cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; }
+    #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
+    #detalleModal .modal-content {
+        background:#fff; border-radius:12px; max-width:950px; width:90%; max-height:80%;
+        overflow:auto; padding:20px; position:relative; box-shadow:0 8px 24px rgba(0,0,0,0.2);
+    }
+    #detalleModal .modal-content table { width:100%; border-collapse: collapse; }
+    #detalleModal th, #detalleModal td { border:1px solid #ddd; padding:8px; text-align:left; font-size:0.85rem; }
+    #detalleModal th { background-color: var(--primary); color:#fff; position:sticky; top:0; }
+    #cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; }
 
-    /* Estado chip */
-    .estado-chip { padding:2px 6px; border-radius:5px; font-weight:bold; color:#fff; font-size:0.8rem; display:inline-block; }
-    .estado-red { background:#dc3545; }
-    .estado-green { background:#28a745; }
-    .estado-orange { background:#fd7e14; }
-    .estado-blue { background:#17a2b8; }
-
-    .click-hint { font-size:0.8rem; color:#555; margin-top:5px; display:block; }
-
-    @keyframes fadeIn { from {opacity:0} to {opacity:1} }
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="themeToggle">🌙</button>
+
 <div class="container">
     <h1>📊 Dashboard de Cotizaciones</h1>
 
     <form id="dateForm" class="date-form">
         <select id="selectMes" required>
             <option value="">Mes</option>
-            <option value="01">Enero</option>
-            <option value="02">Febrero</option>
-            <option value="03">Marzo</option>
-            <option value="04">Abril</option>
-            <option value="05">Mayo</option>
-            <option value="06">Junio</option>
-            <option value="07">Julio</option>
-            <option value="08">Agosto</option>
-            <option value="09">Septiembre</option>
-            <option value="10">Octubre</option>
-            <option value="11">Noviembre</option>
-            <option value="12">Diciembre</option>
+            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+            <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
         </select>
-
-        <select id="selectAno" required>
-            <option value="">Año</option>
-        </select>
-
+        <select id="selectAno" required><option value="">Año</option></select>
         <button type="submit">Cargar Métricas</button>
     </form>
 
     <p class="loading" id="loadingMessage">Cargando datos...</p>
-
     <div class="kpi-grid" id="kpiGrid"></div>
 </div>
 
@@ -119,89 +195,101 @@
     </div>
 </div>
 
+<h2 style="margin-top:40px; text-align:center;">📋 Detalle de Cotizaciones</h2>
+<div class="table-container" style="overflow-x:auto;">
+    <div class="table-search">
+        <input type="text" id="searchInput" placeholder="🔍 Buscar cotización...">
+    </div>
+    <table id="tablaCotizaciones">
+        <thead>
+            <tr>
+                <th>Nombre</th><th>Folio</th><th>Fecha</th><th>Consecutivo</th>
+                <th>%</th><th>Step</th><th>Estatus Venta</th><th>Estado Técnico</th><th>Clasificación</th><th>Deliver</th>
+            </tr>
+        </thead>
+        <tbody id="bodyTablaCotizaciones">
+            <tr><td colspan="10" style="text-align:center;">Cargando...</td></tr>
+        </tbody>
+    </table>
+</div>
+
 <script>
 const kpiGrid = document.getElementById('kpiGrid');
 const loadingMessage = document.getElementById('loadingMessage');
+const selectAno = document.getElementById('selectAno');
+const selectMes = document.getElementById('selectMes');
+const themeToggle = document.getElementById('themeToggle');
+const detalleModal = document.getElementById('detalleModal');
+const detalleBody = document.getElementById('detalleBody');
+const cerrarModal = document.getElementById('cerrarModal');
+const searchInput = document.getElementById('searchInput');
+
+// Tema oscuro
+if(localStorage.getItem("theme")==="dark"){ document.body.classList.add("dark"); themeToggle.textContent="☀️"; }
+themeToggle.addEventListener("click",()=>{
+    document.body.classList.toggle("dark");
+    const isDark=document.body.classList.contains("dark");
+    themeToggle.textContent=isDark?"☀️":"🌙";
+    localStorage.setItem("theme",isDark?"dark":"light");
+});
 
 const colorClassMap = {
-    "Abierta": "abierta",
-    "Cerrada": "cerrada",
-    "Entregada a Tiempo": "entregada-tiempo",
-    "Entregada con Retraso": "entregada-retraso",
-    "En Riesgo": "en-riesgo",
-    "Vendida": "vendida",
-    "TOTAL GENERAL": "total-general"
+    "Abierta": "abierta","Cerrada": "cerrada","Entregada a Tiempo": "entregada-tiempo",
+    "Entregada con Retraso": "entregada-retraso","En Riesgo": "en-riesgo",
+    "Vendida": "vendida","TOTAL GENERAL": "total-general"
 };
 
-// Población de años y mes por defecto
-const selectAno = document.getElementById('selectAno');
 const currentYear = new Date().getFullYear();
 for(let y = currentYear; y >= currentYear - 5; y--){
     const option = document.createElement('option');
-    option.value = y;
-    option.textContent = y;
+    option.value = y; option.textContent = y;
     if(y===currentYear) option.selected = true;
     selectAno.appendChild(option);
 }
-const selectMes = document.getElementById('selectMes');
-const currentMonth = String(new Date().getMonth()+1).padStart(2,'0');
-selectMes.value = currentMonth;
+selectMes.value = String(new Date().getMonth()+1).padStart(2,'0');
 
 async function fetchMetrics(fecha){
-    kpiGrid.innerHTML='';
-    loadingMessage.style.display='block';
+    kpiGrid.innerHTML=''; loadingMessage.style.display='block';
     try{
-        const response = await fetch(`/cotizaciones/resumen_metricas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
-        if(response.status===302){ window.location.href=response.headers.get('Location') || '/auth/login'; return; }
-        else if(response.status===403){ kpiGrid.innerHTML='<p style="color:red;text-align:center;">Acceso denegado</p>'; return; }
-
-        const data = await response.json();
+        const r = await fetch(`/cotizaciones/resumen_metricas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
+        const data = await r.json();
         renderKPIs(data);
-    }catch(e){ console.error(e); kpiGrid.innerHTML='<p style="color:red;text-align:center;">Error al cargar las métricas</p>'; }
+        fetchTablaCotizaciones(fecha);
+    }catch(e){ console.error(e); }
     finally{ loadingMessage.style.display='none'; }
 }
 
 function renderKPIs(data){
     kpiGrid.innerHTML='';
-    if(!data || data.length===0){ kpiGrid.innerHTML='<p style="text-align:center;">No hay datos disponibles para la fecha seleccionada.</p>'; return; }
+    if(!data||!data.length){ kpiGrid.innerHTML='<p style="text-align:center;">No hay datos.</p>'; return; }
     data.forEach(item=>{
         const card=document.createElement('div');
-        const claseColor=colorClassMap[item.Clasificacion]||'';
-        card.className=`kpi-card ${claseColor}`;
+        const clase=colorClassMap[item.Clasificacion]||'';
+        card.className=`kpi-card ${clase}`;
         card.innerHTML=`
             <div class="kpi-title">${item.Clasificacion}</div>
-            <div class="kpi-value">${item.Total_Cotizaciones!==null?item.Total_Cotizaciones:'-'}</div>
+            <div class="kpi-value">${item.Total_Cotizaciones||'-'}</div>
             <div class="kpi-subtext">
                 Kilos: ${item.Total_Kilos||'-'}<br>
                 Monto: ${item.Total_Monto||'-'}<br>
                 Precio/Kg: ${item.Precio_Promedio_Kg||'-'}
-                ${item.Clasificacion==="Cerrada"?'<span class="click-hint">Haz click para ver detalle 🔍</span>':''}
-            </div>
-        `;
+                ${item.Clasificacion==="Cerrada"?'<br><span style="font-size:0.8rem;color:#666;">Haz click para ver detalle 🔍</span>':''}
+            </div>`;
         kpiGrid.appendChild(card);
-
         if(item.Clasificacion==="Cerrada"){
-            card.addEventListener('click',()=>{ openDetalleModal(`${selectAno.value}${selectMes.value}`); });
+            card.addEventListener('click',()=>openDetalleModal(`${selectAno.value}${selectMes.value}`));
         }
     });
 }
-
-// Modal
-const detalleModal=document.getElementById('detalleModal');
-const detalleBody=document.getElementById('detalleBody');
-const cerrarModal=document.getElementById('cerrarModal');
-cerrarModal.addEventListener('click',()=>{ detalleModal.style.display='none'; });
-window.addEventListener('click',e=>{ if(e.target===detalleModal) detalleModal.style.display='none'; });
 
 async function openDetalleModal(fecha){
     detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>';
     detalleModal.style.display='flex';
     try{
-        const response=await fetch(`/cotizaciones/detalle_cerradas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
-        if(!response.ok) throw new Error('Error al cargar detalle');
-        const data=await response.json();
+        const r=await fetch(`/cotizaciones/detalle_cerradas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
+        const data=await r.json();
         detalleBody.innerHTML='';
-        if(data.length===0){ detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">No hay cotizaciones cerradas</td></tr>'; return; }
+        if(!data.length){ detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Sin datos</td></tr>'; return; }
         data.forEach(d=>{
             detalleBody.innerHTML+=`
                 <tr>
@@ -210,25 +298,70 @@ async function openDetalleModal(fecha){
                     <td>${d.totalKgSold}</td>
                     <td>${d.totalPrice}</td>
                     <td>${d.pricePerKg}</td>
-                    <td><span class="estado-chip estado-${d.color_estado}">${d.Estado_Precio}</span></td>
+                    <td>${d.Estado_Precio}</td>
                     <td>${d.Estatus_Venta}</td>
-                    <td><span class="estado-chip estado-${d.color_tecnico}">${d.Estatus_Tecnico}</span></td>
-                </tr>
-            `;
+                    <td>${d.Estatus_Tecnico}</td>
+                </tr>`;
         });
-    }catch(e){ console.error(e); detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:red;">Error al cargar detalle</td></tr>'; }
+    }catch(e){ console.error(e); detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:red;">Error</td></tr>'; }
+}
+cerrarModal.addEventListener('click',()=>detalleModal.style.display='none');
+window.addEventListener('click',e=>{ if(e.target===detalleModal) detalleModal.style.display='none'; });
+
+async function fetchTablaCotizaciones(fecha){
+    const tbody=document.getElementById('bodyTablaCotizaciones');
+    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;">Cargando...</td></tr>';
+    try{
+        const r=await fetch(`/cotizaciones/lista?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
+        const data=await r.json();
+        tbody.innerHTML='';
+        if(!data||!data.length){ tbody.innerHTML='<tr><td colspan="10" style="text-align:center;">Sin datos</td></tr>'; return; }
+        data.forEach(d=>{
+            const porcentaje = d.percentage || 0;
+            const estatus = d.Estatus_Venta || '-';
+            const tecnico = d.Estado || '-';
+            const chipColor = estatus.includes("Ven") ? "chip-success" :
+                              estatus.includes("Rie") ? "chip-danger" : "chip-info";
+            const chipTec = tecnico.includes("Ok") ? "chip-success" : "chip-warning";
+            tbody.innerHTML += `
+                <tr>
+                    <td>${d.quotation_name}</td>
+                    <td>${d.quotationDate}-${d.quotationConsecutive}</td>
+                    <td>${d.quotationDate}</td>
+                    <td>${d.quotationConsecutive}</td>
+                    <td>
+                        <div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%;"></div></div>
+                        <small>${porcentaje}%</small>
+                    </td>
+                    <td>${d.step || '-'}</td>
+                    <td><span class="chip ${chipColor}">${estatus}</span></td>
+                    <td><span class="chip ${chipTec}">${tecnico}</span></td>
+                    <td>${d.Clasificacion || '-'}</td>
+                    <td>${d.deliver || '-'}</td>
+                </tr>`;
+        });
+    }catch(e){ console.error(e); tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:red;">Error</td></tr>'; }
 }
 
-// Form submit
-document.getElementById('dateForm').addEventListener('submit',e=>{
-    e.preventDefault();
-    const mes=selectMes.value, ano=selectAno.value;
-    if(!mes||!ano) return alert("Selecciona mes y año");
-    fetchMetrics(`${ano}${mes}`);
+// Buscador
+searchInput.addEventListener("input",()=>{
+    const filter = searchInput.value.toLowerCase();
+    const rows = document.querySelectorAll("#bodyTablaCotizaciones tr");
+    rows.forEach(r=>{
+        const visible = r.textContent.toLowerCase().includes(filter);
+        r.style.display = visible ? "" : "none";
+    });
 });
 
-// Cargar métricas al inicio
-window.addEventListener('load',()=>{ fetchMetrics(`${selectAno.value}${selectMes.value}`); });
+// Submit
+document.getElementById('dateForm').addEventListener('submit',e=>{
+    e.preventDefault();
+    const fecha = `${selectAno.value}${selectMes.value}`;
+    fetchMetrics(fecha);
+});
+
+// Carga inicial
+fetchMetrics(`${selectAno.value}${selectMes.value}`);
 </script>
 </body>
 </html>

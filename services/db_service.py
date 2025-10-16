@@ -263,26 +263,74 @@ def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetch
              conn.close()
 
 
-# -------------------- Consulta SQL Genérica para MySQL --------------------
-def ejecutar_consulta_mysql(query: str, fetchall: bool = True):
+# -------------------- Consulta SQL genérica (SQL Server) --------------------
+def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetchall: bool = False):
+    """
+    Ejecuta una consulta SQL genérica.
+    Acepta 'params' (lista o tupla) para consultas parametrizadas seguras.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        if params:
+            # OK: usa params para SQL Server
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query) 
+            
+        columns = [col[0] for col in cursor.description] if cursor.description else []
+        
+        if fetchone:
+            row = safe_fetch(cursor)
+            return dict(zip(columns, row)) if row else {}
+        
+        if fetchall:
+            rows = cursor.fetchall()
+            return [dict(zip(columns, r)) for r in rows]
+            
+        conn.commit()
+        return {}
+        
+    except Exception as e:
+        print("ERROR ejecutar_consulta_sql:", e)
+        traceback.print_exc()
+        if fetchall:
+            return [] 
+        return {}
+        
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+
+# -------------------- Consulta SQL Genérica para MySQL (¡ACTUALIZADA!) --------------------
+def ejecutar_consulta_mysql(query: str, params: tuple = None, fetchall: bool = True):
     """
     Ejecuta un query genérico en MySQL y devuelve resultados como lista de diccionarios.
-    Ya no usa .next_result() para evitar errores con dictionary=True
+    Acepta 'params' (tupla o lista) para consultas parametrizadas seguras.
     """
     conn = None
     cursor = None
     try:
         conn = get_mysql_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(query)
+
+        if params:
+            # ✅ CLAVE: Llama a execute con el query Y los parámetros separados
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
 
         resultados = cursor.fetchall() if fetchall else cursor.fetchone()
 
-        conn.commit()
+        conn.commit() 
+        
         return resultados
 
     except Exception as e:
         print(f"ERROR ejecutar_consulta_mysql: {e}")
+        traceback.print_exc()
+        # Devuelve un valor vacío consistente con el fetch solicitado
         return [] if fetchall else {}
 
     finally:
