@@ -6,144 +6,143 @@
 <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
 <title>Dashboard de Cotizaciones</title>
 <style>
-    :root {
-        --primary: #007bff;
-        --success: #28a745;
-        --info: #17a2b8;
-        --warning: #ffc107;
-        --danger: #dc3545;
-        --dark: #343a40;
-        --light-bg: #f4f4f9;
-        --light-card: #fff;
-        --light-text: #333;
-        --light-subtext: #555;
-        --light-border: #ccc;
-        --dark-bg: #181a1b;
-        --dark-card: #242526;
-        --dark-text: #eee;
-        --dark-subtext: #bbb;
-        --dark-border: #444;
-    }
+:root {
+    --primary: #007bff;
+    --success: #28a745;
+    --info: #17a2b8;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --dark: #343a40;
+    --light-bg: #f4f4f9;
+    --light-card: #fff;
+    --light-text: #333;
+    --light-subtext: #555;
+    --light-border: #ccc;
+    --dark-bg: #181a1b;
+    --dark-card: #242526;
+    --dark-text: #eee;
+    --dark-subtext: #bbb;
+    --dark-border: #444;
+}
 
-    body {
-        font-family: 'Segoe UI', Arial, sans-serif;
-        margin: 0;
-        background-color: var(--light-bg);
-        color: var(--light-text);
-        transition: background 0.3s, color 0.3s;
-    }
-    body.dark {
-        background-color: var(--dark-bg);
-        color: var(--dark-text);
-    }
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    background-color: var(--light-bg);
+    color: var(--light-text);
+    transition: background 0.3s, color 0.3s;
+}
+body.dark {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+}
 
-    .container { max-width: 1200px; margin: auto; padding: 20px; position: relative; }
+.container { max-width: 1200px; margin: auto; padding: 20px; position: relative; }
+h1 { text-align: center; margin-bottom: 20px; font-weight: 700; }
 
-    h1 { text-align: center; margin-bottom: 20px; font-weight: 700; }
+.theme-toggle {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.6rem;
+    transition: transform 0.2s;
+}
+.theme-toggle:hover { transform: scale(1.2); }
 
-    .theme-toggle {
-        position: absolute;
-        top: 15px;
-        right: 20px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 1.6rem;
-        transition: transform 0.2s;
-    }
-    .theme-toggle:hover { transform: scale(1.2); }
+/* Formulario */
+.date-form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+.date-form select, .date-form button {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid var(--light-border);
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+body.dark .date-form select, body.dark .date-form button {
+    border: 1px solid var(--dark-border);
+    background-color: var(--dark-card);
+    color: var(--dark-text);
+}
+.date-form button {
+    background-color: var(--primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+.date-form button:hover { background-color: #0056b3; }
 
-    /* Formulario */
-    .date-form {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 30px;
-    }
-    .date-form select, .date-form button {
-        padding: 10px;
-        border-radius: 5px;
-        border: 1px solid var(--light-border);
-        font-size: 1rem;
-        transition: all 0.3s;
-    }
-    body.dark .date-form select, body.dark .date-form button {
-        border: 1px solid var(--dark-border);
-        background-color: var(--dark-card);
-        color: var(--dark-text);
-    }
-    .date-form button {
-        background-color: var(--primary);
-        color: #fff;
-        border: none;
-        cursor: pointer;
-    }
-    .date-form button:hover { background-color: #0056b3; }
+/* KPI */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.kpi-card {
+    background: var(--light-card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+body.dark .kpi-card { background: var(--dark-card); }
+.kpi-card:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+.kpi-title { font-weight: bold; margin-bottom: 8px; }
+.kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+.abierta { border-top: 4px solid var(--info); }
+.cerrada { border-top: 4px solid var(--success); }
+.entregada-tiempo { border-top: 4px solid var(--warning); }
+.entregada-retraso { border-top: 4px solid #fd7e14; }
+.en-riesgo { border-top: 4px solid var(--danger); }
+.vendida { border-top: 4px solid #6610f2; }
+.total-general { border-top: 4px solid var(--dark); cursor: default !important; }
 
-    /* KPI */
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-    .kpi-card {
-        background: var(--light-card);
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        text-align: center;
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: default;
-    }
-    body.dark .kpi-card { background: var(--dark-card); }
-    .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
-    .kpi-title { font-weight: bold; margin-bottom: 8px; }
-    .kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
-    .abierta { border-top: 4px solid var(--info); }
-    .cerrada { border-top: 4px solid var(--success); cursor: pointer; }
-    .entregada-tiempo { border-top: 4px solid var(--warning); }
-    .entregada-retraso { border-top: 4px solid #fd7e14; }
-    .en-riesgo { border-top: 4px solid var(--danger); }
-    .vendida { border-top: 4px solid #6610f2; }
-    .total-general { border-top: 4px solid var(--dark); }
+/* Tabla */
+.table-search { text-align: right; margin-bottom: 10px; }
+.table-search input {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--light-border);
+    font-size: 0.9rem;
+}
+body.dark .table-search input {
+    background: var(--dark-card);
+    border: 1px solid var(--dark-border);
+    color: var(--dark-text);
+}
+table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+thead tr { background: var(--primary); color: #fff; }
+tbody tr { background: var(--light-card); transition: background 0.2s; }
+tbody tr:hover { background: #e9f3ff; }
+body.dark tbody tr { background: var(--dark-card); }
+body.dark tbody tr:hover { background: #2c2f33; }
+th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: left; font-size: 0.9rem; }
 
-    /* Tabla */
-    .table-search { text-align: right; margin-bottom: 10px; }
-    .table-search input {
-        padding: 8px 12px;
-        border-radius: 6px;
-        border: 1px solid var(--light-border);
-        font-size: 0.9rem;
-    }
-    body.dark .table-search input {
-        background: var(--dark-card);
-        border: 1px solid var(--dark-border);
-        color: var(--dark-text);
-    }
+.chip { padding: 3px 8px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; color: #fff; display: inline-block; }
+.chip-success { background: var(--success); }
+.chip-info { background: var(--info); }
+.chip-warning { background: var(--warning); color: #222; }
+.chip-danger { background: var(--danger); }
+.progress-container { background: #e9ecef; border-radius: 8px; height: 10px; overflow: hidden; }
+.progress-bar { height: 100%; background: var(--primary); width: 0; transition: width 1s ease-in-out; }
 
-    table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-    thead tr { background: var(--primary); color: #fff; }
-    tbody tr { background: var(--light-card); transition: background 0.2s; }
-    tbody tr:hover { background: #e9f3ff; }
-    body.dark tbody tr { background: var(--dark-card); }
-    body.dark tbody tr:hover { background: #2c2f33; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: left; font-size: 0.9rem; }
-
-    .chip { padding: 3px 8px; border-radius: 5px; font-size: 0.8rem; font-weight: bold; color: #fff; display: inline-block; }
-    .chip-success { background: var(--success); }
-    .chip-info { background: var(--info); }
-    .chip-warning { background: var(--warning); color: #222; }
-    .chip-danger { background: var(--danger); }
-    .progress-container { background: #e9ecef; border-radius: 8px; height: 10px; overflow: hidden; }
-    .progress-bar { height: 100%; background: var(--primary); width: 0; transition: width 1s ease-in-out; }
-
-    /* Modal */
-    #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
-    #detalleModal .modal-content {
-        background:#fff; border-radius:12px; max-width:950px; width:90%; max-height:80%;
-        overflow:auto; padding:20px; position:relative; box-shadow:0 8px 24px rgba(0,0,0,0.2);
-    }
-    #detalleModal .modal-content table { width:100%; border-collapse: collapse; }
-    #detalleModal th, #detalleModal td { border:1px solid #ddd; padding:8px; text-align:left; font-size:0.85rem; }
-    #detalleModal th { background-color: var(--primary); color:#fff; position:sticky; top:0; }
-    #cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; }
-
+/* Modal */
+#detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
+#detalleModal .modal-content {
+    background: var(--light-card); border-radius:12px; max-width:950px; width:90%; max-height:80%;
+    overflow:auto; padding:20px; position:relative; box-shadow:0 8px 24px rgba(0,0,0,0.2);
+    transition: background 0.3s, color 0.3s;
+}
+body.dark #detalleModal .modal-content { background: var(--dark-card); color: var(--dark-text); }
+#detalleModal .modal-content table { width:100%; border-collapse: collapse; }
+#detalleModal th, #detalleModal td { border:1px solid #ddd; padding:8px; text-align:left; font-size:0.85rem; }
+#detalleModal th { background-color: var(--primary); color:#fff; position:sticky; top:0; }
+#cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; color: var(--light-text); }
+body.dark #cerrarModal { color: var(--dark-text); }
 </style>
 </head>
 <body>
@@ -164,27 +163,22 @@
         <button type="submit">Cargar Métricas</button>
     </form>
 
-    <p class="loading" id="loadingMessage">Cargando datos...</p>
+    <p class="loading" id="loadingMessage" style="text-align:center;">Cargando datos...</p>
     <div class="kpi-grid" id="kpiGrid"></div>
 </div>
 
-<!-- Modal -->
 <div id="detalleModal">
     <div class="modal-content">
         <button id="cerrarModal">&times;</button>
-        <h2>Detalle de Cotizaciones Cerradas</h2>
+        <h2 id="modalTitle">Detalle de Cotizaciones</h2>
+        <div class="table-search" style="margin-bottom: 10px; text-align: left;">
+            <input type="text" id="modalSearchInput" placeholder="🔍 Buscar en el detalle..." style="width: 100%;">
+        </div>
         <div style="overflow-x:auto;">
             <table>
                 <thead>
                     <tr>
-                        <th>Nombre</th>
-                        <th>Folio</th>
-                        <th>Kilos</th>
-                        <th>Monto</th>
-                        <th>Precio/Kg</th>
-                        <th>Estado Precio</th>
-                        <th>Estatus Venta</th>
-                        <th>Estatus Técnico</th>
+                        <th>Nombre</th><th>Folio</th><th>Kilos</th><th>Monto</th><th>Precio/Kg</th><th>Estado Precio</th><th>Estatus Venta</th><th>Estatus Técnico</th>
                     </tr>
                 </thead>
                 <tbody id="detalleBody">
@@ -223,8 +217,12 @@ const detalleModal = document.getElementById('detalleModal');
 const detalleBody = document.getElementById('detalleBody');
 const cerrarModal = document.getElementById('cerrarModal');
 const searchInput = document.getElementById('searchInput');
+const modalTitle = document.getElementById('modalTitle');
+const modalSearchInput = document.getElementById('modalSearchInput');
 
-// Tema oscuro
+const currencyFormatter = new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2});
+const numberFormatter = new Intl.NumberFormat('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0});
+
 if(localStorage.getItem("theme")==="dark"){ document.body.classList.add("dark"); themeToggle.textContent="☀️"; }
 themeToggle.addEventListener("click",()=>{
     document.body.classList.toggle("dark");
@@ -234,19 +232,23 @@ themeToggle.addEventListener("click",()=>{
 });
 
 const colorClassMap = {
-    "Abierta": "abierta","Cerrada": "cerrada","Entregada a Tiempo": "entregada-tiempo",
-    "Entregada con Retraso": "entregada-retraso","En Riesgo": "en-riesgo",
-    "Vendida": "vendida","TOTAL GENERAL": "total-general"
+    "Abierta":"abierta",
+    "Cerrada":"cerrada",
+    "Entregada a Tiempo":"entregada-tiempo",
+    "Entregada con Retraso":"entregada-retraso",
+    "En Riesgo":"en-riesgo",
+    "Vendida":"vendida",
+    "TOTAL GENERAL":"total-general"
 };
 
 const currentYear = new Date().getFullYear();
-for(let y = currentYear; y >= currentYear - 5; y--){
-    const option = document.createElement('option');
-    option.value = y; option.textContent = y;
-    if(y===currentYear) option.selected = true;
+for(let y=currentYear; y>=currentYear-5; y--){
+    const option=document.createElement('option');
+    option.value=y; option.textContent=y;
+    if(y===currentYear) option.selected=true;
     selectAno.appendChild(option);
 }
-selectMes.value = String(new Date().getMonth()+1).padStart(2,'0');
+selectMes.value=String(new Date().getMonth()+1).padStart(2,'0');
 
 async function fetchMetrics(fecha){
     kpiGrid.innerHTML=''; loadingMessage.style.display='block';
@@ -255,7 +257,7 @@ async function fetchMetrics(fecha){
         const data = await r.json();
         renderKPIs(data);
         fetchTablaCotizaciones(fecha);
-    }catch(e){ console.error(e); }
+    }catch(e){ console.error("Error al cargar métricas:",e); kpiGrid.innerHTML='<p style="text-align:center;color:red;">Error al cargar las métricas principales.</p>'; }
     finally{ loadingMessage.style.display='none'; }
 }
 
@@ -264,49 +266,74 @@ function renderKPIs(data){
     if(!data||!data.length){ kpiGrid.innerHTML='<p style="text-align:center;">No hay datos.</p>'; return; }
     data.forEach(item=>{
         const card=document.createElement('div');
-        const clase=colorClassMap[item.Clasificacion]||'';
+        const clasificacion = item.Clasificacion;
+        const clase=colorClassMap[clasificacion]||'';
+        const totalCotizaciones = numberFormatter.format(item.Total_Cotizaciones || 0);
+        const totalKilos = (item.Total_Kilos || '-').replace(/,/g,'');
+        const totalMonto = (item.Total_Monto || '-').replace(/,/g,'');
+        const precioKg = (item.Precio_Promedio_Kg || '-').replace(/,/g,'');
         card.className=`kpi-card ${clase}`;
-        card.innerHTML=`
-            <div class="kpi-title">${item.Clasificacion}</div>
-            <div class="kpi-value">${item.Total_Cotizaciones||'-'}</div>
-            <div class="kpi-subtext">
-                Kilos: ${item.Total_Kilos||'-'}<br>
-                Monto: ${item.Total_Monto||'-'}<br>
-                Precio/Kg: ${item.Precio_Promedio_Kg||'-'}
-                ${item.Clasificacion==="Cerrada"?'<br><span style="font-size:0.8rem;color:#666;">Haz click para ver detalle 🔍</span>':''}
-            </div>`;
+        card.innerHTML=`<div class="kpi-title">${clasificacion}</div>
+        <div class="kpi-value">${totalCotizaciones}</div>
+        <div class="kpi-subtext">
+            Kilos: ${totalKilos}<br>
+            Monto: ${totalMonto}<br>
+            Precio/Kg: ${precioKg}
+            ${clasificacion!=="TOTAL GENERAL"?'<br><span style="font-size:0.8rem;color:#666;">Haz click para ver detalle 🔍</span>':''}
+        </div>`;
         kpiGrid.appendChild(card);
-        if(item.Clasificacion==="Cerrada"){
-            card.addEventListener('click',()=>openDetalleModal(`${selectAno.value}${selectMes.value}`));
+        if(clasificacion!=="TOTAL GENERAL"){
+            card.setAttribute('role','button'); card.style.cursor='pointer';
+            card.addEventListener('click',()=>openDetalleUniversalModal(`${selectAno.value}${selectMes.value}`,clasificacion));
         }
     });
 }
 
-async function openDetalleModal(fecha){
-    detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>';
-    detalleModal.style.display='flex';
-    try{
-        const r=await fetch(`/cotizaciones/detalle_cerradas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
-        const data=await r.json();
-        detalleBody.innerHTML='';
-        if(!data.length){ detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Sin datos</td></tr>'; return; }
-        data.forEach(d=>{
-            detalleBody.innerHTML+=`
-                <tr>
-                    <td>${d.Nombre_Cotizacion}</td>
-                    <td>${d.Folio_Cotizacion}</td>
-                    <td>${d.totalKgSold}</td>
-                    <td>${d.totalPrice}</td>
-                    <td>${d.pricePerKg}</td>
-                    <td>${d.Estado_Precio}</td>
-                    <td>${d.Estatus_Venta}</td>
-                    <td>${d.Estatus_Tecnico}</td>
-                </tr>`;
-        });
-    }catch(e){ console.error(e); detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:red;">Error</td></tr>'; }
+function renderDetalleModal(data){
+    detalleBody.innerHTML='';
+    if(!data.length){ detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Sin datos</td></tr>'; return; }
+    data.forEach(d=>{
+        detalleBody.innerHTML+=`<tr>
+            <td>${d.Nombre_Cotizacion||d.quotation_name||'-'}</td>
+            <td>${d.Folio_Cotizacion||d.Folio||'-'}</td>
+            <td>${numberFormatter.format(d.totalKgSold||0)}</td>
+            <td>${currencyFormatter.format(d.totalPrice||0)}</td>
+            <td>${currencyFormatter.format(d.pricePerKg||0)}</td>
+            <td>${d.Estado_Precio||'-'}</td>
+            <td>${d.Estatus_Venta||'-'}</td>
+            <td>${d.Estatus_Tecnico||d.Estado||'-'}</td>
+        </tr>`;
+    });
 }
+
+async function openDetalleUniversalModal(fecha,clasificacion){
+    detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>';
+    modalTitle.textContent=`Detalle de Cotizaciones: ${clasificacion}`;
+    detalleModal.style.display='flex';
+    modalSearchInput.value='';
+    const endpoint = clasificacion==="Cerrada" 
+        ? `/cotizaciones/detalle_cerradas?fecha=${fecha}`
+        : `/cotizaciones/detalle_por_clasificacion?fecha=${fecha}&clasificacion=${encodeURIComponent(clasificacion)}`;
+    try{
+        const r=await fetch(endpoint,{ headers:{'Accept':'application/json'} });
+        const data=await r.json();
+        detalleModal.currentData=data;
+        renderDetalleModal(data);
+    }catch(e){ console.error("Error en el modal universal:",e); detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:red;">Error al cargar el detalle. Revisa el endpoint.</td></tr>'; }
+}
+
 cerrarModal.addEventListener('click',()=>detalleModal.style.display='none');
 window.addEventListener('click',e=>{ if(e.target===detalleModal) detalleModal.style.display='none'; });
+
+modalSearchInput.addEventListener("input",()=>{
+    const filter = modalSearchInput.value.toLowerCase();
+    const currentData = detalleModal.currentData || [];
+    const filteredData = currentData.filter(d=>{
+        const textToSearch=(d.Nombre_Cotizacion||d.quotation_name||'')+' '+(d.Folio_Cotizacion||d.Folio||'')+' '+(d.Estatus_Venta||'')+' '+(d.Estatus_Tecnico||d.Estado||'');
+        return textToSearch.toLowerCase().includes(filter);
+    });
+    renderDetalleModal(filteredData);
+});
 
 async function fetchTablaCotizaciones(fecha){
     const tbody=document.getElementById('bodyTablaCotizaciones');
@@ -317,50 +344,39 @@ async function fetchTablaCotizaciones(fecha){
         tbody.innerHTML='';
         if(!data||!data.length){ tbody.innerHTML='<tr><td colspan="10" style="text-align:center;">Sin datos</td></tr>'; return; }
         data.forEach(d=>{
-            const porcentaje = d.percentage || 0;
-            const estatus = d.Estatus_Venta || '-';
-            const tecnico = d.Estado || '-';
-            const chipColor = estatus.includes("Ven") ? "chip-success" :
-                              estatus.includes("Rie") ? "chip-danger" : "chip-info";
-            const chipTec = tecnico.includes("Ok") ? "chip-success" : "chip-warning";
-            tbody.innerHTML += `
-                <tr>
-                    <td>${d.quotation_name}</td>
-                    <td>${d.quotationDate}-${d.quotationConsecutive}</td>
-                    <td>${d.quotationDate}</td>
-                    <td>${d.quotationConsecutive}</td>
-                    <td>
-                        <div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%;"></div></div>
-                        <small>${porcentaje}%</small>
-                    </td>
-                    <td>${d.step || '-'}</td>
-                    <td><span class="chip ${chipColor}">${estatus}</span></td>
-                    <td><span class="chip ${chipTec}">${tecnico}</span></td>
-                    <td>${d.Clasificacion || '-'}</td>
-                    <td>${d.deliver || '-'}</td>
-                </tr>`;
+            const porcentaje=d.percentage||0;
+            const estatus=d.Estatus_Venta||'-';
+            const tecnico=d.Estado||'-';
+            const chipColor = estatus.includes("Ven")?"chip-success":estatus.includes("Rie")?"chip-danger":"chip-info";
+            const chipTec = tecnico.includes("Ok")?"chip-success":"chip-warning";
+            tbody.innerHTML+=`<tr>
+                <td>${d.quotation_name}</td>
+                <td>${d.quotationDate}-${d.quotationConsecutive}</td>
+                <td>${d.quotationDate}</td>
+                <td>${d.quotationConsecutive}</td>
+                <td><div class="progress-container"><div class="progress-bar" style="width:${porcentaje}%;"></div></div><small>${porcentaje}%</small></td>
+                <td>${d.step||'-'}</td>
+                <td><span class="chip ${chipColor}">${estatus}</span></td>
+                <td><span class="chip ${chipTec}">${tecnico}</span></td>
+                <td>${d.Clasificacion||'-'}</td>
+                <td>${d.deliver||'-'}</td>
+            </tr>`;
         });
     }catch(e){ console.error(e); tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:red;">Error</td></tr>'; }
 }
 
-// Buscador
 searchInput.addEventListener("input",()=>{
-    const filter = searchInput.value.toLowerCase();
-    const rows = document.querySelectorAll("#bodyTablaCotizaciones tr");
-    rows.forEach(r=>{
-        const visible = r.textContent.toLowerCase().includes(filter);
-        r.style.display = visible ? "" : "none";
-    }); 
+    const filter=searchInput.value.toLowerCase();
+    const rows=document.querySelectorAll("#bodyTablaCotizaciones tr");
+    rows.forEach(r=>{ r.style.display = r.textContent.toLowerCase().includes(filter) ? "" : "none"; });
 });
 
-// Submit
 document.getElementById('dateForm').addEventListener('submit',e=>{
     e.preventDefault();
-    const fecha = `${selectAno.value}${selectMes.value}`;
+    const fecha=`${selectAno.value}${selectMes.value}`;
     fetchMetrics(fecha);
 });
 
-// Carga inicial
 fetchMetrics(`${selectAno.value}${selectMes.value}`);
 </script>
 </body>

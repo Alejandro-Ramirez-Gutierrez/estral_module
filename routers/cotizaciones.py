@@ -416,3 +416,99 @@ async def listar_cotizaciones(
     except Exception as e:
         print(f"[ERROR /lista] {e}")
         raise HTTPException(status_code=500, detail=f"Error interno al obtener las cotizaciones: {str(e)}")
+
+
+# 5. Detalle Universal por Clasificación
+@router.get(
+    "/detalle_por_clasificacion",
+    response_model=List[Dict[str, Any]],
+    summary="Detalle de cotizaciones filtrado por Clasificación (Abierta, Riesgo, etc.)"
+)
+async def detalle_por_clasificacion(
+    fecha: str = Query(..., regex=r"^\d{6}$", description="Fecha en formato YYYYMM"),
+    clasificacion: str = Query(..., description="Clasificación a filtrar (ej: 'En Riesgo')"),
+    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones)
+):
+    """
+    Retorna las cotizaciones que coinciden con una Clasificación específica.
+    Usa el endpoint /lista para obtener los IDs y luego filtra el detalle.
+    """
+    # Paso 1: Obtener los IDs de cotización que cumplen con la Clasificación y la Fecha
+    # ⚠️ Esto reutiliza la misma lógica de clasificación usada en /lista
+    SQL_ID_QUERY = """
+        SELECT
+            q.idQuotation
+        FROM quotation q
+        LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
+        LEFT JOIN status st ON q.status = st.idStatus
+        WHERE q.createdAt >= %s AND q.createdAt < %s
+          AND CASE
+                WHEN s.Nombe = 'Vendido' THEN 'Vendida'
+                WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
+                WHEN st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas') THEN 'Entregada con Retraso'
+                WHEN st.status = 'En riesgo' THEN 'En Riesgo'
+                WHEN q.deliver IS NOT NULL THEN 'Cerrada'
+                ELSE 'Abierta'
+              END = %s;
+    """
+
+    # Validación de fecha
+    try:
+        ano = int(fecha[:4])
+        mes = int(fecha[4:])
+        fecha_inicio = f"{ano}-{mes:02d}-01"
+        fecha_fin = f"{ano + 1}-01-01" if mes == 12 else f"{ano}-{mes + 1:02d}-01"
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido")
+
+    params_ids = (fecha_inicio, fecha_fin, clasificacion)
+
+    try:
+        resultados_ids = ejecutar_consulta_mysql(SQL_ID_QUERY, params=params_ids, fetchall=True)
+        if not resultados_ids:
+            return JSONResponse(content=[], status_code=200)
+
+        quotation_ids = [str(r['idQuotation']) for r in resultados_ids if r.get('idQuotation')]
+        if not quotation_ids:
+            return JSONResponse(content=[], status_code=200)
+
+        id_list = ",".join(quotation_ids)
+
+    except Exception as e:
+        print(f"Error al obtener IDs por clasificación: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al obtener IDs de cotizaciones.")
+
+    # Paso 2: Obtener el detalle de la cotización usando los IDs
+    SQL_DETALLE_QUERY = f"""
+        SELECT 
+            q.name AS Nombre_Cotizacion,
+            CONCAT(q.quotationDate, '-', q.quotationConsecutive) AS Folio_Cotizacion,
+            ROUND(qs.totalKgSold, 2) AS totalKgSold,
+            ROUND(qs.totalPrice, 2) AS totalPrice,
+            ROUND(qs.pricePerKg, 2) AS pricePerKg,
+            CASE 
+                WHEN qs.pricePerKg IS NULL OR qs.pricePerKg = 0 THEN '⚠️ Sin precio'
+                ELSE '✅ Con precio'
+            END AS Estado_Precio,
+            s.Nombe AS Estatus_Venta,
+            st.status AS Estatus_Tecnico
+        FROM quotation q
+        LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
+        LEFT JOIN status st ON q.status = st.idStatus
+        LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
+        WHERE q.idQuotation IN ({id_list})
+        ORDER BY qs.totalKgSold DESC;
+    """
+
+    try:
+        resultados = ejecutar_consulta_mysql(SQL_DETALLE_QUERY, fetchall=True)
+        resultados = decimales_a_float(resultados)
+
+        return JSONResponse(
+            content=jsonable_encoder(resultados) if resultados else [],
+            status_code=200
+        )
+
+    except Exception as e:
+        print(f"Error al obtener detalle de cotizaciones por clasificación: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al obtener los datos del detalle.")
