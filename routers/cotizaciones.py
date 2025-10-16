@@ -312,3 +312,78 @@ async def detalle_cerradas(
     except Exception as e:
         print(f"Error al obtener detalle de cotizaciones: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos")
+    
+
+# --- ENDPOINT ---
+@router.get("/lista", response_model=List[Dict[str, Any]], summary="Lista de cotizaciones filtradas por mes y año")
+async def listar_cotizaciones(
+    fecha: str = Query(..., regex=r"^\d{6}$", description="Fecha en formato YYYYMM (Ej: 202510)"),
+    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones)
+) -> JSONResponse:
+    """
+    Devuelve el detalle completo de cotizaciones para un mes y año específico.
+    """
+    try:
+        # Obtenemos año y mes
+        ano = int(fecha[:4])
+        mes = int(fecha[4:])
+        # Fecha de inicio y fin para el filtro
+        fecha_inicio = f"{ano}-{mes:02d}-01"
+        if mes == 12:
+            fecha_fin = f"{ano+1}-01-01"
+        else:
+            fecha_fin = f"{ano}-{mes+1:02d}-01"
+
+        SQL_QUERY = f"""
+        SELECT
+            q.idQuotation,
+            q.name AS quotation_name,
+            q.quotationDate,
+            q.quotationConsecutive,
+            q.createdAt,
+            q.percentage,
+            q.step,
+            s.Nombe AS Estatus_Venta,
+            st.status AS Estado,
+            CASE
+                WHEN s.Nombe = 'Vendido' THEN 'Vendida'
+                WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
+                WHEN st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas') THEN 'Entregada con Retraso'
+                WHEN st.status = 'En riesgo' THEN 'En Riesgo'
+                WHEN q.deliver IS NOT NULL THEN 'Cerrada'
+                ELSE 'Abierta'
+            END AS Clasificacion,
+            q.deliver
+        FROM quotation q
+        LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
+        LEFT JOIN status st ON q.status = st.idStatus
+        WHERE q.createdAt >= '{fecha_inicio}' AND q.createdAt < '{fecha_fin}'
+        ORDER BY
+            FIELD(
+                CASE
+                    WHEN s.Nombe = 'Vendido' THEN 'Vendida'
+                    WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
+                    WHEN st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas') THEN 'Entregada con Retraso'
+                    WHEN st.status = 'En riesgo' THEN 'En Riesgo'
+                    WHEN q.deliver IS NOT NULL THEN 'Cerrada'
+                    ELSE 'Abierta'
+                END,
+                'Vendida', 'Entregada a Tiempo', 'Entregada con Retraso', 'En Riesgo', 'Cerrada', 'Abierta'
+            ),
+            q.createdAt DESC;
+        """
+
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
+
+        # Convertimos Decimals a float si los hay
+        from decimal import Decimal
+        for row in resultados:
+            for key, value in row.items():
+                if isinstance(value, Decimal):
+                    row[key] = float(value)
+
+        return JSONResponse(content=resultados, status_code=200)
+
+    except Exception as e:
+        print(f"Error al obtener cotizaciones: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al obtener las cotizaciones")

@@ -1,97 +1,103 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
-    <title>Dashboard de Cotizaciones</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f9; }
-        .container { max-width: 1200px; margin: auto; padding: 20px; }
-        h1 { color: #333; text-align: center; margin-bottom: 20px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
+<title>Dashboard de Cotizaciones</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f4f9; }
+    .container { max-width: 1200px; margin: auto; padding: 20px; }
+    h1 { color: #333; text-align: center; margin-bottom: 20px; }
 
-        /* Formulario de fecha */
-        .date-form { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
-        .date-form select, .date-form button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        .date-form button { background-color: #007bff; color: #fff; border: none; cursor: pointer; transition: 0.2s; }
-        .date-form button:hover { background-color: #0056b3; }
+    /* Formulario de fecha */
+    .date-form { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+    .date-form select, .date-form button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+    .date-form button { background-color: #007bff; color: #fff; border: none; cursor: pointer; transition: 0.2s; }
+    .date-form button:hover { background-color: #0056b3; }
 
-        /* Cards de KPIs */
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-        .kpi-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s; cursor: default; }
-        .kpi-card:hover { transform: translateY(-5px); }
+    /* Cards de KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+    .kpi-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
+    .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
 
-        .kpi-title { font-weight: bold; margin-bottom: 10px; font-size: 1rem; color: #555; }
-        .kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
-        .kpi-subtext { font-size: 0.9rem; color: #777; }
+    .kpi-title { font-weight: bold; margin-bottom: 10px; font-size: 1rem; color: #555; }
+    .kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+    .kpi-subtext { font-size: 0.9rem; color: #777; }
 
-        /* Colores por tipo */
-        .abierta { border-top: 4px solid #17a2b8; }
-        .cerrada { border-top: 4px solid #28a745; cursor: pointer; }
-        .entregada-tiempo { border-top: 4px solid #ffc107; }
-        .entregada-retraso { border-top: 4px solid #fd7e14; }
-        .en-riesgo { border-top: 4px solid #dc3545; }
-        .vendida { border-top: 4px solid #6610f2; }
-        .total-general { border-top: 4px solid #343a40; }
+    /* Colores por tipo */
+    .abierta { border-top: 4px solid #17a2b8; }
+    .cerrada { border-top: 4px solid #28a745; cursor: pointer; }
+    .entregada-tiempo { border-top: 4px solid #ffc107; }
+    .entregada-retraso { border-top: 4px solid #fd7e14; }
+    .en-riesgo { border-top: 4px solid #dc3545; }
+    .vendida { border-top: 4px solid #6610f2; }
+    .total-general { border-top: 4px solid #343a40; }
 
-        .loading { text-align: center; color: #666; font-style: italic; margin-bottom: 20px; display: none; }
+    .loading { text-align: center; color: #666; font-style: italic; margin-bottom: 20px; display: none; }
 
-        /* Modal */
-        #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
-            background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
-        #detalleModal .modal-content { background:#fff; border-radius:10px; max-width:900px; width:90%; max-height:80%; 
-            overflow:auto; padding:20px; position:relative; }
-        #detalleModal .modal-content table { width:100%; border-collapse: collapse; }
-        #detalleModal .modal-content th, td { border:1px solid #ddd; padding:8px; text-align:left; }
-        #detalleModal .modal-content th { background-color:#007bff; color:#fff; }
-        #detalleModal button#cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; }
-        .click-hint { font-size:0.8rem; color:#555; margin-top:5px; }
-        .estado-red { color:red; font-weight:bold; }
-        .estado-green { color:green; font-weight:bold; }
-        .estado-orange { color:orange; font-weight:bold; }
-        .estado-blue { color:blue; font-weight:bold; }
-    </style>
+    /* Modal */
+    #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+        background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; 
+        animation: fadeIn 0.3s; }
+    #detalleModal .modal-content { background:#fff; border-radius:12px; max-width:950px; width:90%; max-height:80%; 
+        overflow:auto; padding:20px; position:relative; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    #detalleModal .modal-content table { width:100%; border-collapse: collapse; min-width: 800px; }
+    #detalleModal .modal-content th, td { border:1px solid #ddd; padding:10px; text-align:left; font-size:0.9rem; }
+    #detalleModal .modal-content th { background-color:#007bff; color:#fff; position: sticky; top:0; z-index:1; }
+    #detalleModal button#cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; }
+
+    /* Estado chip */
+    .estado-chip { padding:2px 6px; border-radius:5px; font-weight:bold; color:#fff; font-size:0.8rem; display:inline-block; }
+    .estado-red { background:#dc3545; }
+    .estado-green { background:#28a745; }
+    .estado-orange { background:#fd7e14; }
+    .estado-blue { background:#17a2b8; }
+
+    .click-hint { font-size:0.8rem; color:#555; margin-top:5px; display:block; }
+
+    @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>📊 Dashboard de Cotizaciones</h1>
+<div class="container">
+    <h1>📊 Dashboard de Cotizaciones</h1>
 
-        <form id="dateForm" class="date-form">
-            <select id="selectMes" required>
-                <option value="">Mes</option>
-                <option value="01">Enero</option>
-                <option value="02">Febrero</option>
-                <option value="03">Marzo</option>
-                <option value="04">Abril</option>
-                <option value="05">Mayo</option>
-                <option value="06">Junio</option>
-                <option value="07">Julio</option>
-                <option value="08">Agosto</option>
-                <option value="09">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-            </select>
+    <form id="dateForm" class="date-form">
+        <select id="selectMes" required>
+            <option value="">Mes</option>
+            <option value="01">Enero</option>
+            <option value="02">Febrero</option>
+            <option value="03">Marzo</option>
+            <option value="04">Abril</option>
+            <option value="05">Mayo</option>
+            <option value="06">Junio</option>
+            <option value="07">Julio</option>
+            <option value="08">Agosto</option>
+            <option value="09">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+        </select>
 
-            <select id="selectAno" required>
-                <option value="">Año</option>
-            </select>
+        <select id="selectAno" required>
+            <option value="">Año</option>
+        </select>
 
-            <button type="submit">Cargar Métricas</button>
-        </form>
+        <button type="submit">Cargar Métricas</button>
+    </form>
 
-        <p class="loading" id="loadingMessage">Cargando datos...</p>
+    <p class="loading" id="loadingMessage">Cargando datos...</p>
 
-        <div class="kpi-grid" id="kpiGrid">
-            <!-- Cards dinámicas se inyectan aquí -->
-        </div>
-    </div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+</div>
 
-    <!-- Modal -->
-    <div id="detalleModal">
-        <div class="modal-content">
-            <button id="cerrarModal">&times;</button>
-            <h2>Detalle de Cotizaciones Cerradas</h2>
+<!-- Modal -->
+<div id="detalleModal">
+    <div class="modal-content">
+        <button id="cerrarModal">&times;</button>
+        <h2>Detalle de Cotizaciones Cerradas</h2>
+        <div style="overflow-x:auto;">
             <table>
                 <thead>
                     <tr>
@@ -111,158 +117,118 @@
             </table>
         </div>
     </div>
+</div>
 
-    <script>
-        const kpiGrid = document.getElementById('kpiGrid');
-        const loadingMessage = document.getElementById('loadingMessage');
+<script>
+const kpiGrid = document.getElementById('kpiGrid');
+const loadingMessage = document.getElementById('loadingMessage');
 
-        const colorClassMap = {
-            "Abierta": "abierta",
-            "Cerrada": "cerrada",
-            "Entregada a Tiempo": "entregada-tiempo",
-            "Entregada con Retraso": "entregada-retraso",
-            "En Riesgo": "en-riesgo",
-            "Vendida": "vendida",
-            "TOTAL GENERAL": "total-general"
-        };
+const colorClassMap = {
+    "Abierta": "abierta",
+    "Cerrada": "cerrada",
+    "Entregada a Tiempo": "entregada-tiempo",
+    "Entregada con Retraso": "entregada-retraso",
+    "En Riesgo": "en-riesgo",
+    "Vendida": "vendida",
+    "TOTAL GENERAL": "total-general"
+};
 
-        const selectAno = document.getElementById('selectAno');
-        const currentYear = new Date().getFullYear();
-        for(let y = currentYear; y >= currentYear - 5; y--) {
-            const option = document.createElement('option');
-            option.value = y;
-            option.textContent = y;
-            if (y === currentYear) option.selected = true;
-            selectAno.appendChild(option);
+// Población de años y mes por defecto
+const selectAno = document.getElementById('selectAno');
+const currentYear = new Date().getFullYear();
+for(let y = currentYear; y >= currentYear - 5; y--){
+    const option = document.createElement('option');
+    option.value = y;
+    option.textContent = y;
+    if(y===currentYear) option.selected = true;
+    selectAno.appendChild(option);
+}
+const selectMes = document.getElementById('selectMes');
+const currentMonth = String(new Date().getMonth()+1).padStart(2,'0');
+selectMes.value = currentMonth;
+
+async function fetchMetrics(fecha){
+    kpiGrid.innerHTML='';
+    loadingMessage.style.display='block';
+    try{
+        const response = await fetch(`/cotizaciones/resumen_metricas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
+        if(response.status===302){ window.location.href=response.headers.get('Location') || '/auth/login'; return; }
+        else if(response.status===403){ kpiGrid.innerHTML='<p style="color:red;text-align:center;">Acceso denegado</p>'; return; }
+
+        const data = await response.json();
+        renderKPIs(data);
+    }catch(e){ console.error(e); kpiGrid.innerHTML='<p style="color:red;text-align:center;">Error al cargar las métricas</p>'; }
+    finally{ loadingMessage.style.display='none'; }
+}
+
+function renderKPIs(data){
+    kpiGrid.innerHTML='';
+    if(!data || data.length===0){ kpiGrid.innerHTML='<p style="text-align:center;">No hay datos disponibles para la fecha seleccionada.</p>'; return; }
+    data.forEach(item=>{
+        const card=document.createElement('div');
+        const claseColor=colorClassMap[item.Clasificacion]||'';
+        card.className=`kpi-card ${claseColor}`;
+        card.innerHTML=`
+            <div class="kpi-title">${item.Clasificacion}</div>
+            <div class="kpi-value">${item.Total_Cotizaciones!==null?item.Total_Cotizaciones:'-'}</div>
+            <div class="kpi-subtext">
+                Kilos: ${item.Total_Kilos||'-'}<br>
+                Monto: ${item.Total_Monto||'-'}<br>
+                Precio/Kg: ${item.Precio_Promedio_Kg||'-'}
+                ${item.Clasificacion==="Cerrada"?'<span class="click-hint">Haz click para ver detalle 🔍</span>':''}
+            </div>
+        `;
+        kpiGrid.appendChild(card);
+
+        if(item.Clasificacion==="Cerrada"){
+            card.addEventListener('click',()=>{ openDetalleModal(`${selectAno.value}${selectMes.value}`); });
         }
+    });
+}
 
-        const selectMes = document.getElementById('selectMes');
-        const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
-        selectMes.value = currentMonth;
+// Modal
+const detalleModal=document.getElementById('detalleModal');
+const detalleBody=document.getElementById('detalleBody');
+const cerrarModal=document.getElementById('cerrarModal');
+cerrarModal.addEventListener('click',()=>{ detalleModal.style.display='none'; });
+window.addEventListener('click',e=>{ if(e.target===detalleModal) detalleModal.style.display='none'; });
 
-        async function fetchMetrics(fecha) {
-            const url = `/cotizaciones/resumen_metricas?fecha=${fecha}`;
-            kpiGrid.innerHTML = '';
-            loadingMessage.style.display = 'block';
-
-            try {
-                const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                if (response.status === 302) {
-                    window.location.href = response.headers.get('Location') || '/auth/login';
-                    return;
-                } else if (response.status === 403) {
-                    kpiGrid.innerHTML = `<p style="color:red;text-align:center;">Acceso denegado</p>`;
-                    return;
-                }
-
-                const data = await response.json();
-                renderKPIs(data);
-
-            } catch (error) {
-                console.error(error);
-                kpiGrid.innerHTML = `<p style="color:red;text-align:center;">Error al cargar las métricas</p>`;
-            } finally {
-                loadingMessage.style.display = 'none';
-            }
-        }
-
-        function renderKPIs(data) {
-            kpiGrid.innerHTML = '';
-            if (!data || data.length === 0) {
-                kpiGrid.innerHTML = `<p style="text-align:center;">No hay datos disponibles para la fecha seleccionada.</p>`;
-                return;
-            }
-
-            data.forEach(item => {
-                const card = document.createElement('div');
-                const claseColor = colorClassMap[item.Clasificacion] || '';
-                card.className = `kpi-card ${claseColor}`;
-                card.innerHTML = `
-                    <div class="kpi-title">${item.Clasificacion}</div>
-                    <div class="kpi-value">${item.Total_Cotizaciones !== null ? item.Total_Cotizaciones : '-'}</div>
-                    <div class="kpi-subtext">
-                        Kilos: ${item.Total_Kilos || '-'}<br>
-                        Monto: ${item.Total_Monto || '-'}<br>
-                        Precio/Kg: ${item.Precio_Promedio_Kg || '-'}
-                        ${item.Clasificacion === "Cerrada" ? '<br><span class="click-hint">Haz click para ver detalle 🔍</span>' : ''}
-                    </div>
-                `;
-                kpiGrid.appendChild(card);
-
-                if(item.Clasificacion === "Cerrada") {
-                    card.addEventListener('click', () => {
-                        openDetalleModal(`${selectAno.value}${selectMes.value}`);
-                    });
-                }
-            });
-        }
-
-        // Modal
-        const detalleModal = document.getElementById('detalleModal');
-        const detalleBody = document.getElementById('detalleBody');
-        const cerrarModal = document.getElementById('cerrarModal');
-
-        cerrarModal.addEventListener('click', () => {
-            detalleModal.style.display = 'none';
+async function openDetalleModal(fecha){
+    detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>';
+    detalleModal.style.display='flex';
+    try{
+        const response=await fetch(`/cotizaciones/detalle_cerradas?fecha=${fecha}`,{ headers:{'Accept':'application/json'} });
+        if(!response.ok) throw new Error('Error al cargar detalle');
+        const data=await response.json();
+        detalleBody.innerHTML='';
+        if(data.length===0){ detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;">No hay cotizaciones cerradas</td></tr>'; return; }
+        data.forEach(d=>{
+            detalleBody.innerHTML+=`
+                <tr>
+                    <td>${d.Nombre_Cotizacion}</td>
+                    <td>${d.Folio_Cotizacion}</td>
+                    <td>${d.totalKgSold}</td>
+                    <td>${d.totalPrice}</td>
+                    <td>${d.pricePerKg}</td>
+                    <td><span class="estado-chip estado-${d.color_estado}">${d.Estado_Precio}</span></td>
+                    <td>${d.Estatus_Venta}</td>
+                    <td><span class="estado-chip estado-${d.color_tecnico}">${d.Estatus_Tecnico}</span></td>
+                </tr>
+            `;
         });
+    }catch(e){ console.error(e); detalleBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:red;">Error al cargar detalle</td></tr>'; }
+}
 
-        window.addEventListener('click', (e) => {
-            if(e.target === detalleModal) detalleModal.style.display = 'none';
-        });
+// Form submit
+document.getElementById('dateForm').addEventListener('submit',e=>{
+    e.preventDefault();
+    const mes=selectMes.value, ano=selectAno.value;
+    if(!mes||!ano) return alert("Selecciona mes y año");
+    fetchMetrics(`${ano}${mes}`);
+});
 
-        async function openDetalleModal(fecha) {
-            detalleBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>`;
-            detalleModal.style.display = 'flex';
-
-            try {
-                const response = await fetch(`/cotizaciones/detalle_cerradas?fecha=${fecha}`, { headers:{'Accept':'application/json'} });
-                if(!response.ok) throw new Error('Error al cargar detalle');
-
-                const data = await response.json();
-                detalleBody.innerHTML = '';
-                if(data.length === 0) {
-                    detalleBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No hay cotizaciones cerradas</td></tr>`;
-                    return;
-                }
-
-                data.forEach(d => {
-                    detalleBody.innerHTML += `
-                        <tr>
-                            <td>${d.Nombre_Cotizacion}</td>
-                            <td>${d.Folio_Cotizacion}</td>
-                            <td>${d.totalKgSold}</td>
-                            <td>${d.totalPrice}</td>
-                            <td>${d.pricePerKg}</td>
-                            <td class="estado-${d.color_estado}">${d.Estado_Precio}</td>
-                            <td>${d.Estatus_Venta}</td>
-                            <td class="estado-${d.color_tecnico}">${d.Estatus_Tecnico}</td>
-                        </tr>
-                    `;
-                });
-
-            } catch(err) {
-                console.error(err);
-                detalleBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;">Error al cargar detalle</td></tr>`;
-            }
-        }
-
-        // Form submit
-        const form = document.getElementById('dateForm');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const mes = selectMes.value;
-            const ano = selectAno.value;
-            if(!mes || !ano) return alert("Selecciona mes y año");
-
-            const fecha = `${ano}${mes}`;
-            fetchMetrics(fecha);
-        });
-
-        // Cargar métricas al inicio
-        window.addEventListener('load', () => {
-            const fecha = `${selectAno.value}${selectMes.value}`;
-            fetchMetrics(fecha);
-        });
-    </script>
+// Cargar métricas al inicio
+window.addEventListener('load',()=>{ fetchMetrics(`${selectAno.value}${selectMes.value}`); });
+</script>
 </body>
 </html>
