@@ -394,10 +394,6 @@ async def listar_cotizaciones(
 
         params = (fecha_inicio, fecha_fin)
 
-        # Debug temporal
-        print("DEBUG SQL:", SQL_QUERY)
-        print("DEBUG PARAMS:", params)
-
         # Ejecuta la consulta
         resultados = ejecutar_consulta_mysql(SQL_QUERY, params=params, fetchall=True) or []
 
