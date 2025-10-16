@@ -242,3 +242,73 @@ ORDER BY
     except Exception as e:
         print(f"Error al ejecutar la consulta de cotizaciones: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos de la base de datos.")
+
+@router.get(
+    "/detalle_cerradas",
+    response_model=List[Dict[str, Any]],
+    summary="Detalle de cotizaciones finalizadas con info visual"
+)
+async def detalle_cerradas(
+    fecha: str = Query(..., regex=r"^\d{6}$", description="Fecha en formato YYYYMM"),
+    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones)
+):
+    """
+    Retorna todas las cotizaciones cerradas (finalizadas o vendidas) para el mes especificado,
+    con info visual (colores e íconos) para mejorar el dashboard.
+    """
+    parametro_sql_fecha = fecha[-4:]
+
+    SQL_QUERY = f"""
+    SELECT 
+        q.`name` AS Nombre_Cotizacion,
+        CONCAT(q.`quotationDate`, '-', q.`quotationConsecutive`) AS Folio_Cotizacion,
+        ROUND(qs.`totalKgSold`, 2) AS totalKgSold,
+        ROUND(qs.`totalPrice`, 2) AS totalPrice,
+        ROUND(qs.`pricePerKg`, 2) AS pricePerKg,
+        CASE 
+            WHEN qs.`pricePerKg` IS NULL OR qs.`pricePerKg` = 0 THEN '⚠️ Sin precio'
+            ELSE '✅ Con precio'
+        END AS Estado_Precio,
+        s.`Nombe` AS Estatus_Venta,
+        st.`status` AS Estatus_Tecnico
+    FROM `quotation` q
+    LEFT JOIN `sale_status` s ON q.`saleStatus` = s.`idSalestatus`
+    LEFT JOIN `status` st ON q.`status` = st.`idStatus`
+    LEFT JOIN `quotation_systems` qs ON q.`idQuotation` = qs.`quotationId`
+    WHERE q.`quotationDate` = {parametro_sql_fecha}
+      AND (
+            s.`Nombe` = 'Vendido'
+            OR st.`status` IN ('Finalizada', 'Finalizada con retraso', 'Finalizada con retraso de ventas')
+          )
+    ORDER BY qs.`pricePerKg` DESC;
+    """
+
+    try:
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
+
+        # Agregamos info visual
+        for r in resultados:
+            # Color según estado de precio
+            if r['Estado_Precio'] == '⚠️ Sin precio':
+                r['color_estado'] = 'red'
+                r['icono_estado'] = '⚠️'
+            else:
+                r['color_estado'] = 'green'
+                r['icono_estado'] = '✅'
+
+            # Color según estatus técnico
+            estatus = r['Estatus_Tecnico'].lower()
+            if 'retraso' in estatus:
+                r['color_tecnico'] = 'orange'
+            elif 'finalizada' in estatus:
+                r['color_tecnico'] = 'blue'
+            elif 'riesgo' in estatus:
+                r['color_tecnico'] = 'red'
+            else:
+                r['color_tecnico'] = 'grey'
+
+        return resultados if resultados else []
+
+    except Exception as e:
+        print(f"Error al obtener detalle de cotizaciones: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al obtener los datos")

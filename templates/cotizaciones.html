@@ -18,15 +18,16 @@
 
         /* Cards de KPIs */
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-        .kpi-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s; }
+        .kpi-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; transition: transform 0.2s; cursor: default; }
         .kpi-card:hover { transform: translateY(-5px); }
+
         .kpi-title { font-weight: bold; margin-bottom: 10px; font-size: 1rem; color: #555; }
         .kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
         .kpi-subtext { font-size: 0.9rem; color: #777; }
 
         /* Colores por tipo */
         .abierta { border-top: 4px solid #17a2b8; }
-        .cerrada { border-top: 4px solid #28a745; }
+        .cerrada { border-top: 4px solid #28a745; cursor: pointer; }
         .entregada-tiempo { border-top: 4px solid #ffc107; }
         .entregada-retraso { border-top: 4px solid #fd7e14; }
         .en-riesgo { border-top: 4px solid #dc3545; }
@@ -34,6 +35,21 @@
         .total-general { border-top: 4px solid #343a40; }
 
         .loading { text-align: center; color: #666; font-style: italic; margin-bottom: 20px; display: none; }
+
+        /* Modal */
+        #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
+        #detalleModal .modal-content { background:#fff; border-radius:10px; max-width:900px; width:90%; max-height:80%; 
+            overflow:auto; padding:20px; position:relative; }
+        #detalleModal .modal-content table { width:100%; border-collapse: collapse; }
+        #detalleModal .modal-content th, td { border:1px solid #ddd; padding:8px; text-align:left; }
+        #detalleModal .modal-content th { background-color:#007bff; color:#fff; }
+        #detalleModal button#cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; }
+        .click-hint { font-size:0.8rem; color:#555; margin-top:5px; }
+        .estado-red { color:red; font-weight:bold; }
+        .estado-green { color:green; font-weight:bold; }
+        .estado-orange { color:orange; font-weight:bold; }
+        .estado-blue { color:blue; font-weight:bold; }
     </style>
 </head>
 <body>
@@ -71,6 +87,31 @@
         </div>
     </div>
 
+    <!-- Modal -->
+    <div id="detalleModal">
+        <div class="modal-content">
+            <button id="cerrarModal">&times;</button>
+            <h2>Detalle de Cotizaciones Cerradas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Folio</th>
+                        <th>Kilos</th>
+                        <th>Monto</th>
+                        <th>Precio/Kg</th>
+                        <th>Estado Precio</th>
+                        <th>Estatus Venta</th>
+                        <th>Estatus Técnico</th>
+                    </tr>
+                </thead>
+                <tbody id="detalleBody">
+                    <tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <script>
         const kpiGrid = document.getElementById('kpiGrid');
         const loadingMessage = document.getElementById('loadingMessage');
@@ -85,7 +126,6 @@
             "TOTAL GENERAL": "total-general"
         };
 
-        // Poblar años dinámicamente (últimos 5 años)
         const selectAno = document.getElementById('selectAno');
         const currentYear = new Date().getFullYear();
         for(let y = currentYear; y >= currentYear - 5; y--) {
@@ -96,7 +136,6 @@
             selectAno.appendChild(option);
         }
 
-        // Seleccionar mes actual por defecto
         const selectMes = document.getElementById('selectMes');
         const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
         selectMes.value = currentMonth;
@@ -108,7 +147,6 @@
 
             try {
                 const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-
                 if (response.status === 302) {
                     window.location.href = response.headers.get('Location') || '/auth/login';
                     return;
@@ -146,10 +184,66 @@
                         Kilos: ${item.Total_Kilos || '-'}<br>
                         Monto: ${item.Total_Monto || '-'}<br>
                         Precio/Kg: ${item.Precio_Promedio_Kg || '-'}
+                        ${item.Clasificacion === "Cerrada" ? '<br><span class="click-hint">Haz click para ver detalle 🔍</span>' : ''}
                     </div>
                 `;
                 kpiGrid.appendChild(card);
+
+                if(item.Clasificacion === "Cerrada") {
+                    card.addEventListener('click', () => {
+                        openDetalleModal(`${selectAno.value}${selectMes.value}`);
+                    });
+                }
             });
+        }
+
+        // Modal
+        const detalleModal = document.getElementById('detalleModal');
+        const detalleBody = document.getElementById('detalleBody');
+        const cerrarModal = document.getElementById('cerrarModal');
+
+        cerrarModal.addEventListener('click', () => {
+            detalleModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if(e.target === detalleModal) detalleModal.style.display = 'none';
+        });
+
+        async function openDetalleModal(fecha) {
+            detalleBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Cargando...</td></tr>`;
+            detalleModal.style.display = 'flex';
+
+            try {
+                const response = await fetch(`/cotizaciones/detalle_cerradas?fecha=${fecha}`, { headers:{'Accept':'application/json'} });
+                if(!response.ok) throw new Error('Error al cargar detalle');
+
+                const data = await response.json();
+                detalleBody.innerHTML = '';
+                if(data.length === 0) {
+                    detalleBody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No hay cotizaciones cerradas</td></tr>`;
+                    return;
+                }
+
+                data.forEach(d => {
+                    detalleBody.innerHTML += `
+                        <tr>
+                            <td>${d.Nombre_Cotizacion}</td>
+                            <td>${d.Folio_Cotizacion}</td>
+                            <td>${d.totalKgSold}</td>
+                            <td>${d.totalPrice}</td>
+                            <td>${d.pricePerKg}</td>
+                            <td class="estado-${d.color_estado}">${d.Estado_Precio}</td>
+                            <td>${d.Estatus_Venta}</td>
+                            <td class="estado-${d.color_tecnico}">${d.Estatus_Tecnico}</td>
+                        </tr>
+                    `;
+                });
+
+            } catch(err) {
+                console.error(err);
+                detalleBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red;">Error al cargar detalle</td></tr>`;
+            }
         }
 
         // Form submit
@@ -158,11 +252,7 @@
             e.preventDefault();
             const mes = selectMes.value;
             const ano = selectAno.value;
-
-            if (!mes || !ano) {
-                alert("Selecciona mes y año");
-                return;
-            }
+            if(!mes || !ano) return alert("Selecciona mes y año");
 
             const fecha = `${ano}${mes}`;
             fetchMetrics(fecha);
