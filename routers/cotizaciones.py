@@ -81,7 +81,7 @@ async def dashboard_cotizaciones(
         }
     )
 
-# 2. Resumen de Métricas (SEGURO: usa %s)
+# 2. Resumen de Métricas
 @router.get("/resumen_metricas", 
             response_model=List[Dict[str, Any]],
             summary="Obtiene el resumen de métricas de cotizaciones por fecha.")
