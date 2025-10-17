@@ -302,38 +302,43 @@ def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetch
         if cursor: cursor.close()
         if conn: conn.close()
 
-
-# -------------------- Consulta SQL Genérica para MySQL (¡ACTUALIZADA!) --------------------
+# -------------------- Consulta SQL Genérica para MySQL (¡CORREGIDA!) --------------------
 def ejecutar_consulta_mysql(query: str, params: tuple = None, fetchall: bool = True):
     """
     Ejecuta un query genérico en MySQL y devuelve resultados como lista de diccionarios.
-    Acepta 'params' (tupla o lista) para consultas parametrizadas seguras.
+    Solo hace COMMIT si la consulta no es un SELECT.
     """
     conn = None
     cursor = None
     try:
-        conn = get_mysql_connection()
+        # Asegúrate de que esta función está definida y obtiene una conexión
+        conn = get_mysql_connection() 
         cursor = conn.cursor(dictionary=True)
 
         if params:
-            # ✅ CLAVE: Llama a execute con el query Y los parámetros separados
             cursor.execute(query, params)
         else:
             cursor.execute(query)
 
+        # 1. Fetch de resultados
+        # Se leen todos los resultados para liberar el cursor, como ya lo hacías.
         resultados = cursor.fetchall() if fetchall else cursor.fetchone()
 
-        conn.commit() 
+        # 2. COMMIT CONDICIONAL 🚨
+        # Solo hacemos commit si la consulta NO es un SELECT, para evitar el error.
+        if not query.strip().upper().startswith("SELECT"):
+            conn.commit() 
         
         return resultados
 
     except Exception as e:
+        # Se mantiene la lógica de manejo de errores y traceback
         print(f"ERROR ejecutar_consulta_mysql: {e}")
         traceback.print_exc()
-        # Devuelve un valor vacío consistente con el fetch solicitado
         return [] if fetchall else {}
 
     finally:
+        # El cierre de cursor y conexión en el finally está CORRECTO.
         if cursor:
             cursor.close()
         if conn:

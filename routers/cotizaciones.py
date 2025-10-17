@@ -324,6 +324,8 @@ async def detalle_cerradas(
         print(f"Error al obtener detalle de cotizaciones: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos")
     
+
+
 # 4. Lista Completa (SEGURO: usa %s)
 @router.get(
     "/lista",
@@ -343,14 +345,9 @@ async def listar_cotizaciones(
         if len(fecha) != 6:
             raise HTTPException(status_code=400, detail="Formato de fecha inválido, debe ser YYYYMM")
 
-        ano = int(fecha[:4])
-        mes = int(fecha[4:])
-        if not (1 <= mes <= 12):
-            raise HTTPException(status_code=400, detail="Mes inválido")
-
-        # Calcula el rango de fechas (inicio y fin del mes)
-        fecha_inicio = f"{ano}-{mes:02d}-01"
-        fecha_fin = f"{ano+1}-01-01" if mes == 12 else f"{ano}-{mes+1:02d}-01"
+        # 🚨 CAMBIO 1: Extraer solo 'AAMM' para el filtro (Ej: '2510')
+        # Esto asume que quotationDate solo guarda los últimos 2 dígitos del año + el mes.
+        quotation_date_aamm = fecha[2:]  
 
         # SQL parametrizada
         SQL_QUERY = """
@@ -365,25 +362,32 @@ async def listar_cotizaciones(
             COALESCE(s.Nombe, 'Sin estatus') AS Estatus_Venta,
             COALESCE(st.status, 'Sin estatus') AS Estado,
             CASE
-                WHEN s.Nombe = 'Vendido' THEN 'Vendida'
-                WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
-                WHEN st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas') THEN 'Entregada con Retraso'
-                WHEN st.status = 'En riesgo' THEN 'En Riesgo'
+                -- 1. VENDIDA: saleStatus = 2
+                WHEN q.saleStatus = 2 THEN 'Vendida' 
+                -- 2. ENTREGADA A TIEMPO: status = 8
+                WHEN q.status = 8 THEN 'Entregada a Tiempo'
+                -- 3. ENTREGADA CON RETRASO: status = 7 o 10
+                WHEN q.status IN (7, 10) THEN 'Entregada con Retraso'
+                -- 4. EN RIESGO: status = 5
+                WHEN q.status = 5 THEN 'En Riesgo'
+                -- 5. CERRADA: q.deliver no es nulo
                 WHEN q.deliver IS NOT NULL THEN 'Cerrada'
+                -- 6. POR DEFECTO
                 ELSE 'Abierta'
             END AS Clasificacion,
             q.deliver
         FROM quotation q
         LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
         LEFT JOIN status st ON q.status = st.idStatus
-        WHERE q.createdAt >= %s AND q.createdAt < %s
+        -- 🚨 CAMBIO 2: Filtrar por quotationDate usando el valor AAMM
+        WHERE q.quotationDate = %s
         ORDER BY
             FIELD(
                 CASE
-                    WHEN s.Nombe = 'Vendido' THEN 'Vendida'
-                    WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
-                    WHEN st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas') THEN 'Entregada con Retraso'
-                    WHEN st.status = 'En riesgo' THEN 'En Riesgo'
+                    WHEN q.saleStatus = 2 THEN 'Vendida'
+                    WHEN q.status = 8 THEN 'Entregada a Tiempo'
+                    WHEN q.status IN (7, 10) THEN 'Entregada con Retraso'
+                    WHEN q.status = 5 THEN 'En Riesgo'
                     WHEN q.deliver IS NOT NULL THEN 'Cerrada'
                     ELSE 'Abierta'
                 END,
@@ -392,7 +396,8 @@ async def listar_cotizaciones(
             q.createdAt DESC;
         """
 
-        params = (fecha_inicio, fecha_fin)
+        # 🚨 CAMBIO 3: Usar solo un parámetro, el valor 'AAMM'
+        params = (quotation_date_aamm,) 
 
         # Ejecuta la consulta
         resultados = ejecutar_consulta_mysql(SQL_QUERY, params=params, fetchall=True) or []
@@ -418,6 +423,7 @@ async def listar_cotizaciones(
         raise HTTPException(status_code=500, detail=f"Error interno al obtener las cotizaciones: {str(e)}")
 
 
+
 # 5. Detalle Universal por Clasificación
 @router.get(
     "/detalle_por_clasificacion",
@@ -431,37 +437,38 @@ async def detalle_por_clasificacion(
 ):
     """
     Retorna las cotizaciones que coinciden con una Clasificación específica.
-    Usa el endpoint /lista para obtener los IDs y luego filtra el detalle.
+    Usa el filtro de quotationDate y la lógica de clasificación por ID, eliminando duplicados con GROUP BY.
     """
-    # Paso 1: Obtener los IDs de cotización que cumplen con la Clasificación y la Fecha
-    # ⚠️ Esto reutiliza la misma lógica de clasificación usada en /lista
+
+    # 1. Validar y preparar el filtro de fecha (AAMM)
+    try:
+        if len(fecha) != 6:
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido")
+        # Extraemos AAMM para el filtro (ej: '2510' de '202510')
+        quotation_date_aamm = fecha[2:] 
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido")
+
+
+    # Paso 2: Obtener los IDs de cotización que cumplen con el filtro de fecha y la Clasificación
     SQL_ID_QUERY = """
         SELECT
             q.idQuotation
         FROM quotation q
         LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
         LEFT JOIN status st ON q.status = st.idStatus
-        WHERE q.createdAt >= %s AND q.createdAt < %s
+        WHERE q.quotationDate = %s
           AND CASE
-                WHEN s.Nombe = 'Vendido' THEN 'Vendida'
-                WHEN st.status = 'Finalizada' THEN 'Entregada a Tiempo'
-                WHEN st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas') THEN 'Entregada con Retraso'
-                WHEN st.status = 'En riesgo' THEN 'En Riesgo'
-                WHEN q.deliver IS NOT NULL THEN 'Cerrada'
-                ELSE 'Abierta'
-              END = %s;
+              WHEN q.saleStatus = 2 THEN 'Vendida'
+              WHEN q.status = 8 THEN 'Entregada a Tiempo'
+              WHEN q.status IN (7, 10) THEN 'Entregada con Retraso'
+              WHEN q.status = 5 THEN 'En Riesgo'
+              WHEN q.deliver IS NOT NULL THEN 'Cerrada'
+              ELSE 'Abierta'
+          END = %s;
     """
 
-    # Validación de fecha
-    try:
-        ano = int(fecha[:4])
-        mes = int(fecha[4:])
-        fecha_inicio = f"{ano}-{mes:02d}-01"
-        fecha_fin = f"{ano + 1}-01-01" if mes == 12 else f"{ano}-{mes + 1:02d}-01"
-    except (ValueError, IndexError):
-        raise HTTPException(status_code=400, detail="Formato de fecha inválido")
-
-    params_ids = (fecha_inicio, fecha_fin, clasificacion)
+    params_ids = (quotation_date_aamm, clasificacion)
 
     try:
         resultados_ids = ejecutar_consulta_mysql(SQL_ID_QUERY, params=params_ids, fetchall=True)
@@ -478,16 +485,18 @@ async def detalle_por_clasificacion(
         print(f"Error al obtener IDs por clasificación: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener IDs de cotizaciones.")
 
-    # Paso 2: Obtener el detalle de la cotización usando los IDs
+    # Paso 3: Obtener el detalle de la cotización usando los IDs (con GROUP BY y SUM)
     SQL_DETALLE_QUERY = f"""
         SELECT 
             q.name AS Nombre_Cotizacion,
             CONCAT(q.quotationDate, '-', q.quotationConsecutive) AS Folio_Cotizacion,
-            ROUND(qs.totalKgSold, 2) AS totalKgSold,
-            ROUND(qs.totalPrice, 2) AS totalPrice,
-            ROUND(qs.pricePerKg, 2) AS pricePerKg,
+            -- Usamos SUM para consolidar los totales
+            ROUND(SUM(qs.totalKgSold), 2) AS totalKgSold,
+            ROUND(SUM(qs.totalPrice), 2) AS totalPrice,
+            -- Recalculamos el precio por Kg
+            ROUND(SUM(qs.totalPrice) / NULLIF(SUM(qs.totalKgSold), 0), 2) AS pricePerKg,
             CASE 
-                WHEN qs.pricePerKg IS NULL OR qs.pricePerKg = 0 THEN '⚠️ Sin precio'
+                WHEN SUM(qs.totalKgSold) IS NULL OR SUM(qs.totalPrice) = 0 THEN '⚠️ Sin precio'
                 ELSE '✅ Con precio'
             END AS Estado_Precio,
             s.Nombe AS Estatus_Venta,
@@ -497,7 +506,18 @@ async def detalle_por_clasificacion(
         LEFT JOIN status st ON q.status = st.idStatus
         LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
         WHERE q.idQuotation IN ({id_list})
-        ORDER BY qs.totalKgSold DESC;
+        
+        -- Agrupamos por los campos no agregados para obtener una sola fila por cotización
+        GROUP BY 
+            q.idQuotation, 
+            q.name, 
+            Folio_Cotizacion, 
+            s.Nombe, 
+            st.status,
+            q.quotationDate,
+            q.quotationConsecutive
+            
+        ORDER BY totalKgSold DESC;
     """
 
     try:
@@ -512,3 +532,100 @@ async def detalle_por_clasificacion(
     except Exception as e:
         print(f"Error al obtener detalle de cotizaciones por clasificación: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos del detalle.")
+
+
+# 6. Gráfica de Tendencia Mensual (Creado vs Vendido)
+@router.get(
+    "/tendencia_mensual",
+    response_model=List[Dict[str, Any]],
+    summary="Obtiene la tendencia de cotizaciones creadas vs. vendidas de los últimos 12 meses"
+)
+async def tendencia_mensual(
+    fecha: str = Query(..., regex=r"^\d{6}$", description="Fecha de corte en formato YYYYMM (Ej: 202510)"),
+    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones)
+) -> JSONResponse:
+    """
+    Agrega los conteos de cotizaciones Creadas y Vendidas por mes, 
+    para los 12 meses anteriores a la fecha de corte.
+    """
+    try:
+        if len(fecha) != 6:
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido, debe ser YYYYMM")
+
+        # 1. Calcular el rango de 12 meses
+        
+        # Convertir la fecha de entrada a objeto date (usamos el día 1)
+        ano_corte = int(fecha[:4])
+        mes_corte = int(fecha[4:])
+        
+        # Usamos datetime para manejar la lógica de sumar/restar meses
+        fecha_final = date(ano_corte, mes_corte, 1) + relativedelta(months=+1) # Inicio del mes siguiente
+        fecha_inicio = fecha_final - relativedelta(years=1) # Inicio 12 meses antes
+        
+        # Convertir a los formatos AAMM y YYYY-MM-DD para el filtro SQL
+        # Convertir fecha_final (e.g., 2025-11-01) a AAMM de Cierre (e.g., '2510')
+        # Buscamos el AAMM del mes ANTERIOR a fecha_final
+        aamm_final = (fecha_final - relativedelta(months=1)).strftime('%y%m')
+        
+        # Buscamos el AAMM del mes ANTERIOR a fecha_inicio
+        aamm_inicio = (fecha_inicio).strftime('%y%m')
+        
+
+        # 2. Query SQL para obtener los datos agrupados por AAMM
+        # NOTA: Usamos quotationDate (AAMM) para el filtro y la agrupación,
+        # alineándonos con la lógica que te da los 31 registros vendidos correctos.
+        SQL_QUERY = """
+            SELECT
+                q.quotationDate AS Periodo_AAMM,
+                COUNT(q.idQuotation) AS Creadas,
+                -- 🚨 Lógica de VENDIDAS: saleStatus = 2
+                SUM(CASE WHEN q.saleStatus = 2 THEN 1 ELSE 0 END) AS Vendidas
+            FROM quotation q
+            -- Filtramos por el rango de AAMM
+            WHERE q.quotationDate >= %s AND q.quotationDate < %s
+            GROUP BY
+                q.quotationDate
+            ORDER BY
+                q.quotationDate ASC;
+        """
+
+        # Preparamos los parámetros para el rango de AAMM
+        # Usamos 'aamm_inicio' (ej. '2410') y 'aamm_final' (ej. '2511')
+        params = (aamm_inicio, aamm_final)
+
+        # 3. Ejecutar consulta
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, params=params, fetchall=True) or []
+
+        # 4. Procesar y rellenar meses faltantes (crucial para gráficas)
+        
+        # Generar todos los AAMM en el rango de 12 meses para rellenar los vacíos
+        periodos_esperados = []
+        current_date = fecha_inicio
+        while current_date < fecha_final:
+            periodos_esperados.append(current_date.strftime('%y%m'))
+            current_date += relativedelta(months=+1)
+        
+        # Mapear los resultados obtenidos de la DB para facilitar la búsqueda
+        resultados_map = {r['Periodo_AAMM']: r for r in resultados}
+        
+        # Crear la lista final de tendencia, asegurando todos los meses
+        tendencia_final = []
+        for periodo in periodos_esperados:
+            if periodo in resultados_map:
+                tendencia_final.append(resultados_map[periodo])
+            else:
+                # Rellena los meses sin datos con 0s
+                tendencia_final.append({
+                    'Periodo_AAMM': periodo,
+                    'Creadas': 0,
+                    'Vendidas': 0
+                })
+
+        return JSONResponse(content=jsonable_encoder(tendencia_final), status_code=200)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR /tendencia_mensual] {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno al obtener la tendencia: {str(e)}")
+
