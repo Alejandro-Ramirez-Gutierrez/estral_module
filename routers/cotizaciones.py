@@ -590,3 +590,70 @@ async def tendencia_cotizaciones():
         # En caso de error, siempre es útil ver el SQL que falló
         print(f"SQL FALLIDA: {SQL}") 
         raise HTTPException(status_code=500, detail="Error al obtener tendencia.")
+    
+
+
+# 6. Métrica Anual por Mes (COTIZACIONES POR AÑOS)
+# 6. Métrica Anual por Mes (COTIZACIONES POR AÑOS)
+@router.get(
+    "/metricas_anuales_por_mes",
+    summary="Obtiene métricas mensuales (Cotizaciones, Kilos, Monto) para el año actual."
+)
+async def metricas_anuales_por_mes(
+    usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones) # Asegúrate de usar la dependencia correcta
+):
+    """
+    Retorna datos mensuales para el año en curso, filtrados desde Enero hasta el mes actual.
+    El formato de fecha en quotationDate es AAMM (ej. 2510).
+    """
+    
+    # Calcular AAMM de Enero del año actual y el AAMM actual
+    now = datetime.now()
+    current_year_aamm = now.strftime("%y%m") # Ej: 2510
+    january_aamm = now.strftime("%y") + "01" # Ej: 2501
+    
+    # --- QUERY SQL LIMPIO ---
+    SQL_QUERY = f"""
+SELECT
+    CONCAT('20', LEFT(q.quotationDate, 2)) AS Año,
+    RIGHT(q.quotationDate, 2) AS Mes,
+    CAST(q.quotationDate AS UNSIGNED) AS Periodo,
+
+    COUNT(DISTINCT q.idQuotation) AS Cotizaciones_Totales,
+    SUM(qs.totalKgSold) AS Kilos_Totales,
+    SUM(qs.totalPrice) AS Monto_Total,
+    AVG(NULLIF(qs.pricePerKg, 0)) AS PrecioPromedio_Kg_Total,
+
+    COUNT(DISTINCT CASE WHEN s.Nombe = 'Vendido' THEN q.idQuotation END) AS Cotizaciones_Vendidas,
+    SUM(CASE WHEN s.Nombe = 'Vendido' THEN qs.totalKgSold ELSE 0 END) AS Kilos_Vendidos,
+    SUM(CASE WHEN s.Nombe = 'Vendido' THEN qs.totalPrice ELSE 0 END) AS Monto_Vendido,
+    AVG(CASE WHEN s.Nombe = 'Vendido' THEN NULLIF(qs.pricePerKg, 0) ELSE NULL END) AS PrecioPromedio_Kg_Vendido
+FROM quotation q
+LEFT JOIN (
+    SELECT
+        quotationId,
+        SUM(totalKgSold) AS totalKgSold,
+        SUM(totalPrice) AS totalPrice,
+        AVG(NULLIF(pricePerKg, 0)) AS pricePerKg
+    FROM quotation_systems
+    GROUP BY quotationId
+) qs ON q.idQuotation = qs.quotationId
+LEFT JOIN sale_status s
+    ON q.saleStatus = s.idSalestatus
+-- FILTRO DINÁMICO: Desde Enero del año actual hasta el mes actual
+WHERE q.quotationDate >= {january_aamm} AND q.quotationDate <= {current_year_aamm}
+GROUP BY q.quotationDate
+ORDER BY q.quotationDate ASC;
+"""
+
+    try:
+        # Usa tu función local para ejecutar la consulta (ejecutar_consulta_mysql)
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
+        # Convertir Decimals a float (asegúrate de que 'decimales_a_float' esté definida)
+        resultados = decimales_a_float(resultados) 
+        
+        return JSONResponse(content=jsonable_encoder(resultados) or [], status_code=200)
+    except Exception as e:
+        print(f"Error en metricas_anuales_por_mes: {e}")
+        # Asegúrate de usar HTTPException si no es tu manejador de errores estándar
+        raise HTTPException(status_code=500, detail="Error al obtener métricas anuales.")

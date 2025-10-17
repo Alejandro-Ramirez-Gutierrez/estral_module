@@ -145,6 +145,75 @@ body.dark #detalleModal .modal-content { background: var(--dark-card); color: va
 #detalleModal th { background-color: var(--primary); color:#fff; position:sticky; top:0; }
 #cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; color: var(--light-text); }
 body.dark #cerrarModal { color: var(--dark-text); }
+
+table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+/* ============================================================== */
+/* 📱 MEDIA QUERIES PARA RESPONSIVE DESIGN (MÓVIL) 📱 */
+/* ============================================================== */
+
+@media (max-width: 768px) {
+    
+    /* 1. Contenedor y Títulos */
+    .container {
+        padding: 10px; /* Menos padding en los bordes */
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    /* 2. Formulario de Fecha */
+    .date-form {
+        flex-direction: column; /* Apilar los select y el botón */
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .date-form select, .date-form button {
+        width: 100%; /* Ocupar todo el ancho */
+    }
+
+    /* 3. KPI Grid (Los Key Performance Indicators) */
+    .kpi-grid {
+        /* Fuerza a que los KPI se vean en una sola columna */
+        grid-template-columns: 1fr; 
+        gap: 15px; /* Espaciado un poco menor */
+    }
+    .kpi-card {
+        padding: 15px;
+    }
+    .kpi-value {
+        font-size: 1.8rem; /* Tamaño de fuente ligeramente más pequeño */
+    }
+    
+    /* 4. Tablas (Lista de Cotizaciones) */
+    /* Hacemos que el contenedor de la tabla sea desplazable horizontalmente. */
+    .table-container {
+        overflow-x: auto; 
+    }
+    
+    /* Nota: La propiedad 'min-width: 900px' en el 'table' original (línea 112)
+       es la clave para que la tabla sea más ancha que la pantalla y se pueda desplazar. */
+
+    /* 5. Gráficas */
+    /* Mantenemos el height fijo, Chart.js maneja la adaptación del width */
+    .container > div > div[style*="height: 350px"],
+    .container > div > div[style*="height: 400px"] {
+        /* Aseguramos que el contenedor de la gráfica no tenga más de 100% de ancho */
+        width: 100% !important; 
+    }
+    
+    /* 6. Modal de Detalle */
+    #detalleModal .modal-content {
+        width: 95%; /* Ligeramente más grande en móvil */
+        margin: 10px;
+    }
+    #detalleModal th, #detalleModal td { 
+        font-size: 0.8rem; /* Fuente más chica en la tabla del modal */
+    }
+}
+
+
 </style>
 </head>
 <body>
@@ -169,6 +238,14 @@ body.dark #cerrarModal { color: var(--dark-text); }
         <h2 style="text-align:center;">📈 Tendencia de Cotizaciones vs Vendidas</h2>
         <div style="height: 350px; width: 100%;">
             <canvas id="graficaTendencia" style="max-width:100%;"></canvas>
+        </div>
+    </div>
+
+
+    <div style="margin-top:60px;">
+        <h2 style="text-align:center;">📈 Comparativo Anual (Cotizaciones, Kilos y Monto)</h2>
+        <div style="height: 400px; width: 100%;"> 
+            <canvas id="graficaAnualComparativa" style="max-width:100%;"></canvas>
         </div>
     </div>
 
@@ -508,8 +585,204 @@ async function cargarTendencia() {
 }
 
 
+// ==========================
+// GRÁFICA COMPARATIVA ANUAL (NUEVA)
+// ==========================
+let graficaAnualInstancia = null;
+
+async function cargarMetricasAnuales() {
+    try {
+        const resp = await fetch("/cotizaciones/metricas_anuales_por_mes");
+        
+        if (!resp.ok) {
+            throw new Error(`Error HTTP: ${resp.status}`);
+        }
+        
+        const data = await resp.json();
+        
+        console.log("✅ DATOS ANUALES RECIBIDOS:", data); 
+
+        if (!Array.isArray(data) || !data.length) {
+            if (graficaAnualInstancia) graficaAnualInstancia.destroy();
+            return; 
+        }
+
+        // Mapeo de datos
+        const labels = data.map(d => {
+            // Chart.js espera el formato de fecha (Año, Mes-1)
+            const date = new Date(d.Año, d.Mes - 1);
+            return date.toLocaleString('es-MX', { month: 'short' }).toUpperCase();
+        });
+
+        const cotizacionesTotales = data.map(d => d.Cotizaciones_Totales || 0);
+        const cotizacionesVendidas = data.map(d => d.Cotizaciones_Vendidas || 0);
+        
+        const kilosTotales = data.map(d => d.Kilos_Totales || 0);
+        const kilosVendidos = data.map(d => d.Kilos_Vendidos || 0);
+
+        const montoTotal = data.map(d => d.Monto_Total || 0);
+        const montoVendido = data.map(d => d.Monto_Vendido || 0);
+        
+        // El elemento HTML Canvas
+        const ctx = document.getElementById("graficaAnualComparativa").getContext("2d");
+
+        // Destruir instancia anterior si existe
+        if (graficaAnualInstancia) {
+            graficaAnualInstancia.destroy();
+        }
+
+        graficaAnualInstancia = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    // GRUPO 1: Cotizaciones (Barras)
+                    {
+                        label: "Cotizaciones Totales",
+                        data: cotizacionesTotales,
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)', // Azul
+                        yAxisID: 'y-cot',
+                        stack: 'Cotizaciones'
+                    },
+                    {
+                        label: "Cotizaciones Vendidas",
+                        data: cotizacionesVendidas,
+                        backgroundColor: 'rgba(40, 167, 69, 0.8)', // Verde
+                        yAxisID: 'y-cot',
+                        stack: 'Cotizaciones'
+                    },
+                    
+                    // GRUPO 2: Monto (Línea)
+                    {
+                        label: "Monto Total",
+                        data: montoTotal,
+                        type: 'line',
+                        borderColor: 'rgba(255, 99, 132, 1)', // Rojo
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        fill: false,
+                        yAxisID: 'y-monto',
+                        tension: 0.2,
+                        pointRadius: 3
+                    },
+                    {
+                        label: "Monto Vendido",
+                        data: montoVendido,
+                        type: 'line',
+                        borderColor: 'rgba(153, 102, 255, 1)', // Púrpura (línea punteada)
+                        borderDash: [5, 5], 
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        fill: false,
+                        yAxisID: 'y-monto',
+                        tension: 0.2,
+                        pointRadius: 3
+                    },
+                    
+                    // GRUPO 3: Kilos (Línea)
+                    {
+                        label: "Kilos Totales",
+                        data: kilosTotales,
+                        type: 'line',
+                        borderColor: 'rgba(255, 159, 64, 1)', // Naranja
+                        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                        fill: false,
+                        yAxisID: 'y-kilos',
+                        tension: 0.2,
+                        hidden: true,
+                        pointRadius: 3
+                    },
+                    {
+                        label: "Kilos Vendidos",
+                        data: kilosVendidos,
+                        type: 'line',
+                        borderColor: 'rgba(75, 192, 192, 1)', // Turquesa (línea punteada)
+                        borderDash: [5, 5],
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: false,
+                        yAxisID: 'y-kilos',
+                        tension: 0.2,
+                        hidden: true,
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                // Monto
+                                if (context.dataset.yAxisID === 'y-monto') {
+                                    // Asume que 'currencyFormatter' existe (ej. Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }))
+                                    return label + currencyFormatter.format(context.parsed.y);
+                                }
+                                // Kilos y Cotizaciones (se asume 'numberFormatter' existe)
+                                return label + numberFormatter.format(context.parsed.y);
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: document.body.classList.contains("dark") ? "#eee" : "#333" } 
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: document.body.classList.contains("dark") ? "#ccc" : "#333" }
+                    },
+                    'y-cot': {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        title: { display: true, text: 'Cotizaciones' },
+                        ticks: {
+                            color: 'rgba(54, 162, 235, 1)',
+                            callback: function(value) { return numberFormatter.format(value); }
+                        }
+                    },
+                    'y-monto': {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        title: { display: true, text: 'Monto ($)' },
+                        grid: { drawOnChartArea: false }, 
+                        ticks: {
+                            color: 'rgba(255, 99, 132, 1)',
+                            // Muestra el valor en miles con la "k"
+                            callback: function(value) { return `$${(value/1000).toFixed(0)}k`; } 
+                        }
+                    },
+                    'y-kilos': {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        title: { display: true, text: 'Kilos (kg)' },
+                        grid: { drawOnChartArea: false }, 
+                        display: false, // Se oculta por defecto para no saturar
+                        ticks: {
+                            color: 'rgba(255, 159, 64, 1)',
+                            // Muestra el valor en miles de kilos con la "k"
+                            callback: function(value) { return `${(value/1000).toFixed(0)}k kg`; } 
+                        }
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Error al cargar métricas anuales:", e);
+    }
+}
+
+
+
 
 fetchMetrics(`${selectAno.value}${selectMes.value}`);
+cargarMetricasAnuales();
 </script>
 </body>
 </html>
