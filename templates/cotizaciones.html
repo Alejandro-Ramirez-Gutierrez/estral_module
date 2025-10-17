@@ -216,8 +216,16 @@ table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius:
 
 </style>
 </head>
-<body>
-<button class="theme-toggle" id="themeToggle">🌙</button>
+<body>  
+    <nav>
+        <div class="logo"> Estral | Dashboard de Cotizaciones</div>
+        <div class="nav-buttons">
+            <button onclick="location.href='/dashboard'">🏠 Inicio</button>
+            <button onclick="location.href='/logout'">Cerrar sesión</button>
+            <button class="theme-toggle" id="themeToggle">🌙</button>
+        </div>
+    </nav>
+
 
 <div class="container">
     <h1>📊 Dashboard de Cotizaciones</h1>
