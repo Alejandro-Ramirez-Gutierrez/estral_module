@@ -243,7 +243,7 @@ table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius:
 
 
     <div style="margin-top:60px;">
-        <h2 style="text-align:center;">📈 Comparativo Anual (Cotizaciones, Kilos y Monto)</h2>
+        <h2 style="text-align:center;">📈 Comparativo Anual (Kilos y Monto)</h2>
         <div style="height: 400px; width: 100%;"> 
             <canvas id="graficaAnualComparativa" style="max-width:100%;"></canvas>
         </div>
@@ -586,7 +586,7 @@ async function cargarTendencia() {
 
 
 // ==========================
-// GRÁFICA COMPARATIVA ANUAL (NUEVA)
+// GRÁFICA COMPARATIVA ANUAL (AJUSTADA: SOLO MONTO Y KILOS, CON COLORES CLÁSICOS)
 // ==========================
 let graficaAnualInstancia = null;
 
@@ -613,13 +613,10 @@ async function cargarMetricasAnuales() {
             const date = new Date(d.Año, d.Mes - 1);
             return date.toLocaleString('es-MX', { month: 'short' }).toUpperCase();
         });
-
-        const cotizacionesTotales = data.map(d => d.Cotizaciones_Totales || 0);
-        const cotizacionesVendidas = data.map(d => d.Cotizaciones_Vendidas || 0);
         
+        // SOLO KILOS y MONTO
         const kilosTotales = data.map(d => d.Kilos_Totales || 0);
         const kilosVendidos = data.map(d => d.Kilos_Vendidos || 0);
-
         const montoTotal = data.map(d => d.Monto_Total || 0);
         const montoVendido = data.map(d => d.Monto_Vendido || 0);
         
@@ -632,76 +629,54 @@ async function cargarMetricasAnuales() {
         }
 
         graficaAnualInstancia = new Chart(ctx, {
-            type: "bar",
+            type: "bar", // Mantener 'bar' ya que Chart.js permite mezclar tipos
             data: {
                 labels,
                 datasets: [
-                    // GRUPO 1: Cotizaciones (Barras)
-                    {
-                        label: "Cotizaciones Totales",
-                        data: cotizacionesTotales,
-                        backgroundColor: 'rgba(54, 162, 235, 0.8)', // Azul
-                        yAxisID: 'y-cot',
-                        stack: 'Cotizaciones'
-                    },
-                    {
-                        label: "Cotizaciones Vendidas",
-                        data: cotizacionesVendidas,
-                        backgroundColor: 'rgba(40, 167, 69, 0.8)', // Verde
-                        yAxisID: 'y-cot',
-                        stack: 'Cotizaciones'
-                    },
                     
-                    // GRUPO 2: Monto (Línea)
+                    // GRUPO 1: Monto (Barra) - Colores Azules 
                     {
                         label: "Monto Total",
                         data: montoTotal,
-                        type: 'line',
-                        borderColor: 'rgba(255, 99, 132, 1)', // Rojo
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        fill: false,
+                        // Azul Sólido
+                        backgroundColor: 'rgba(41, 128, 185, 0.9)', 
                         yAxisID: 'y-monto',
-                        tension: 0.2,
-                        pointRadius: 3
+                        stack: 'Monto'
                     },
                     {
                         label: "Monto Vendido",
                         data: montoVendido,
-                        type: 'line',
-                        borderColor: 'rgba(153, 102, 255, 1)', // Púrpura (línea punteada)
-                        borderDash: [5, 5], 
-                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                        fill: false,
+                        // Gris/Azul Marino (para contraste en la barra)
+                        backgroundColor: 'rgba(52, 73, 94, 0.9)', 
                         yAxisID: 'y-monto',
-                        tension: 0.2,
-                        pointRadius: 3
+                        stack: 'Monto'
                     },
                     
-                    // GRUPO 3: Kilos (Línea)
+                    // GRUPO 2: Kilos (Línea) - Colores Rojos / Naranjas
                     {
                         label: "Kilos Totales",
                         data: kilosTotales,
                         type: 'line',
-                        borderColor: 'rgba(255, 159, 64, 1)', // Naranja
-                        backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                        // Rojo Sólido (para la línea principal)
+                        borderColor: 'rgba(231, 76, 60, 1)', 
+                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
                         fill: false,
                         yAxisID: 'y-kilos',
                         tension: 0.2,
-                        hidden: true,
-                        pointRadius: 3
+                        pointRadius: 4
                     },
                     {
                         label: "Kilos Vendidos",
                         data: kilosVendidos,
                         type: 'line',
-                        borderColor: 'rgba(75, 192, 192, 1)', // Turquesa (línea punteada)
+                        // Naranja Sólido (para contraste con el rojo)
+                        borderColor: 'rgba(243, 156, 18, 1)', 
                         borderDash: [5, 5],
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        backgroundColor: 'rgba(243, 156, 18, 0.2)',
                         fill: false,
                         yAxisID: 'y-kilos',
                         tension: 0.2,
-                        hidden: true,
-                        pointRadius: 3
+                        pointRadius: 4
                     }
                 ]
             },
@@ -718,10 +693,9 @@ async function cargarMetricasAnuales() {
                                 }
                                 // Monto
                                 if (context.dataset.yAxisID === 'y-monto') {
-                                    // Asume que 'currencyFormatter' existe (ej. Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }))
                                     return label + currencyFormatter.format(context.parsed.y);
                                 }
-                                // Kilos y Cotizaciones (se asume 'numberFormatter' existe)
+                                // Kilos 
                                 return label + numberFormatter.format(context.parsed.y);
                             }
                         }
@@ -735,37 +709,28 @@ async function cargarMetricasAnuales() {
                     x: {
                         ticks: { color: document.body.classList.contains("dark") ? "#ccc" : "#333" }
                     },
-                    'y-cot': {
+                    // Eje Y para Monto (Izquierda)
+                    'y-monto': {
                         type: 'linear',
                         position: 'left',
                         beginAtZero: true,
-                        title: { display: true, text: 'Cotizaciones' },
-                        ticks: {
-                            color: 'rgba(54, 162, 235, 1)',
-                            callback: function(value) { return numberFormatter.format(value); }
-                        }
-                    },
-                    'y-monto': {
-                        type: 'linear',
-                        position: 'right',
-                        beginAtZero: true,
                         title: { display: true, text: 'Monto ($)' },
-                        grid: { drawOnChartArea: false }, 
                         ticks: {
-                            color: 'rgba(255, 99, 132, 1)',
+                            color: 'rgba(41, 128, 185, 1)', // Color del tick acorde al dataset
                             // Muestra el valor en miles con la "k"
                             callback: function(value) { return `$${(value/1000).toFixed(0)}k`; } 
                         }
                     },
+                    // Eje Y para Kilos (Derecha)
                     'y-kilos': {
                         type: 'linear',
-                        position: 'right',
+                        position: 'right', 
                         beginAtZero: true,
                         title: { display: true, text: 'Kilos (kg)' },
                         grid: { drawOnChartArea: false }, 
-                        display: false, // Se oculta por defecto para no saturar
+                        display: true,
                         ticks: {
-                            color: 'rgba(255, 159, 64, 1)',
+                            color: 'rgba(231, 76, 60, 1)', // Color del tick acorde al dataset
                             // Muestra el valor en miles de kilos con la "k"
                             callback: function(value) { return `${(value/1000).toFixed(0)}k kg`; } 
                         }
