@@ -533,3 +533,60 @@ async def detalle_por_clasificacion(
         print(f"Error al obtener detalle de cotizaciones por clasificación: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos del detalle.")
 
+
+
+@router.get("/tendencia_cotizaciones")
+async def tendencia_cotizaciones():
+    """
+    Devuelve el total de cotizaciones vs vendidas agrupadas por mes (últimos 12).
+    """
+    # Usamos subconsultas para asegurar que COUNT(DISTINCT) sea aplicado correctamente
+    # para ambas métricas sobre el mismo filtro de fecha (q.quotationDate).
+    SQL = """
+        SELECT 
+            -- Asegura que solo se agrupe por el valor AAMM y lo devuelve como entero
+            CAST(T.quotationDate AS UNSIGNED) AS periodo,
+            T.total_cotizaciones,
+            COALESCE(V.total_vendidas, 0) AS total_vendidas
+        FROM 
+        (
+            -- Total de Cotizaciones DISTINTAS por mes (AAMM)
+            SELECT
+                quotationDate,
+                COUNT(DISTINCT idQuotation) AS total_cotizaciones
+            FROM quotation
+            WHERE quotationDate IS NOT NULL AND LENGTH(quotationDate) = 4
+            GROUP BY quotationDate
+            ORDER BY quotationDate DESC 
+            LIMIT 12
+        ) AS T
+        LEFT JOIN
+        (
+            -- Total de Cotizaciones DISTINTAS VENDIDAS por mes (AAMM)
+            SELECT 
+                q.quotationDate,
+                COUNT(DISTINCT q.idQuotation) AS total_vendidas
+            FROM quotation q
+            INNER JOIN sale_status s ON q.saleStatus = s.idSalestatus
+            WHERE 
+                s.Nombe = 'Vendido' 
+                AND q.quotationDate IS NOT NULL 
+                AND LENGTH(q.quotationDate) = 4
+            GROUP BY q.quotationDate
+        ) AS V
+        ON T.quotationDate = V.quotationDate
+        ORDER BY T.quotationDate ASC; -- ASC para que Chart.js las pinte cronológicamente
+    """
+    try:
+        resultados = ejecutar_consulta_mysql(SQL, fetchall=True)
+        
+        # 1. Aplica la conversión de Decimal a float
+        resultados = decimales_a_float(resultados)
+        
+        # 2. Usa jsonable_encoder para seguridad total de serialización
+        return JSONResponse(content=jsonable_encoder(resultados) or [], status_code=200)
+    except Exception as e:
+        print(f"Error en tendencia_cotizaciones: {e}")
+        # En caso de error, siempre es útil ver el SQL que falló
+        print(f"SQL FALLIDA: {SQL}") 
+        raise HTTPException(status_code=500, detail="Error al obtener tendencia.")

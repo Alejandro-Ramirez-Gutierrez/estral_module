@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <title>Dashboard de Cotizaciones</title>
 <style>
 :root {
@@ -163,6 +165,14 @@ body.dark #cerrarModal { color: var(--dark-text); }
         <button type="submit">Cargar Métricas</button>
     </form>
 
+    <div style="margin-top:40px;">
+        <h2 style="text-align:center;">📈 Tendencia de Cotizaciones vs Vendidas</h2>
+        <div style="height: 350px; width: 100%;">
+            <canvas id="graficaTendencia" style="max-width:100%;"></canvas>
+        </div>
+    </div>
+
+
     <p class="loading" id="loadingMessage" style="text-align:center;">Cargando datos...</p>
     <div class="kpi-grid" id="kpiGrid"></div>
 </div>
@@ -257,6 +267,9 @@ async function fetchMetrics(fecha){
         const data = await r.json();
         renderKPIs(data);
         fetchTablaCotizaciones(fecha);
+        
+        cargarTendencia(); 
+        
     }catch(e){ console.error("Error al cargar métricas:",e); kpiGrid.innerHTML='<p style="text-align:center;color:red;">Error al cargar las métricas principales.</p>'; }
     finally{ loadingMessage.style.display='none'; }
 }
@@ -376,6 +389,125 @@ document.getElementById('dateForm').addEventListener('submit',e=>{
     const fecha=`${selectAno.value}${selectMes.value}`;
     fetchMetrics(fecha);
 });
+
+
+
+// ==========================
+// GRAFICA DE TENDENCIA (LIMPIA Y REFORZADA)
+// ==========================
+async function cargarTendencia() {
+    try {
+        const resp = await fetch("/cotizaciones/tendencia_cotizaciones");
+        
+        if (!resp.ok) {
+            throw new Error(`Error HTTP: ${resp.status}`);
+        }
+        
+        const data = await resp.json();
+        
+        console.log("✅ DATOS RECIBIDOS (BACKEND):", data); 
+
+        if (!Array.isArray(data) || !data.length) {
+            console.warn("No se encontraron datos para la gráfica de tendencia.");
+            if (window.graficaTendenciaInstancia) {
+                window.graficaTendenciaInstancia.destroy();
+                window.graficaTendenciaInstancia = null;
+            }
+            return; 
+        }
+
+        // Mapeo de datos: 
+        const labels = data.map(d => {
+            const str = (d.periodo || '').toString(); 
+            if (str.length !== 4) return str; 
+
+            const year = "20" + str.slice(0, 2); 
+            const month = str.slice(2);
+            return `${month}/${year}`;
+        });
+
+        const totalCotizaciones = data.map(d => d.total_cotizaciones || 0);
+        const totalVendidas = data.map(d => d.total_vendidas || 0);
+        
+        // 🚨 AJUSTE CLAVE PARA LA ESCALA DEL EJE Y
+        const maxCotizaciones = Math.max(...totalCotizaciones);
+        const maxVendidas = Math.max(...totalVendidas);
+        const suggestedMax = Math.max(maxCotizaciones, maxVendidas) * 1.1; 
+        const finalMax = Math.max(10, Math.ceil(suggestedMax)); // Aseguramos un mínimo de 10 para la escala
+
+        console.log("✅ LABELS (Ejes X):", labels);
+        console.log("✅ COTIZACIONES TOTALES (Y1):", totalCotizaciones);
+        console.log("✅ COTIZACIONES VENDIDAS (Y2):", totalVendidas);
+
+        const ctx = document.getElementById("graficaTendencia").getContext("2d");
+
+        if (window.graficaTendenciaInstancia) {
+            window.graficaTendenciaInstancia.destroy();
+        }
+
+        window.graficaTendenciaInstancia = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Cotizaciones Totales",
+                        data: totalCotizaciones,
+                        borderColor: "rgba(54,162,235,1)",
+                        backgroundColor: "rgba(54,162,235,0.2)",
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: "Cotizaciones Vendidas",
+                        data: totalVendidas,
+                        borderColor: "rgba(40,167,69,1)",
+                        backgroundColor: "rgba(40,167,69,0.2)",
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, 
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: { color: document.body.classList.contains("dark") ? "#eee" : "#333" } 
+                    },
+                    title: { display: false }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: document.body.classList.contains("dark") ? "#ccc" : "#333" }, 
+                        title: { display: true, text: "Periodo (Mes/Año)" }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        // 🚨 USAMOS EL MAX CALCULADO
+                        max: finalMax, 
+                        // --------------------------
+                        ticks: { 
+                            color: document.body.classList.contains("dark") ? "#ccc" : "#333",
+                            // El stepSize solo debe ser 1 si los valores son bajos
+                            stepSize: finalMax > 15 ? undefined : 1 
+                        }, 
+                        title: { display: true, text: "Cantidad" }
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Error al cargar tendencia:", e);
+    }
+}
+
+
 
 fetchMetrics(`${selectAno.value}${selectMes.value}`);
 </script>
