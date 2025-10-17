@@ -737,6 +737,122 @@ async function cargarMetricasAnuales() {
 }
 
 
+// ==========================
+// GRÁFICA RENDIMIENTO POR VENDEDOR
+// ==========================
+let graficaVendedoresInstancia = null;
+
+async function cargarRendimientoVendedores() {
+    // ⚠️ REEMPLAZA ESTO CON LA RUTA DE TU NUEVO ENDPOINT
+    const ENDPOINT = "/ventas/rendimiento_vendedores"; 
+    
+    try {
+        const resp = await fetch(ENDPOINT);
+        
+        if (!resp.ok) {
+            throw new Error(`Error HTTP: ${resp.status}`);
+        }
+        
+        const data = await resp.json();
+        
+        if (!Array.isArray(data) || !data.length) {
+            if (graficaVendedoresInstancia) graficaVendedoresInstancia.destroy();
+            return; 
+        }
+
+        // Mapeo de datos para la gráfica de barras horizontales
+        const labels = data.map(d => d.Ejecutivo);
+        const cotizacionesVendidas = data.map(d => d.Cotizaciones_Vendidas_NUM || 0);
+        const montoVendido = data.map(d => d.Monto_Vendido_NUM || 0);
+
+        const ctx = document.getElementById("graficaVendedores").getContext("2d");
+
+        if (graficaVendedoresInstancia) {
+            graficaVendedoresInstancia.destroy();
+        }
+
+        graficaVendedoresInstancia = new Chart(ctx, {
+            type: "bar", // Barras horizontales
+            data: {
+                labels,
+                datasets: [
+                    // DATASET 1: Cotizaciones Vendidas (Eje principal, Azul)
+                    {
+                        label: "Cotizaciones Vendidas",
+                        data: cotizacionesVendidas,
+                        backgroundColor: 'rgba(41, 128, 185, 0.9)', // Azul Sólido
+                        yAxisID: 'y'
+                    },
+                    // DATASET 2: Monto Vendido (Eje secundario, Rojo)
+                    {
+                        label: "Monto Vendido",
+                        data: montoVendido,
+                        backgroundColor: 'rgba(231, 76, 60, 0.8)', // Rojo Sólido
+                        yAxisID: 'y-monto'
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y', // CLAVE: Hace que la gráfica sea HORIZONTAL
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                
+                                // Formato para Monto (usa currencyFormatter)
+                                if (context.dataset.yAxisID === 'y-monto') {
+                                    // Asumo que 'currencyFormatter' está definido globalmente
+                                    return label + currencyFormatter.format(context.parsed.x); 
+                                }
+                                // Formato para Cotizaciones (número entero)
+                                return label + context.parsed.x.toFixed(0); 
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: document.body.classList.contains("dark") ? "#eee" : "#333" } 
+                    }
+                },
+                scales: {
+                    // Eje Y: Categorías (Ejecutivos)
+                    y: {
+                        ticks: { color: document.body.classList.contains("dark") ? "#ccc" : "#333" },
+                        title: { display: true, text: 'Ejecutivo' }
+                    },
+                    // Eje X para Cotizaciones (Principal)
+                    x: {
+                        position: 'bottom',
+                        title: { display: true, text: 'Cotizaciones Vendidas' },
+                        beginAtZero: true,
+                        ticks: { color: 'rgba(41, 128, 185, 1)' }
+                    },
+                    // Eje X para Monto (Secundario, superior para no estorbar)
+                    'x-monto': {
+                        type: 'linear',
+                        position: 'top', 
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false }, // Ocultar la cuadrícula para este eje
+                        title: { display: true, text: 'Monto Vendido ($)' },
+                        ticks: {
+                            color: 'rgba(231, 76, 60, 1)',
+                            // Muestra el valor en miles con la "k"
+                            callback: function(value) { return `$${(value/1000).toFixed(0)}k`; } 
+                        }
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Error al cargar rendimiento de vendedores:", e);
+    }
+}
+
+
 
 
 fetchMetrics(`${selectAno.value}${selectMes.value}`);
