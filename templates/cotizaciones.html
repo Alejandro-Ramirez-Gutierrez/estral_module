@@ -27,6 +27,8 @@
     --dark-border: #444;
 }
 
+/* ======================== */
+/* BODY & THEME */
 body {
     font-family: 'Segoe UI', Arial, sans-serif;
     margin: 0;
@@ -39,22 +41,101 @@ body.dark {
     color: var(--dark-text);
 }
 
-.container { max-width: 1200px; margin: auto; padding: 20px; position: relative; }
-h1 { text-align: center; margin-bottom: 20px; font-weight: 700; }
+/* ======================== */
+/* NAVBAR */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin: 10px 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    transition: background 0.3s, color 0.3s;
+}
+body.dark .navbar {
+    background: rgba(36, 37, 38, 0.85);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+.navbar .logo {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--primary);
+    transition: color 0.3s;
+}
+body.dark .navbar .logo { color: #66b2ff; }
+.nav-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
 
-.theme-toggle {
-    position: absolute;
-    top: 15px;
-    right: 20px;
-    background: none;
+/* ======================== */
+/* BOTONES NAVBAR MEJORADOS */
+.nav-buttons button {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 10px 20px;
+    border-radius: 12px;
     border: none;
     cursor: pointer;
-    font-size: 1.6rem;
-    transition: transform 0.2s;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
-.theme-toggle:hover { transform: scale(1.2); }
 
-/* Formulario */
+/* Botón Inicio */
+.nav-buttons button:first-child {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #fff;
+}
+.nav-buttons button:first-child:hover {
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+}
+
+/* Botón Cerrar Sesión */
+.nav-buttons button:nth-child(2) {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    color: #fff;
+}
+.nav-buttons button:nth-child(2):hover {
+    background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+}
+
+/* Botón toggle de tema */
+.theme-toggle {
+    font-size: 1.4rem;
+    padding: 6px 12px;
+    border-radius: 50%;
+    border: 2px solid #007bff;
+    background: linear-gradient(135deg, #e0f0ff 0%, #a0d8ff 100%);
+    transition: all 0.3s ease;
+}
+.theme-toggle:hover {
+    transform: rotate(20deg) scale(1.2);
+    border-color: #0056b3;
+    background: linear-gradient(135deg, #a0d8ff 0%, #e0f0ff 100%);
+}
+
+/* ======================== */
+/* CONTAINER & HEADINGS */
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+    position: relative;
+}
+h1 { text-align: center; margin-bottom: 20px; font-weight: 700; }
+h2 { text-align: center; margin-top: 40px; }
+
+/* ======================== */
+/* FORMULARIO FECHA */
 .date-form {
     display: flex;
     justify-content: center;
@@ -81,8 +162,13 @@ body.dark .date-form select, body.dark .date-form button {
 }
 .date-form button:hover { background-color: #0056b3; }
 
-/* KPI */
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+/* ======================== */
+/* KPI GRID */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
 .kpi-card {
     background: var(--light-card);
     border-radius: 12px;
@@ -95,6 +181,8 @@ body.dark .kpi-card { background: var(--dark-card); }
 .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
 .kpi-title { font-weight: bold; margin-bottom: 8px; }
 .kpi-value { font-size: 2rem; font-weight: bold; margin-bottom: 5px; }
+
+/* Colores KPI */
 .abierta { border-top: 4px solid var(--info); }
 .cerrada { border-top: 4px solid var(--success); }
 .entregada-tiempo { border-top: 4px solid var(--warning); }
@@ -103,7 +191,8 @@ body.dark .kpi-card { background: var(--dark-card); }
 .vendida { border-top: 4px solid #6610f2; }
 .total-general { border-top: 4px solid var(--dark); cursor: default !important; }
 
-/* Tabla */
+/* ======================== */
+/* TABLAS */
 .table-search { text-align: right; margin-bottom: 10px; }
 .table-search input {
     padding: 8px 12px;
@@ -116,7 +205,14 @@ body.dark .table-search input {
     border: 1px solid var(--dark-border);
     color: var(--dark-text);
 }
-table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
 thead tr { background: var(--primary); color: #fff; }
 tbody tr { background: var(--light-card); transition: background 0.2s; }
 tbody tr:hover { background: #e9f3ff; }
@@ -129,14 +225,23 @@ th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: left; fo
 .chip-info { background: var(--info); }
 .chip-warning { background: var(--warning); color: #222; }
 .chip-danger { background: var(--danger); }
+
 .progress-container { background: #e9ecef; border-radius: 8px; height: 10px; overflow: hidden; }
 .progress-bar { height: 100%; background: var(--primary); width: 0; transition: width 1s ease-in-out; }
 
-/* Modal */
+/* ======================== */
+/* MODAL */
 #detalleModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
 #detalleModal .modal-content {
-    background: var(--light-card); border-radius:12px; max-width:950px; width:90%; max-height:80%;
-    overflow:auto; padding:20px; position:relative; box-shadow:0 8px 24px rgba(0,0,0,0.2);
+    background: var(--light-card);
+    border-radius:12px;
+    max-width:950px;
+    width:90%;
+    max-height:80%;
+    overflow:auto;
+    padding:20px;
+    position:relative;
+    box-shadow:0 8px 24px rgba(0,0,0,0.2);
     transition: background 0.3s, color 0.3s;
 }
 body.dark #detalleModal .modal-content { background: var(--dark-card); color: var(--dark-text); }
@@ -146,73 +251,22 @@ body.dark #detalleModal .modal-content { background: var(--dark-card); color: va
 #cerrarModal { position:absolute; top:10px; right:15px; font-size:1.5rem; border:none; background:none; cursor:pointer; color: var(--light-text); }
 body.dark #cerrarModal { color: var(--dark-text); }
 
-table { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-
-/* ============================================================== */
-/* 📱 MEDIA QUERIES PARA RESPONSIVE DESIGN (MÓVIL) 📱 */
-/* ============================================================== */
-
+/* ======================== */
+/* RESPONSIVE / MOBILE */
 @media (max-width: 768px) {
-    
-    /* 1. Contenedor y Títulos */
-    .container {
-        padding: 10px; /* Menos padding en los bordes */
-    }
-    
-    h1 {
-        font-size: 1.8rem;
-    }
-    
-    /* 2. Formulario de Fecha */
-    .date-form {
-        flex-direction: column; /* Apilar los select y el botón */
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-    .date-form select, .date-form button {
-        width: 100%; /* Ocupar todo el ancho */
-    }
-
-    /* 3. KPI Grid (Los Key Performance Indicators) */
-    .kpi-grid {
-        /* Fuerza a que los KPI se vean en una sola columna */
-        grid-template-columns: 1fr; 
-        gap: 15px; /* Espaciado un poco menor */
-    }
-    .kpi-card {
-        padding: 15px;
-    }
-    .kpi-value {
-        font-size: 1.8rem; /* Tamaño de fuente ligeramente más pequeño */
-    }
-    
-    /* 4. Tablas (Lista de Cotizaciones) */
-    /* Hacemos que el contenedor de la tabla sea desplazable horizontalmente. */
-    .table-container {
-        overflow-x: auto; 
-    }
-    
-    /* Nota: La propiedad 'min-width: 900px' en el 'table' original (línea 112)
-       es la clave para que la tabla sea más ancha que la pantalla y se pueda desplazar. */
-
-    /* 5. Gráficas */
-    /* Mantenemos el height fijo, Chart.js maneja la adaptación del width */
-    .container > div > div[style*="height: 350px"],
-    .container > div > div[style*="height: 400px"] {
-        /* Aseguramos que el contenedor de la gráfica no tenga más de 100% de ancho */
-        width: 100% !important; 
-    }
-    
-    /* 6. Modal de Detalle */
-    #detalleModal .modal-content {
-        width: 95%; /* Ligeramente más grande en móvil */
-        margin: 10px;
-    }
-    #detalleModal th, #detalleModal td { 
-        font-size: 0.8rem; /* Fuente más chica en la tabla del modal */
-    }
+    .container { padding: 10px; }
+    h1 { font-size: 1.8rem; }
+    .date-form { flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .date-form select, .date-form button { width: 100%; }
+    .kpi-grid { grid-template-columns: 1fr; gap: 15px; }
+    .kpi-card { padding: 15px; }
+    .kpi-value { font-size: 1.8rem; }
+    .table-container { overflow-x: auto; }
+    #detalleModal .modal-content { width: 95%; margin: 10px; }
+    #detalleModal th, #detalleModal td { font-size: 0.8rem; }
+    .navbar { flex-direction: column; gap: 10px; padding: 10px; margin: 5px; }
+    .nav-buttons { flex-wrap: wrap; justify-content: center; gap: 8px; }
 }
-
 
 </style>
 </head>
