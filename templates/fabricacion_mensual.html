@@ -103,6 +103,14 @@ body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background:var(--mu
   <div class="kpi"><h3>Turno Noche (kg)</h3><p id="kpi-noche">0</p></div>
 </div>
 
+<div class="kpi-row" id="kpi-row">
+    <div class="kpi new-kpi"><h3>Peso Promedio (kg/pza)</h3><p id="kpi-avg-general">0.00</p></div>
+  <div class="kpi new-kpi"><h3>Prom. Día (kg/pza)</h3><p id="kpi-avg-dia">0.00</p></div>
+  <div class="kpi new-kpi"><h3>Prom. Noche (kg/pza)</h3><p id="kpi-avg-noche">0.00</p></div>
+  <div class="kpi"><h3>Piezas Turno Día</h3><p id="kpi-pzas-dia">0</p></div>
+  <div class="kpi"><h3>Piezas Turno Noche</h3><p id="kpi-pzas-noche">0</p></div>
+</div>
+
 <!-- GRAFICAS -->
 <div class="card graficas">
   <h3 style="margin:0 0 16px">Gráficas de Producción</h3>
@@ -269,13 +277,29 @@ function fetchResumen(){
 }
 
 function renderKpis(kpis){
-  document.getElementById('kpi-kg').textContent=fnum(kpis.total_kg||0);
-  document.getElementById('kpi-pzas').textContent=fnum(kpis.total_piezas||0);
-  const resumen=window._lastResumen||[];
-  let kgDia=0,kgNoche=0;
-  resumen.forEach(r=>{if(r.Turno==='Día')kgDia+=r.PesoKg;else kgNoche+=r.PesoKg;});
-  document.getElementById('kpi-dia').textContent=fnum(kgDia);
-  document.getElementById('kpi-noche').textContent=fnum(kgNoche);
+    // Aseguramos que los valores sean numéricos, aunque fnum debe manejarlo
+    const safeKpis = kpis || {};
+
+    // 1. KPIS EXISTENTES (Totales Generales)
+    document.getElementById('kpi-kg').textContent = fnum(safeKpis.total_kg || 0);
+    document.getElementById('kpi-pzas').textContent = fnum(safeKpis.total_piezas || 0);
+
+    // 2. KPIS DE TOTALES POR TURNO (Peso y Piezas)
+    // El backend ahora envía kg_dia, kg_noche, piezas_dia y piezas_noche directamente.
+    
+    // Peso por Turno (Kg)
+    document.getElementById('kpi-dia').textContent = fnum(safeKpis.kg_dia || 0);
+    document.getElementById('kpi-noche').textContent = fnum(safeKpis.kg_noche || 0);
+
+    // Piezas por Turno (¡Esto era lo que faltaba!)
+    // Asumiendo que tu HTML tiene los IDs 'kpi-pzas-dia' y 'kpi-pzas-noche'
+    document.getElementById('kpi-pzas-dia').textContent = fnum(safeKpis.piezas_dia || 0);
+    document.getElementById('kpi-pzas-noche').textContent = fnum(safeKpis.piezas_noche || 0);
+
+    // 3. KPIS DE PROMEDIO (Peso Promedio por Pieza)
+    document.getElementById('kpi-avg-general').textContent = fnum(safeKpis.avg_peso_general || 0);
+    document.getElementById('kpi-avg-dia').textContent = fnum(safeKpis.avg_peso_dia || 0);
+    document.getElementById('kpi-avg-noche').textContent = fnum(safeKpis.avg_peso_noche || 0);
 }
 
 function renderResumen(rows){
@@ -704,7 +728,6 @@ function renderChartTendenciaMaquinas(data, canvasId) {
         }
     });
 }
-
 
 
 

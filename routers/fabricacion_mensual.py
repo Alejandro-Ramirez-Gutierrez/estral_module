@@ -44,6 +44,7 @@ def direccion_page(request: Request, access_token: str = Cookie(None)):
         "hasta": end_default
     })
 
+
 # ---------------- API: resumen (agrupado) ----------------
 @router.get("/api/resumen")
 def api_resumen(desde: str = Query(None), hasta: str = Query(None), access_token: str = Cookie(None)):
@@ -104,19 +105,61 @@ def api_resumen(desde: str = Query(None), hasta: str = Query(None), access_token
     
     total_kg = sum([float(r["PesoTotal_Kilogramos"]) for r in rows])
     total_piezas = sum([int(r["Piezas"]) for r in rows])
-    
+
+    # --- 🚀 CÁLCULO DE KPIS DE PROMEDIO Y TOTALES POR TURNO 🚀 ---
+    kg_dia = 0
+    piezas_dia = 0
+    kg_noche = 0
+    piezas_noche = 0
+
     resumen = []
     for r in rows:
+        peso_kg = float(r["PesoTotal_Kilogramos"] or 0)
+        piezas = int(r["Piezas"] or 0)
+        turno = r["Turno"]
+
+        if turno == 'Día':
+            kg_dia += peso_kg
+            piezas_dia += piezas
+        else:
+            kg_noche += peso_kg
+            piezas_noche += piezas
+
         resumen.append({
             "DiaTurno": r["DiaTurno"].strftime("%Y-%m-%d") if hasattr(r["DiaTurno"], "strftime") else r["DiaTurno"],
             "Area": r["Area_Produccion"],
-            "Turno": r["Turno"],
+            "Turno": turno,
             "Bloque": r["Bloque_Horas"],
-            "PesoKg": float(r["PesoTotal_Kilogramos"] or 0),
-            "Piezas": int(r["Piezas"] or 0),
+            "PesoKg": peso_kg,
+            "Piezas": piezas,
             "Tipos": r["Tipos_Fabricados"] or ""
         })
-    return {"kpis": {"total_kg": total_kg, "total_piezas": total_piezas}, "resumen": resumen}
+    
+    # Calculamos los promedios (cuidando la división entre cero)
+    avg_general = total_kg / total_piezas if total_piezas > 0 else 0
+    avg_dia = kg_dia / piezas_dia if piezas_dia > 0 else 0
+    avg_noche = kg_noche / piezas_noche if piezas_noche > 0 else 0
+
+
+    return {
+        "kpis": {
+            "total_kg": total_kg, 
+            "total_piezas": total_piezas,
+            
+            # Nuevos KPIS de Peso Promedio
+            "avg_peso_general": round(avg_general, 2),
+            "avg_peso_dia": round(avg_dia, 2),
+            "avg_peso_noche": round(avg_noche, 2),
+            
+            # Totales por Turno (Peso y Piezas)
+            "kg_dia": round(kg_dia, 2),
+            "kg_noche": round(kg_noche, 2),
+            "piezas_dia": piezas_dia, 
+            "piezas_noche": piezas_noche
+        }, 
+        "resumen": resumen
+    }
+
 
 # ---------------- API: detalle por bloque/area/dia ----------------
 @router.get("/api/detalle")
