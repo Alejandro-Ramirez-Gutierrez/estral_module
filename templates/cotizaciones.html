@@ -397,6 +397,7 @@ for(let y=currentYear; y>=currentYear-5; y--){
     if(y===currentYear) option.selected=true;
     selectAno.appendChild(option);
 }
+
 selectMes.value=String(new Date().getMonth()+1).padStart(2,'0');
 
 async function fetchMetrics(fecha){
@@ -529,8 +530,6 @@ document.getElementById('dateForm').addEventListener('submit',e=>{
     fetchMetrics(fecha);
 });
 
-
-
 // ==========================
 // GRAFICA DE TENDENCIA (LIMPIA Y REFORZADA)
 // ==========================
@@ -628,7 +627,7 @@ async function cargarTendencia() {
                     },
                     y: {
                         beginAtZero: true,
-                        // 🚨 USAMOS EL MAX CALCULADO
+                        // USAMOS EL MAX CALCULADO
                         max: finalMax, 
                         // --------------------------
                         ticks: { 
@@ -645,7 +644,6 @@ async function cargarTendencia() {
         console.error("Error al cargar tendencia:", e);
     }
 }
-
 
 // ==========================
 // GRÁFICA COMPARATIVA ANUAL (AJUSTADA: 100% LÍNEAS CON EJES SEPARADOS)
@@ -805,7 +803,7 @@ async function cargarMetricasAnuales() {
 let graficaVendedoresInstancia = null;
 
 async function cargarRendimientoVendedores() {
-    // ⚠️ REEMPLAZA ESTO CON LA RUTA DE TU NUEVO ENDPOINT
+    //  REEMPLAZA ESTO CON LA RUTA DE TU NUEVO ENDPOINT
     const ENDPOINT = "/ventas/rendimiento_vendedores"; 
     
     try {
@@ -913,7 +911,6 @@ async function cargarRendimientoVendedores() {
         console.error("Error al cargar rendimiento de vendedores:", e);
     }
 }
-
 
 fetchMetrics(`${selectAno.value}${selectMes.value}`);
 cargarMetricasAnuales();

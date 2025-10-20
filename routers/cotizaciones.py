@@ -81,6 +81,7 @@ async def dashboard_cotizaciones(
         }
     )
 
+
 # 2. Resumen de Métricas
 @router.get("/resumen_metricas", 
             response_model=List[Dict[str, Any]],
@@ -254,6 +255,7 @@ ORDER BY
         print(f"Error al ejecutar la consulta de cotizaciones: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos de la base de datos.")
 
+
 # 3. Detalle de Cerradas (SEGURO: usa %s)
 @router.get(
     "/detalle_cerradas",
@@ -345,7 +347,7 @@ async def listar_cotizaciones(
         if len(fecha) != 6:
             raise HTTPException(status_code=400, detail="Formato de fecha inválido, debe ser YYYYMM")
 
-        # 🚨 CAMBIO 1: Extraer solo 'AAMM' para el filtro (Ej: '2510')
+        #  CAMBIO 1: Extraer solo 'AAMM' para el filtro (Ej: '2510')
         # Esto asume que quotationDate solo guarda los últimos 2 dígitos del año + el mes.
         quotation_date_aamm = fecha[2:]  
 
@@ -379,7 +381,7 @@ async def listar_cotizaciones(
         FROM quotation q
         LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
         LEFT JOIN status st ON q.status = st.idStatus
-        -- 🚨 CAMBIO 2: Filtrar por quotationDate usando el valor AAMM
+        -- CAMBIO 2: Filtrar por quotationDate usando el valor AAMM
         WHERE q.quotationDate = %s
         ORDER BY
             FIELD(
@@ -396,7 +398,7 @@ async def listar_cotizaciones(
             q.createdAt DESC;
         """
 
-        # 🚨 CAMBIO 3: Usar solo un parámetro, el valor 'AAMM'
+        #  CAMBIO 3: Usar solo un parámetro, el valor 'AAMM'
         params = (quotation_date_aamm,) 
 
         # Ejecuta la consulta
@@ -421,7 +423,6 @@ async def listar_cotizaciones(
     except Exception as e:
         print(f"[ERROR /lista] {e}")
         raise HTTPException(status_code=500, detail=f"Error interno al obtener las cotizaciones: {str(e)}")
-
 
 
 # 5. Detalle Universal por Clasificación
@@ -593,7 +594,6 @@ async def tendencia_cotizaciones():
     
 
 
-# 6. Métrica Anual por Mes (COTIZACIONES POR AÑOS)
 # 6. Métrica Anual por Mes (COTIZACIONES POR AÑOS)
 @router.get(
     "/metricas_anuales_por_mes",

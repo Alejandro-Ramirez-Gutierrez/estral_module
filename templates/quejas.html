@@ -194,14 +194,13 @@
         <div class="nav-buttons">
             <button class="nav-button btn-excel" onclick="exportarExcel()">💾 Excel</button>
             <button class="nav-button btn-atras" onclick="location.href='/dashboard'">🏠 Inicio</button>
-            <button class="nav-button btn-logout" onclick="location.href='/logout'">Salir</button>
+            <button class="nav-button btn-logout" onclick="location.href='/logout'">Cerrar Sesión</button>
         </div>
     </nav>
 
     <div class="content">
         <h2>
             Reporte de Quejas — {{ nombre_mes_anio }}
-            <span class="badge-usuario">{{ usuario }}</span>
         </h2>
 
         <div class="selector-box">
@@ -242,7 +241,7 @@
             </div>
         </div>
 
-        <h3>Detalle de Quejas ({{ detalle | length }} registros)</h3>
+        <h3>Detalle de Quejas ({{ detalle | length }} registros) Click en Pedido para ver detalle</h3>
         <table id="tablaQuejas" class="display" style="width:100%">
             <thead>
                 <tr>
