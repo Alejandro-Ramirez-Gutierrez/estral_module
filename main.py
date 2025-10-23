@@ -40,6 +40,7 @@ app.include_router(cotizaciones.router, prefix="/cotizaciones", tags=["Cotizacio
 def get_login(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+
 @app.post("/login", response_class=HTMLResponse)
 def post_login(request: Request, login: str = Form(...), contrasenia: str = Form(...)):
     resultado = login_user(login, contrasenia)

@@ -309,7 +309,7 @@ def listar_no_programados(mes: int = None, anio: int = None, access_token: str =
         "pedidos": out
     }
 
-## ENDPOINTS DE ESCRITURA/MODIFICACIÓN (POST/DELETE)
+# ENDPOINTS DE ESCRITURA/MODIFICACIÓN (POST/DELETE)
 #----------------------------------------------------------------------
 # API: Agregar un pedido valida que exista en query y lo inserta en WS_Planeacion
 @router.post("/add")
