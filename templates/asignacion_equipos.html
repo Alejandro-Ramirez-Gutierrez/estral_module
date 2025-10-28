@@ -10,56 +10,50 @@
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
 
 <style>
-    /* RESET & BODY */
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f7; margin: 0; }
-    nav { background: #1a73e8; color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
-    nav .logo { font-weight: bold; font-size: 18px; }
-    nav button { background: none; border: none; color: white; cursor: pointer; margin-left: 15px; font-size: 14px; transition: 0.2s; }
-    nav button:hover { text-decoration: underline; }
-    .content { padding: 25px 40px; }
-    h2 { color: #1a73e8; margin-bottom: 25px; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0f2f7; margin: 0; }
+nav { background: #1a73e8; color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
+nav .logo { font-weight: bold; font-size: 18px; }
+nav button { background: none; border: none; color: white; cursor: pointer; margin-left: 15px; font-size: 14px; transition: 0.2s; }
+nav button:hover { text-decoration: underline; }
+.content { padding: 25px 40px; }
+h2 { color: #1a73e8; margin-bottom: 25px; }
 
-    /* FORMULARIO NUEVO */
-    .form-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
-    .form-box h3 { margin-bottom: 15px; color: #333; }
-    .form-box input, .form-box select, .form-box textarea { padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 12px; width: 100%; box-sizing: border-box; font-size: 14px; }
-    .form-box button { background: #1a73e8; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-weight: bold; font-size: 15px; transition: 0.2s; }
-    .form-box button:hover { background: #155ab6; }
+.form-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+.form-box h3 { margin-bottom: 15px; color: #333; }
+.form-box input, .form-box select, .form-box textarea { padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 12px; width: 100%; box-sizing: border-box; font-size: 14px; }
+.form-box button { background: #1a73e8; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-weight: bold; font-size: 15px; transition: 0.2s; }
+.form-box button:hover { background: #155ab6; }
 
-    /* TABLAS ESTILIZADAS COMO TARJETAS */
-    .tabla-container { margin-bottom: 30px; }
-    .tabla-container h3 { margin-bottom: 15px; color: #333; }
-    table.display { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
-    table.dataTable thead th { background: #1a73e8; color: white; border: none; padding: 12px; border-radius: 8px 8px 0 0; }
-    table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px solid #f0f2f7; border-radius: 8px; color: #333; }
-    .btn-update, .btn-refresh, .btn-assign { border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: white; font-size: 13px; font-weight: bold; transition: 0.2s; margin-right: 4px; }
-    .btn-update { background: #ffc107; }
-    .btn-update:hover { background: #e0a800; }
-    .btn-refresh { background: #28a745; }
-    .btn-refresh:hover { background: #218838; }
-    .btn-assign { background: #17a2b8; }
-    .btn-assign:hover { background: #138496; }
+.tabla-container { margin-bottom: 30px; }
+.tabla-container h3 { margin-bottom: 15px; color: #333; }
+table.display { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+table.dataTable thead th { background: #1a73e8; color: white; border: none; padding: 12px; border-radius: 8px 8px 0 0; }
+table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px solid #f0f2f7; border-radius: 8px; color: #333; }
+.btn-update, .btn-refresh, .btn-assign { border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: white; font-size: 13px; font-weight: bold; transition: 0.2s; margin-right: 4px; }
+.btn-update { background: #ffc107; }
+.btn-update:hover { background: #e0a800; }
+.btn-refresh { background: #28a745; }
+.btn-refresh:hover { background: #218838; }
+.btn-assign { background: #17a2b8; }
+.btn-assign:hover { background: #138496; }
 
-    /* ESTATUS POR COLOR */
-    .estatus-Operando { background: #28a745; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
-    .estatus-En\ reparación { background: #ffc107; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
-    .estatus-Sin\ asignar { background: #6c757d; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
-    .estatus-Fuera\ de\ servicio { background: #dc3545; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+.estatus-Operando { background: #28a745; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+.estatus-En\ reparación { background: #ffc107; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+.estatus-Sin\ asignar { background: #6c757d; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+.estatus-Fuera\ de\ servicio { background: #dc3545; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
 
-    /* MODAL */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-    .modal-content { background-color: #fff; margin: 10% auto; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: modalAnim 0.3s ease-out; }
-    @keyframes modalAnim { from {transform: translateY(-50px); opacity: 0;} to {transform: translateY(0); opacity:1;} }
-    .close { float: right; font-size: 22px; cursor: pointer; color: #333; }
-    .close:hover { color: red; }
-    .modal-content input, .modal-content select, .modal-content textarea { width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
-    .modal-content button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #1a73e8; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
-    .modal-content button:hover { background: #155ab6; }
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+.modal-content { background-color: #fff; margin: 10% auto; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: modalAnim 0.3s ease-out; }
+@keyframes modalAnim { from {transform: translateY(-50px); opacity: 0;} to {transform: translateY(0); opacity:1;} }
+.close { float: right; font-size: 22px; cursor: pointer; color: #333; }
+.close:hover { color: red; }
+.modal-content input, .modal-content select, .modal-content textarea { width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
+.modal-content button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #1a73e8; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
+.modal-content button:hover { background: #155ab6; }
 
-    @media screen and (max-width: 768px) {
-        nav { flex-direction: column; align-items: flex-start; }
-        .content { padding: 15px 20px; }
-    }
+#divModeloHand { display:none; }
+
+@media screen and (max-width: 768px) { nav { flex-direction: column; align-items: flex-start; } .content { padding: 15px 20px; } }
 </style>
 </head>
 <body>
@@ -91,6 +85,16 @@
         </div>
     </div>
 
+    <!-- Total Tablets -->
+    <div style="flex:1 1 200px; background:#6f42c1; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+        <div style="font-size:40px;">🖥️</div> <!-- Emoji diferente al handheld -->
+        <div>
+            <div style="font-weight:bold; font-size:14px;">Total Tablets</div>
+            <div style="font-size:24px; font-weight:bold;">{{ total_tablets }}</div>
+        </div>
+    </div>
+
+
     <!-- Fuera de servicio -->
     <div style="flex:1 1 200px; background:#dc3545; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
         <div style="font-size:40px;">⚠️</div>
@@ -118,16 +122,23 @@
 </div>
 
 
-
 <div class="content">
     <h2>Gestión y Control de Equipos</h2>
 
-    <!-- FORMULARIO NUEVO EQUIPO -->
     <div class="form-box">
         <h3>➕ Nuevo Equipo</h3>
         <form id="formNuevo">
             <input type="text" name="codigo" placeholder="Código" required>
-            <select name="tipo"><option>Handheld</option><option>Impresora portátil</option></select>
+            <select name="tipo" id="tipoEquipo">
+                <option value="Handheld">Handheld</option>
+                <option value="Impresora portátil">Impresora portátil</option>
+                <option value="Tablet">Tablet</option>
+            </select>
+            <select name="modelo_hand" id="modeloHand">
+                <option value="">Selecciona modelo (solo Handheld)</option>
+                <option value="HMC95">HMC95</option>
+                <option value="HC5P">HC5P</option>
+            </select>
             <select name="area">
                 <option>NA</option><option>Producción</option><option>Calidad</option><option>Almacén</option>
                 <option>Logística</option><option>Habilitado</option><option>Perfilado</option>
@@ -145,20 +156,32 @@
         <h3>📦 Equipos sin asignar (en stock)</h3>
         <table id="tablaStock" class="display">
             <thead>
-                <tr><th>Código</th><th>Tipo</th><th>Área</th><th>Estatus</th><th>Última Actualización</th><th>Acciones</th></tr>
+                <tr>
+                    <th>Código</th>
+                    <th>Tipo</th>
+                    <th>Modelo</th>
+                    <th>Área</th>
+                    <th>Estatus</th>
+                    <th>Última Actualización</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
+                </tr>
             </thead>
             <tbody>
                 {% for eq in equipos_stock %}
                 <tr>
                     <td>{{ eq.codigo }}</td>
                     <td>{{ eq.tipo }}</td>
+                    <td>{{ eq.modelo_hand or '' }}</td>
                     <td>{{ eq.area }}</td>
                     <td><span class="estatus-{{ eq.estatus }}">{{ eq.estatus }}</span></td>
                     <td>{{ eq.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') if eq.fecha_actualizacion else '' }}</td>
+                    <td>{{ eq.observaciones or '' }}</td>
                     <td>
                         <button class="btn-assign"
                             data-id="{{ eq.id }}" data-area="{{ eq.area }}" data-estatus="{{ eq.estatus }}"
-                            data-responsable="{{ eq.responsable or '' }}" data-observaciones="{{ eq.observaciones or '' }}">🛠 Asignar</button>
+                            data-responsable="{{ eq.responsable or '' }}" data-observaciones="{{ eq.observaciones or '' }}"
+                            data-tipo="{{ eq.tipo }}" data-modelo="{{ eq.modelo_hand or '' }}">🛠 Asignar</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -172,8 +195,16 @@
         <table id="tablaAsignados" class="display">
             <thead>
                 <tr>
-                    <th>Código</th><th>Tipo</th><th>Área</th><th>Estatus</th>
-                    <th>Responsable</th><th>Fecha Asignación</th><th>Última Actualización</th><th>Acciones</th>
+                    <th>Código</th>
+                    <th>Tipo</th>
+                    <th>Modelo</th>
+                    <th>Área</th>
+                    <th>Estatus</th>
+                    <th>Responsable</th>
+                    <th>Fecha Asignación</th>
+                    <th>Última Actualización</th>
+                    <th>Observaciones</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -181,15 +212,18 @@
                 <tr>
                     <td>{{ eq.codigo }}</td>
                     <td>{{ eq.tipo }}</td>
+                    <td>{{ eq.modelo_hand or '' }}</td>
                     <td>{{ eq.area }}</td>
                     <td><span class="estatus-{{ eq.estatus }}">{{ eq.estatus }}</span></td>
                     <td>{{ eq.responsable }}</td>
                     <td>{{ eq.fecha_asignacion.strftime('%d/%m/%Y %H:%M') if eq.fecha_asignacion else '' }}</td>
                     <td>{{ eq.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') if eq.fecha_actualizacion else '' }}</td>
+                    <td>{{ eq.observaciones or '' }}</td>
                     <td>
                         <button class="btn-update"
                             data-id="{{ eq.id }}" data-area="{{ eq.area }}" data-estatus="{{ eq.estatus }}"
-                            data-responsable="{{ eq.responsable }}" data-observaciones="{{ eq.observaciones or '' }}">🛠 Editar</button>
+                            data-responsable="{{ eq.responsable }}" data-observaciones="{{ eq.observaciones or '' }}"
+                            data-tipo="{{ eq.tipo }}" data-modelo="{{ eq.modelo_hand or '' }}">🛠 Editar</button>
                         <button class="btn-refresh" data-id="{{ eq.id }}">⏱ Refrescar</button>
                     </td>
                 </tr>
@@ -206,6 +240,7 @@
         <h3>Editar / Asignar equipo</h3>
         <form id="formEditar">
             <input type="hidden" name="id">
+            <input type="hidden" name="tipo">
             <label>Estatus:</label>
             <select name="estatus"><option>Operando</option><option>Fuera de servicio</option></select>
             <label>Área:</label>
@@ -218,6 +253,16 @@
             <input type="text" name="responsable" placeholder="Responsable">
             <label>Observaciones:</label>
             <textarea name="observaciones" placeholder="Observaciones (opcional)"></textarea>
+
+            <div id="divModeloHand">
+                <label>Modelo Hand:</label>
+                <select name="modelo_hand">
+                    <option value="">Selecciona modelo</option>
+                    <option value="HMC95">HMC95</option>
+                    <option value="HC5P">HC5P</option>
+                </select>
+            </div>
+
             <button type="submit">Guardar cambios</button>
         </form>
     </div>
@@ -229,13 +274,19 @@ $(document).ready(() => {
     $('#tablaAsignados').DataTable({ pageLength: 5, language: { search: "Buscar:" } });
 });
 
+// Mostrar/ocultar modelo al crear nuevo equipo
+$("#tipoEquipo").change(function() {
+    if($(this).val() === "Handheld") $("#modeloHand").show();
+    else $("#modeloHand").hide().val("");
+});
+
 // Nuevo equipo
 $("#formNuevo").on("submit", async (e) => {
     e.preventDefault();
     const data = new FormData(e.target);
     if(!data.get("responsable")) data.set("responsable","NA");
     if(!data.get("observaciones")) data.set("observaciones","NA");
-    if(!data.get("area")) data.set("area","NA");
+    if(data.get("tipo") != "Handheld") data.set("modelo_hand",""); 
     const res = await fetch("/asignacion_equipos/nuevo", { method: "POST", body: data });
     const json = await res.json(); alert(json.msg); location.reload();
 });
@@ -243,11 +294,22 @@ $("#formNuevo").on("submit", async (e) => {
 // Modal editar / asignar
 $(document).on("click", ".btn-update, .btn-assign", function() {
     const m = $("#modalEditar"); m.show();
+    
+    const tipo = $(this).data("tipo");
     m.find("input[name='id']").val($(this).data("id"));
+    m.find("input[name='tipo']").val(tipo);
     m.find("select[name='estatus']").val($(this).data("estatus") || "Operando");
     m.find("select[name='area']").val($(this).data("area") || "NA");
     m.find("input[name='responsable']").val($(this).data("responsable") || "NA");
     m.find("textarea[name='observaciones']").val($(this).data("observaciones") || "NA");
+    
+    if(tipo === "Handheld") {
+        $("#divModeloHand").show();
+        m.find("select[name='modelo_hand']").val($(this).data("modelo") || "");
+    } else {
+        $("#divModeloHand").hide();
+        m.find("select[name='modelo_hand']").val("");
+    }
 });
 
 // Cerrar modal
@@ -260,7 +322,7 @@ $("#formEditar").on("submit", async (e) => {
     const data = new FormData(e.target);
     if(!data.get("responsable")) data.set("responsable","NA");
     if(!data.get("observaciones")) data.set("observaciones","NA");
-    if(!data.get("area")) data.set("area","NA");
+    if(data.get("tipo") != "Handheld") data.set("modelo_hand",""); 
     const res = await fetch("/asignacion_equipos/editar", { method: "POST", body: data });
     const json = await res.json(); alert(json.msg); location.reload();
 });

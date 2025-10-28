@@ -66,6 +66,8 @@ async def asignacion_equipos(request: Request, access_token: str = Cookie(None))
 
         total_handheld = next((r['total'] for r in res_tipo if r['tipo'] == 'Handheld'), 0)
         total_impresoras = next((r['total'] for r in res_tipo if r['tipo'] == 'Impresora portátil'), 0)
+        total_tablets = next((r['total'] for r in res_tipo if r['tipo'] == 'Tablet'), 0)
+
 
         # Total por área
         sql_por_area = """
@@ -104,6 +106,7 @@ async def asignacion_equipos(request: Request, access_token: str = Cookie(None))
         "usuario": payload.get("Nombre") if payload else "Desconocido",
         "total_handheld": total_handheld,
         "total_impresoras": total_impresoras,
+        "total_tablets": total_tablets,   # <- agregado
         "total_fuera_servicio": total_fuera_servicio,
         "total_por_area": total_por_area,
         "status_por_area": status_por_area
@@ -111,7 +114,7 @@ async def asignacion_equipos(request: Request, access_token: str = Cookie(None))
 
 
 
-# ---- NUEVO EQUIPO ----
+# NUEVO EQUIPO
 @router.post("/nuevo", response_class=JSONResponse)
 async def nuevo_equipo(
     codigo: str = Form(...),
@@ -120,80 +123,64 @@ async def nuevo_equipo(
     estatus: str = Form(...),
     responsable: str = Form(None),
     observaciones: str = Form(None),
+    modelo_hand: str = Form(None),
     access_token: str = Cookie(None)
 ):
     payload = get_payload_from_cookie(access_token)
     if not validar_acceso_asignacion(payload):
         return JSONResponse(status_code=403, content={"status": "error", "msg": "Acceso denegado"})
 
-    # validar duplicado por codigo
-    try:
-        existente = ejecutar_consulta_sql("SELECT TOP 1 id FROM ws_equipos WHERE codigo = ?", (codigo,), fetchone=True)
-    except Exception as ex:
-        return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al verificar duplicados"})
+    if tipo != "Handheld":
+        modelo_hand = None
 
+    # Verificar duplicado
+    existente = ejecutar_consulta_sql("SELECT TOP 1 id FROM ws_equipos WHERE codigo = ?", (codigo,), fetchone=True)
     if existente:
         return JSONResponse(status_code=409, content={"status": "error", "msg": f"El equipo con código '{codigo}' ya existe."})
 
-    # Insert seguro con params
+    # Insert
     insert_sql = """
         INSERT INTO ws_equipos
-        (codigo, tipo, area, estatus, responsable, fecha_asignacion, fecha_actualizacion, observaciones)
-        VALUES (?, ?, ?, ?, ?, GETDATE(), GETDATE(), ?)
+        (codigo, tipo, modelo_hand, area, estatus, responsable, fecha_asignacion, fecha_actualizacion, observaciones)
+        VALUES (?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), ?)
     """
-    params = (codigo, tipo, area, estatus, responsable, observaciones)
-    try:
-        ejecutar_consulta_sql(insert_sql, params)
-        # registrar historial (inserta usando SELECT id WHERE codigo = ?)
-        sql_historial = """
-            INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha)
-            SELECT id, 'Alta de equipo', 'Registro inicial', ?, GETDATE()
-            FROM ws_equipos WHERE codigo = ?
-        """
-        usuario = payload.get("Nombre") if payload else "sistema"
-        ejecutar_consulta_sql(sql_historial, (usuario, codigo))
-    except Exception as ex:
-        return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al insertar equipo"})
+    ejecutar_consulta_sql(insert_sql, (codigo, tipo, modelo_hand, area, estatus, responsable, observaciones))
+    return JSONResponse({"status": "ok", "msg": "Equipo guardado con éxito"})
 
-    return JSONResponse(content={"status": "ok", "msg": "Equipo registrado correctamente"})
-
-
-# ---- EDITAR EQUIPO ----
 @router.post("/editar", response_class=JSONResponse)
 async def editar_equipo(
     id: int = Form(...),
+    tipo: str = Form(...),
     estatus: str = Form(...),
     area: str = Form(...),
     responsable: str = Form(None),
     observaciones: str = Form(None),
+    modelo_hand: str | None = Form(None),  # opcional
     access_token: str = Cookie(None)
 ):
     payload = get_payload_from_cookie(access_token)
     if not validar_acceso_asignacion(payload):
         return JSONResponse(status_code=403, content={"status": "error", "msg": "Acceso denegado"})
 
+    if tipo != "Handheld":
+        modelo_hand = None
+
     update_sql = """
         UPDATE ws_equipos
-        SET estatus = ?,
-            area = ?,
-            responsable = ?,
-            observaciones = ?,
-            fecha_actualizacion = GETDATE()
-        WHERE id = ?
+        SET estatus=?, area=?, responsable=?, observaciones=?, modelo_hand=?, fecha_actualizacion=GETDATE()
+        WHERE id=?
     """
-    params = (estatus, area, responsable, observaciones, id)
-    try:
-        ejecutar_consulta_sql(update_sql, params)
-        sql_historial = """
-            INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha)
-            VALUES (?, 'Actualización', 'Edición de información del equipo', ?, GETDATE())
-        """
-        usuario = payload.get("Nombre") if payload else "sistema"
-        ejecutar_consulta_sql(sql_historial, (id, usuario))
-    except Exception as ex:
-        return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al actualizar equipo"})
+    ejecutar_consulta_sql(update_sql, (estatus, area, responsable, observaciones, modelo_hand, id))
 
-    return JSONResponse(content={"status": "ok", "msg": "Equipo actualizado correctamente"})
+    sql_historial = """
+        INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha)
+        VALUES (?, 'Actualización', 'Edición de información del equipo', ?, GETDATE())
+    """
+    usuario = payload.get("Nombre") if payload else "sistema"
+    ejecutar_consulta_sql(sql_historial, (id, usuario))
+
+    return JSONResponse({"status": "ok", "msg": "Equipo actualizado correctamente"})
+
 
 
 # ---- ACTUALIZAR SOLO FECHA ----
