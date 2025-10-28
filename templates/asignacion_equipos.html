@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asignación de Equipos - Estral</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
+<script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+
+<style>
+    /* RESET & BODY */
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f7; margin: 0; }
+    nav { background: #1a73e8; color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
+    nav .logo { font-weight: bold; font-size: 18px; }
+    nav button { background: none; border: none; color: white; cursor: pointer; margin-left: 15px; font-size: 14px; transition: 0.2s; }
+    nav button:hover { text-decoration: underline; }
+    .content { padding: 25px 40px; }
+    h2 { color: #1a73e8; margin-bottom: 25px; }
+
+    /* FORMULARIO NUEVO */
+    .form-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+    .form-box h3 { margin-bottom: 15px; color: #333; }
+    .form-box input, .form-box select, .form-box textarea { padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 12px; width: 100%; box-sizing: border-box; font-size: 14px; }
+    .form-box button { background: #1a73e8; color: white; border: none; border-radius: 8px; padding: 10px 15px; cursor: pointer; font-weight: bold; font-size: 15px; transition: 0.2s; }
+    .form-box button:hover { background: #155ab6; }
+
+    /* TABLAS ESTILIZADAS COMO TARJETAS */
+    .tabla-container { margin-bottom: 30px; }
+    .tabla-container h3 { margin-bottom: 15px; color: #333; }
+    table.display { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+    table.dataTable thead th { background: #1a73e8; color: white; border: none; padding: 12px; border-radius: 8px 8px 0 0; }
+    table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px solid #f0f2f7; border-radius: 8px; color: #333; }
+    .btn-update, .btn-refresh, .btn-assign { border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: white; font-size: 13px; font-weight: bold; transition: 0.2s; margin-right: 4px; }
+    .btn-update { background: #ffc107; }
+    .btn-update:hover { background: #e0a800; }
+    .btn-refresh { background: #28a745; }
+    .btn-refresh:hover { background: #218838; }
+    .btn-assign { background: #17a2b8; }
+    .btn-assign:hover { background: #138496; }
+
+    /* ESTATUS POR COLOR */
+    .estatus-Operando { background: #28a745; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+    .estatus-En\ reparación { background: #ffc107; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+    .estatus-Sin\ asignar { background: #6c757d; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+    .estatus-Fuera\ de\ servicio { background: #dc3545; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 12px; }
+
+    /* MODAL */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fff; margin: 10% auto; padding: 25px; border-radius: 12px; width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: modalAnim 0.3s ease-out; }
+    @keyframes modalAnim { from {transform: translateY(-50px); opacity: 0;} to {transform: translateY(0); opacity:1;} }
+    .close { float: right; font-size: 22px; cursor: pointer; color: #333; }
+    .close:hover { color: red; }
+    .modal-content input, .modal-content select, .modal-content textarea { width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
+    .modal-content button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #1a73e8; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
+    .modal-content button:hover { background: #155ab6; }
+
+    @media screen and (max-width: 768px) {
+        nav { flex-direction: column; align-items: flex-start; }
+        .content { padding: 15px 20px; }
+    }
+</style>
+</head>
+<body>
+<nav>
+    <div class="logo">⚙️ Estral | Asignación de Equipos</div>
+    <div>
+        <button onclick="location.href='/dashboard'">🏠 Inicio</button>
+        <button onclick="location.href='/logout'">Cerrar sesión</button>
+    </div>
+</nav>
+
+<!-- KPIs estilo dashboard -->
+<div class="dashboard-kpis" style="display:flex; flex-wrap:wrap; gap:20px; margin:20px 40px;">
+    <!-- Total Handheld -->
+    <div style="flex:1 1 200px; background:#1a73e8; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+        <div style="font-size:40px;">📱</div>
+        <div>
+            <div style="font-weight:bold; font-size:14px;">Total Handheld</div>
+            <div style="font-size:24px; font-weight:bold;">{{ total_handheld }}</div>
+        </div>
+    </div>
+
+    <!-- Total Impresoras -->
+    <div style="flex:1 1 200px; background:#17a2b8; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+        <div style="font-size:40px;">🖨️</div>
+        <div>
+            <div style="font-weight:bold; font-size:14px;">Total Impresoras</div>
+            <div style="font-size:24px; font-weight:bold;">{{ total_impresoras }}</div>
+        </div>
+    </div>
+
+    <!-- Fuera de servicio -->
+    <div style="flex:1 1 200px; background:#dc3545; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+        <div style="font-size:40px;">⚠️</div>
+        <div>
+            <div style="font-weight:bold; font-size:14px;">Fuera de servicio</div>
+            <div style="font-size:24px; font-weight:bold;">{{ total_fuera_servicio }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs por área estilo tarjetas -->
+<div class="kpis-area" style="display:flex; flex-wrap:wrap; gap:15px; margin:0 40px 30px 40px;">
+    {% for area, count in total_por_area.items() %}
+    <div style="flex:1 1 200px; background:#f8f9fa; border-radius:12px; padding:15px; text-align:center; box-shadow:0 3px 10px rgba(0,0,0,0.08);">
+        <div style="font-weight:bold; font-size:16px; margin-bottom:8px;">{{ area }}</div>
+        <div style="font-size:20px; font-weight:bold;">Total: {{ count }}</div>
+        {% if status_por_area[area] %}
+        <div style="display:flex; justify-content:space-around; margin-top:10px;">
+            <div style="color:green;">✅ {{ status_por_area[area]['funcionando'] }}</div>
+            <div style="color:red;">❌ {{ status_por_area[area]['dañados'] }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+
+
+<div class="content">
+    <h2>Gestión y Control de Equipos</h2>
+
+    <!-- FORMULARIO NUEVO EQUIPO -->
+    <div class="form-box">
+        <h3>➕ Nuevo Equipo</h3>
+        <form id="formNuevo">
+            <input type="text" name="codigo" placeholder="Código" required>
+            <select name="tipo"><option>Handheld</option><option>Impresora portátil</option></select>
+            <select name="area">
+                <option>NA</option><option>Producción</option><option>Calidad</option><option>Almacén</option>
+                <option>Logística</option><option>Habilitado</option><option>Perfilado</option>
+                <option>Almacén de Habilitado</option><option>Laser</option>
+            </select>
+            <select name="estatus"><option>Operando</option><option>En reparación</option><option>Sin asignar</option><option>Fuera de servicio</option></select>
+            <input type="text" name="responsable" placeholder="Responsable">
+            <textarea name="observaciones" placeholder="Observaciones (opcional)"></textarea>
+            <button type="submit">Guardar</button>
+        </form>
+    </div>
+
+    <!-- TABLA STOCK -->
+    <div class="tabla-container">
+        <h3>📦 Equipos sin asignar (en stock)</h3>
+        <table id="tablaStock" class="display">
+            <thead>
+                <tr><th>Código</th><th>Tipo</th><th>Área</th><th>Estatus</th><th>Última Actualización</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+                {% for eq in equipos_stock %}
+                <tr>
+                    <td>{{ eq.codigo }}</td>
+                    <td>{{ eq.tipo }}</td>
+                    <td>{{ eq.area }}</td>
+                    <td><span class="estatus-{{ eq.estatus }}">{{ eq.estatus }}</span></td>
+                    <td>{{ eq.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') if eq.fecha_actualizacion else '' }}</td>
+                    <td>
+                        <button class="btn-assign"
+                            data-id="{{ eq.id }}" data-area="{{ eq.area }}" data-estatus="{{ eq.estatus }}"
+                            data-responsable="{{ eq.responsable or '' }}" data-observaciones="{{ eq.observaciones or '' }}">🛠 Asignar</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- TABLA ASIGNADOS -->
+    <div class="tabla-container">
+        <h3>🧰 Equipos asignados / en uso</h3>
+        <table id="tablaAsignados" class="display">
+            <thead>
+                <tr>
+                    <th>Código</th><th>Tipo</th><th>Área</th><th>Estatus</th>
+                    <th>Responsable</th><th>Fecha Asignación</th><th>Última Actualización</th><th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipos_asignados %}
+                <tr>
+                    <td>{{ eq.codigo }}</td>
+                    <td>{{ eq.tipo }}</td>
+                    <td>{{ eq.area }}</td>
+                    <td><span class="estatus-{{ eq.estatus }}">{{ eq.estatus }}</span></td>
+                    <td>{{ eq.responsable }}</td>
+                    <td>{{ eq.fecha_asignacion.strftime('%d/%m/%Y %H:%M') if eq.fecha_asignacion else '' }}</td>
+                    <td>{{ eq.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') if eq.fecha_actualizacion else '' }}</td>
+                    <td>
+                        <button class="btn-update"
+                            data-id="{{ eq.id }}" data-area="{{ eq.area }}" data-estatus="{{ eq.estatus }}"
+                            data-responsable="{{ eq.responsable }}" data-observaciones="{{ eq.observaciones or '' }}">🛠 Editar</button>
+                        <button class="btn-refresh" data-id="{{ eq.id }}">⏱ Refrescar</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL EDITAR / ASIGNAR -->
+<div id="modalEditar" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Editar / Asignar equipo</h3>
+        <form id="formEditar">
+            <input type="hidden" name="id">
+            <label>Estatus:</label>
+            <select name="estatus"><option>Operando</option><option>Fuera de servicio</option></select>
+            <label>Área:</label>
+            <select name="area">
+                <option>NA</option><option>Producción</option><option>Calidad</option><option>Almacén</option>
+                <option>Logística</option><option>Habilitado</option><option>Perfilado</option>
+                <option>Almacén de Habilitado</option><option>Laser</option>
+            </select>
+            <label>Responsable:</label>
+            <input type="text" name="responsable" placeholder="Responsable">
+            <label>Observaciones:</label>
+            <textarea name="observaciones" placeholder="Observaciones (opcional)"></textarea>
+            <button type="submit">Guardar cambios</button>
+        </form>
+    </div>
+</div>
+
+<script>
+$(document).ready(() => {
+    $('#tablaStock').DataTable({ pageLength: 5, language: { search: "Buscar:" } });
+    $('#tablaAsignados').DataTable({ pageLength: 5, language: { search: "Buscar:" } });
+});
+
+// Nuevo equipo
+$("#formNuevo").on("submit", async (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    if(!data.get("responsable")) data.set("responsable","NA");
+    if(!data.get("observaciones")) data.set("observaciones","NA");
+    if(!data.get("area")) data.set("area","NA");
+    const res = await fetch("/asignacion_equipos/nuevo", { method: "POST", body: data });
+    const json = await res.json(); alert(json.msg); location.reload();
+});
+
+// Modal editar / asignar
+$(document).on("click", ".btn-update, .btn-assign", function() {
+    const m = $("#modalEditar"); m.show();
+    m.find("input[name='id']").val($(this).data("id"));
+    m.find("select[name='estatus']").val($(this).data("estatus") || "Operando");
+    m.find("select[name='area']").val($(this).data("area") || "NA");
+    m.find("input[name='responsable']").val($(this).data("responsable") || "NA");
+    m.find("textarea[name='observaciones']").val($(this).data("observaciones") || "NA");
+});
+
+// Cerrar modal
+$(".close").click(() => $("#modalEditar").hide());
+window.onclick = (e) => { if (e.target == document.getElementById("modalEditar")) $("#modalEditar").hide(); }
+
+// Guardar cambios
+$("#formEditar").on("submit", async (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    if(!data.get("responsable")) data.set("responsable","NA");
+    if(!data.get("observaciones")) data.set("observaciones","NA");
+    if(!data.get("area")) data.set("area","NA");
+    const res = await fetch("/asignacion_equipos/editar", { method: "POST", body: data });
+    const json = await res.json(); alert(json.msg); location.reload();
+});
+
+// Refrescar fecha
+$(document).on("click", ".btn-refresh", async function() {
+    const id = $(this).data("id");
+    const f = new FormData(); f.append("equipo_id", id);
+    const res = await fetch("/asignacion_equipos/refrescar_fecha", { method: "POST", body: f });
+    const json = await res.json(); alert(json.msg); location.reload();
+});
+</script>
+</body>
+</html>

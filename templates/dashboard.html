@@ -341,6 +341,25 @@ body.no-scroll {
     .pdf-text { font-size:20px; }*/
 }
 
+/* --- Ajuste visual para que no se sature el menú móvil --- */
+#mobileMenu .menu-extra {
+    font-size: 14px;
+    opacity: 0.85;
+    padding: 10px 25px;
+    background: rgba(255,255,255,0.05);
+    margin-top: 8px;
+}
+#mobileMenu .menu-extra:hover {
+    background-color: #3b4b5c;
+}
+
+/* Para que el icono de herramientas se vea equilibrado en desktop */
+nav .tabs a[href="/asignacion_equipos"] {
+    font-size: 15px;
+    opacity: 0.9;
+}
+
+
 </style>
 </head>
 <body>
@@ -350,7 +369,6 @@ body.no-scroll {
     <a href="/valance">📊 KPIS - Compras</a>
     <a href="/quejas">💬 Quejas</a>
     <a href="/embarques">🚚 Embarques</a>
-    
     <a href="/cotizaciones">💰 Cotizaciones</a> 
     
     <div class="dropdown-mobile" id="mobileDropdownPlaneacion">
@@ -361,7 +379,11 @@ body.no-scroll {
             <a href="/fabricacion_partidas">Fabricación mensual partidas</a>
         </div>
     </div>
+
+    <!-- NUEVO LINK -->
+    <a href="/asignacion_equipos" class="menu-extra">🧰 Asignación Equipos</a>
 </div>
+
 
 <nav>
     <div class="menu-toggle" onclick="toggleMenu()">☰</div> 
@@ -374,6 +396,7 @@ body.no-scroll {
         <a href="/embarques">🚚 Embarques</a>
         
         <a href="/cotizaciones">💰 Cotizaciones</a> 
+        <a href="/asignacion_equipos" class="menu-extra">🧰 Asignación Equipos</a>
         
         <div class="dropdown">
             <button class="dropbtn">📋 Planeación ▾</button>

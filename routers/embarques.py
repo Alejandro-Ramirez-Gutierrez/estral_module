@@ -145,8 +145,8 @@ def get_query_progreso_mensual(mes: int, anio: int) -> str:
         GROUP BY p.Pedido
     ) t;
     """
-    
-# ⭐️ NUEVA CONSULTA SQL PARA LA TENDENCIA ANUAL ⭐️
+
+# CONSULTA SQL PARA LA TENDENCIA ANUAL
 def get_query_tendencia_anual(anio: int) -> str:
     """Query 4: Kilos totales embarcados por mes para el año seleccionado."""
     # Como ya tienes Embarques y CimsaEmbarques unidos en otras consultas,
@@ -165,6 +165,7 @@ def get_query_tendencia_anual(anio: int) -> str:
     GROUP BY MONTH(e.Fecha)
     ORDER BY Mes ASC;
     """
+
 # ----------------------------------------------------
 
 # --- RUTA PRINCIPAL ---
@@ -196,14 +197,12 @@ def embarques_page(
         sql_progreso = get_query_progreso_mensual(mes, anio)
         data_progreso = ejecutar_consulta_sql(sql_progreso, fetchall=True)
         
-        # ⭐️ CORRECCIÓN CLAVE: CONVERTIR OBJETOS DATE A STRING ⭐️
         # Esto evita el error "TypeError: Object of type date is not JSON serializable" 
         # cuando se usa el filtro 'tojson' en Jinja.
         for item in data_diarios:
             if 'DiaEmbarque' in item and isinstance(item['DiaEmbarque'], date):
                 # Usar strftime para convertir el objeto date a string 'YYYY-MM-DD'
                 item['DiaEmbarque'] = item['DiaEmbarque'].strftime('%Y-%m-%d')
-        # ⭐️ FIN DE LA CORRECCIÓN ⭐️
 
     except Exception as e:
         # Si la consulta a la BD falla, devolvemos el error 500
@@ -232,8 +231,7 @@ def embarques_page(
         "progreso_detalle": progreso_detalle
     })
 
-# ⭐️ NUEVO ENDPOINT PARA LA GRÁFICA MENSUAL (CONSUMIDO POR JAVASCRIPT) ⭐️
-# URL: /embarques/tendencia_anual?anio=2025
+# ENDPOINT PARA LA GRÁFICA MENSUAL (CONSUMIDO POR JAVASCRIPT)
 @router.get("/embarques/tendencia_anual", response_class=JSONResponse)
 def tendencia_anual_endpoint(
     access_token: str = Cookie(None),
