@@ -12,7 +12,7 @@ templates = Jinja2Templates(directory="templates")
 
 # ---- CONTROL DE ACCESO ----
 AREAS_PERMITIDAS_ASIGNACION = [20, 22]  # ajusta según tus áreas
-EMPLEADOS_PERMITIDOS_ASIGNACION = [8811, 8661, 8870, 8740, 4, 5]
+EMPLEADOS_PERMITIDOS_ASIGNACION = [8709, 8827, 7854, 4, 5, 8679]
 
 def validar_acceso_asignacion(payload: dict) -> bool:
     if not payload:
