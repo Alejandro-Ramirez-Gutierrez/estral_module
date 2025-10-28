@@ -69,7 +69,6 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
 
     except Exception as e:
         print("ERROR LOGIN_USER:", e)
-        traceback.print_exc()
         return {"error": str(e)}
 
     finally:
@@ -185,7 +184,6 @@ def cancelar_orden_compra(k_orden_compra: int, k_empleado: int, k_motivo: int = 
 
     except Exception as e:
         print("ERROR cancelar_orden_compra:", e)
-        traceback.print_exc()
         return {"error": str(e)}
     finally:
         cursor.close()
@@ -212,7 +210,6 @@ def autorizar_orden(k_orden, k_empleado):
 
     except Exception as e:
         print("ERROR autorizar_orden:", e)
-        traceback.print_exc()
         return 0, str(e)
     finally:
         cursor.close()
@@ -248,9 +245,6 @@ def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetch
         return {}
         
     except Exception as e:
-        print("ERROR ejecutar_consulta_sql:", e)
-        traceback.print_exc()
-        # Devuelve [] si se pide fetchall para evitar errores en el endpoint
         if fetchall:
              return [] 
         return {}
@@ -262,45 +256,6 @@ def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetch
         if conn:
              conn.close()
 
-
-# -------------------- Consulta SQL genérica (SQL Server) --------------------
-def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetchall: bool = False):
-    """
-    Ejecuta una consulta SQL genérica.
-    Acepta 'params' (lista o tupla) para consultas parametrizadas seguras.
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        if params:
-            # OK: usa params para SQL Server
-            cursor.execute(query, params)
-        else:
-            cursor.execute(query) 
-            
-        columns = [col[0] for col in cursor.description] if cursor.description else []
-        
-        if fetchone:
-            row = safe_fetch(cursor)
-            return dict(zip(columns, row)) if row else {}
-        
-        if fetchall:
-            rows = cursor.fetchall()
-            return [dict(zip(columns, r)) for r in rows]
-            
-        conn.commit()
-        return {}
-        
-    except Exception as e:
-        print("ERROR ejecutar_consulta_sql:", e)
-        traceback.print_exc()
-        if fetchall:
-            return [] 
-        return {}
-        
-    finally:
-        if cursor: cursor.close()
-        if conn: conn.close()
 
 # -------------------- Consulta SQL Genérica para MySQL (¡CORREGIDA!) --------------------
 def ejecutar_consulta_mysql(query: str, params: tuple = None, fetchall: bool = True):
@@ -334,7 +289,6 @@ def ejecutar_consulta_mysql(query: str, params: tuple = None, fetchall: bool = T
     except Exception as e:
         # Se mantiene la lógica de manejo de errores y traceback
         print(f"ERROR ejecutar_consulta_mysql: {e}")
-        traceback.print_exc()
         return [] if fetchall else {}
 
     finally:
