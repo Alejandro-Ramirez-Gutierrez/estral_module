@@ -147,6 +147,7 @@ async def nuevo_equipo(
     ejecutar_consulta_sql(insert_sql, (codigo, tipo, modelo_hand, area, estatus, responsable, observaciones))
     return JSONResponse({"status": "ok", "msg": "Equipo guardado con éxito"})
 
+
 @router.post("/editar", response_class=JSONResponse)
 async def editar_equipo(
     id: int = Form(...),
@@ -202,3 +203,68 @@ async def refrescar_fecha(equipo_id: int = Form(...), access_token: str = Cookie
         return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al refrescar fecha"})
 
     return JSONResponse(content={"status": "ok", "msg": "Fecha de actualización registrada"})
+
+
+# ---- EDICIÓN COMPLETA ----
+@router.post("/editar_completo", response_class=JSONResponse)
+async def editar_completo_equipo(
+    id: int = Form(...),
+    codigo: str = Form(...),
+    tipo: str = Form(...),
+    modelo_hand: str | None = Form(None),
+    estatus: str = Form(...),
+    area: str = Form(...),
+    responsable: str = Form(None),
+    observaciones: str = Form(None),
+    access_token: str = Cookie(None)
+):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_asignacion(payload):
+        return JSONResponse(status_code=403, content={"status": "error", "msg": "Acceso denegado"})
+
+    if tipo != "Handheld":
+        modelo_hand = None
+
+    sql = """
+        UPDATE ws_equipos
+        SET codigo=?, tipo=?, modelo_hand=?, estatus=?, area=?, responsable=?, observaciones=?, fecha_actualizacion=GETDATE()
+        WHERE id=?
+    """
+    ejecutar_consulta_sql(sql, (codigo, tipo, modelo_hand, estatus, area, responsable, observaciones, id))
+
+    usuario = payload.get("Nombre") if payload else "sistema"
+    ejecutar_consulta_sql(
+        "INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha) VALUES (?, 'Edición completa', 'Modificación total de datos', ?, GETDATE())",
+        (id, usuario)
+    )
+
+    return JSONResponse({"status": "ok", "msg": "Equipo actualizado correctamente."})
+
+
+# ---- ELIMINAR EQUIPO ----
+@router.post("/eliminar", response_class=JSONResponse)
+async def eliminar_equipo(id: int = Form(...), access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_asignacion(payload):
+        return JSONResponse(status_code=403, content={"status": "error", "msg": "Acceso denegado"})
+
+    try:
+        usuario = payload.get("Nombre") if payload else "sistema"
+
+        # 1️⃣ Borrar historial del equipo
+        ejecutar_consulta_sql("DELETE FROM ws_historial_equipos WHERE equipo_id = ?", (id,))
+
+        # 2️⃣ Borrar equipo
+        ejecutar_consulta_sql("DELETE FROM ws_equipos WHERE id = ?", (id,))
+
+        # 3️⃣ Registrar la acción en historial (opcional, aunque ya borraste el historial antiguo)
+        ejecutar_consulta_sql(
+            "INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha) VALUES (?, 'Eliminación', 'Registro eliminado del sistema', ?, GETDATE())",
+            (id, usuario)
+        )
+
+        return JSONResponse({"status": "ok", "msg": "Equipo eliminado correctamente."})
+
+    except Exception as ex:
+        print(ex)  # útil para debug
+        return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al eliminar equipo."})
