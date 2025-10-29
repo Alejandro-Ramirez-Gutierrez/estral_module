@@ -287,6 +287,18 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
 </div>
 
 <script>
+
+$("#formNuevo").on("submit", async (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    if(data.get("tipo") != "Handheld") data.set("modelo_hand","");  // igual que antes
+    const res = await fetch("/asignacion_equipos/nuevo", { method: "POST", body: data });
+    const json = await res.json();
+    alert(json.msg);
+    location.reload();
+});
+
+    
 $(document).ready(() => {
     $('#tablaStock').DataTable({ 
         scrollY: "400px",
