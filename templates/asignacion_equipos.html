@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asignación de Equipos - Estral</title>
 <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
+
+<!-- jQuery y DataTables estable -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-<script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -69,63 +71,6 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
     </div>
 </nav>
 
-<!-- KPIs estilo dashboard -->
-<div class="dashboard-kpis" style="display:flex; flex-wrap:wrap; gap:20px; margin:20px 40px;">
-    <!-- Total Handheld -->
-    <div style="flex:1 1 200px; background:#1a73e8; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
-        <div style="font-size:40px;">📱</div>
-        <div>
-            <div style="font-weight:bold; font-size:14px;">Total Handheld</div>
-            <div style="font-size:24px; font-weight:bold;">{{ total_handheld }}</div>
-        </div>
-    </div>
-
-    <!-- Total Impresoras -->
-    <div style="flex:1 1 200px; background:#17a2b8; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
-        <div style="font-size:40px;">🖨️</div>
-        <div>
-            <div style="font-weight:bold; font-size:14px;">Total Impresoras</div>
-            <div style="font-size:24px; font-weight:bold;">{{ total_impresoras }}</div>
-        </div>
-    </div>
-
-    <!-- Total Tablets -->
-    <div style="flex:1 1 200px; background:#6f42c1; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
-        <div style="font-size:40px;">🖥️</div> <!-- Emoji diferente al handheld -->
-        <div>
-            <div style="font-weight:bold; font-size:14px;">Total Tablets</div>
-            <div style="font-size:24px; font-weight:bold;">{{ total_tablets }}</div>
-        </div>
-    </div>
-
-
-    <!-- Fuera de servicio -->
-    <div style="flex:1 1 200px; background:#dc3545; color:white; border-radius:12px; padding:20px; display:flex; align-items:center; gap:15px; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
-        <div style="font-size:40px;">⚠️</div>
-        <div>
-            <div style="font-weight:bold; font-size:14px;">Fuera de servicio</div>
-            <div style="font-size:24px; font-weight:bold;">{{ total_fuera_servicio }}</div>
-        </div>
-    </div>
-</div>
-
-<!-- KPIs por área estilo tarjetas -->
-<div class="kpis-area" style="display:flex; flex-wrap:wrap; gap:15px; margin:0 40px 30px 40px;">
-    {% for area, count in total_por_area.items() %}
-    <div style="flex:1 1 200px; background:#f8f9fa; border-radius:12px; padding:15px; text-align:center; box-shadow:0 3px 10px rgba(0,0,0,0.08);">
-        <div style="font-weight:bold; font-size:16px; margin-bottom:8px;">{{ area }}</div>
-        <div style="font-size:20px; font-weight:bold;">Total: {{ count }}</div>
-        {% if status_por_area[area] %}
-        <div style="display:flex; justify-content:space-around; margin-top:10px;">
-            <div style="color:green;">✅ {{ status_por_area[area]['funcionando'] }}</div>
-            <div style="color:red;">❌ {{ status_por_area[area]['dañados'] }}</div>
-        </div>
-        {% endif %}
-    </div>
-    {% endfor %}
-</div>
-
-
 <div class="content">
     <h2>Gestión y Control de Equipos</h2>
 
@@ -138,17 +83,24 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
                 <option value="Impresora portátil">Impresora portátil</option>
                 <option value="Tablet">Tablet</option>
             </select>
-            <select name="modelo_hand" id="modeloHand">
-                <option value="">Selecciona modelo (solo Handheld)</option>
-                <option value="HMC95">HMC95</option>
-                <option value="HC5P">HC5P</option>
-            </select>
+            <div id="divModeloHand">
+                <select name="modelo_hand" id="modeloHand">
+                    <option value="">Selecciona modelo (solo Handheld)</option>
+                    <option value="HMC95">HMC95</option>
+                    <option value="HC5P">HC5P</option>
+                </select>
+            </div>
             <select name="area">
                 <option>NA</option><option>Producción</option><option>Calidad</option><option>Almacén</option>
                 <option>Logística</option><option>Habilitado</option><option>Perfilado</option>
                 <option>Almacén de Habilitado</option><option>Laser</option>
             </select>
-            <select name="estatus"><option>Operando</option><option>En reparación</option><option>Sin asignar</option><option>Fuera de servicio</option></select>
+            <select name="estatus">
+                <option>Operando</option>
+                <option>En reparación</option>
+                <option>Sin asignar</option>
+                <option>Fuera de servicio</option>
+            </select>
             <input type="text" name="responsable" placeholder="Responsable">
             <textarea name="observaciones" placeholder="Observaciones (opcional)"></textarea>
             <button type="submit">Guardar</button>
@@ -161,14 +113,7 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
         <table id="tablaStock" class="display">
             <thead>
                 <tr>
-                    <th>Código</th>
-                    <th>Tipo</th>
-                    <th>Modelo</th>
-                    <th>Área</th>
-                    <th>Estatus</th>
-                    <th>Última Actualización</th>
-                    <th>Observaciones</th>
-                    <th>Acciones</th>
+                    <th>Código</th><th>Tipo</th><th>Modelo</th><th>Área</th><th>Estatus</th><th>Última Actualización</th><th>Observaciones</th><th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -197,16 +142,7 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
         <table id="tablaAsignados" class="display">
             <thead>
                 <tr>
-                    <th>Código</th>
-                    <th>Tipo</th>
-                    <th>Modelo</th>
-                    <th>Área</th>
-                    <th>Estatus</th>
-                    <th>Responsable</th>
-                    <th>Fecha Asignación</th>
-                    <th>Última Actualización</th>
-                    <th>Observaciones</th>
-                    <th>Acciones</th>
+                    <th>Código</th><th>Tipo</th><th>Modelo</th><th>Área</th><th>Estatus</th><th>Responsable</th><th>Fecha Asignación</th><th>Última Actualización</th><th>Observaciones</th><th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -233,7 +169,7 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
     </div>
 </div>
 
-<!-- MODAL EDITAR COMPLETO -->
+<!-- MODALES (igual que antes) -->
 <div id="modalEditar" class="modal">
     <div class="modal-content">
         <span class="close">&times;</span>
@@ -273,7 +209,6 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
     </div>
 </div>
 
-<!-- MODAL ELIMINAR -->
 <div id="modalEliminar" class="modal">
     <div class="modal-content">
         <span class="close">&times;</span>
@@ -287,19 +222,8 @@ table.dataTable tbody td { background: white; padding: 12px; border-bottom: 10px
 </div>
 
 <script>
-
-$("#formNuevo").on("submit", async (e) => {
-    e.preventDefault();
-    const data = new FormData(e.target);
-    if(data.get("tipo") != "Handheld") data.set("modelo_hand","");  // igual que antes
-    const res = await fetch("/asignacion_equipos/nuevo", { method: "POST", body: data });
-    const json = await res.json();
-    alert(json.msg);
-    location.reload();
-});
-
-    
 $(document).ready(() => {
+    // DataTables
     $('#tablaStock').DataTable({ 
         scrollY: "400px",
         scrollCollapse: true,
@@ -316,53 +240,78 @@ $(document).ready(() => {
         dom: 'Bfrtip',
         buttons: ['excelHtml5','csvHtml5','pdfHtml5']
     });
+
+    // Mostrar modelo Hand
+    $("#tipoEquipo").change(function(){ 
+        $(this).val() === "Handheld" ? $("#divModeloHand").show() : $("#divModeloHand").hide(); 
+    }).trigger('change');
+
+    $("#editarTipo").change(function(){ 
+        $(this).val() === "Handheld" ? $("#divModeloHandEditar").show() : $("#divModeloHandEditar").hide(); 
+    });
 });
 
-// Modal editar completo
-$(document).on("click", ".btn-update, .btn-assign", function() {
-    const m = $("#modalEditar"); m.show();
-    const tipo = $(this).data("tipo");
-    m.find("input[name='id']").val($(this).data("id"));
-    m.find("input[name='codigo']").val($(this).closest("tr").find("td:eq(0)").text());
-    m.find("select[name='tipo']").val(tipo);
-    m.find("select[name='estatus']").val($(this).data("estatus"));
-    m.find("select[name='area']").val($(this).data("area"));
-    m.find("input[name='responsable']").val($(this).data("responsable"));
-    m.find("textarea[name='observaciones']").val($(this).data("observaciones"));
-    m.find("select[name='modelo_hand']").val($(this).data("modelo") || "");
-    if(tipo === "Handheld") $("#divModeloHandEditar").show();
-    else { $("#divModeloHandEditar").hide(); m.find("select[name='modelo_hand']").val(""); }
-});
-
-// Guardar cambios completo
-$("#formEditar").on("submit", async (e) => {
+// NUEVO
+$("#formNuevo").on("submit", async (e) => {
     e.preventDefault();
-    const data = new FormData(e.target);
-    if(data.get("tipo") != "Handheld") data.set("modelo_hand","");
-    const res = await fetch("/asignacion_equipos/editar_completo", { method: "POST", body: data });
-    const json = await res.json(); alert(json.msg); location.reload();
+    try{
+        const data = new FormData(e.target);
+        if(data.get("tipo") != "Handheld") data.set("modelo_hand","");
+        const res = await fetch("/asignacion_equipos/nuevo", { method: "POST", body: data });
+        const json = await res.json();
+        alert(json.msg);
+        location.reload();
+    } catch(err){ console.error(err); alert("Error al guardar equipo"); }
 });
 
-// Modal eliminar
-$(document).on("click", ".btn-delete", function() {
-    const m = $("#modalEliminar"); m.show();
+// EDITAR COMPLETO
+$(document).on("click", ".btn-update", function(){
+    const modal = $("#modalEditar"); modal.show();
+    const form = $("#formEditar")[0];
+    form.id.value = $(this).data("id");
+    form.codigo.value = $(this).closest("tr").find("td:first").text();
+    form.tipo.value = $(this).data("tipo");
+    form.area.value = $(this).data("area");
+    form.estatus.value = $(this).data("estatus");
+    form.responsable.value = $(this).data("responsable");
+    form.observaciones.value = $(this).data("observaciones");
+    form.modelo_hand.value = $(this).data("modelo");
+    $("#divModeloHandEditar").toggle(form.tipo.value === "Handheld");
+});
+
+$("#formEditar").on("submit", async function(e){
+    e.preventDefault();
+    try{
+        const data = new FormData(this);
+        if(data.get("tipo") != "Handheld") data.set("modelo_hand","");
+        const res = await fetch("/asignacion_equipos/editar_completo", { method: "POST", body: data });
+        const json = await res.json();
+        alert(json.msg);
+        location.reload();
+    } catch(err){ console.error(err); alert("Error al editar equipo"); }
+});
+
+// ELIMINAR
+$(document).on("click", ".btn-delete", function(){
+    const modal = $("#modalEliminar"); modal.show();
     $("#elimNombre").text($(this).data("codigo"));
-    m.find("input[name='id']").val($(this).data("id"));
+    $("#formEliminar input[name=id]").val($(this).data("id"));
 });
-$("#formEliminar").on("submit", async (e) => {
+
+$("#formEliminar").on("submit", async function(e){
     e.preventDefault();
-    const data = new FormData(e.target);
-    const res = await fetch("/asignacion_equipos/eliminar", { method: "POST", body: data });
-    const json = await res.json(); alert(json.msg); location.reload();
+    try{
+        const data = new FormData(this);
+        const res = await fetch("/asignacion_equipos/eliminar", { method: "POST", body: data });
+        const json = await res.json();
+        alert(json.msg);
+        location.reload();
+    } catch(err){ console.error(err); alert("Error al eliminar equipo"); }
 });
 
-// Cerrar modals
+// CERRAR MODALES
 $(".close").click(function(){ $(this).closest(".modal").hide(); });
-window.onclick = function(event){ $(".modal").each(function(){ if(event.target == this) $(this).hide(); }); }
-
-// Mostrar modelo Hand solo si es tipo Handheld en nuevo
-$("#tipoEquipo").change(function(){ $(this).val() === "Handheld" ? $("#modeloHand").show() : $("#modeloHand").hide(); });
+window.onclick = function(event){ $(".modal").each(function(){ if(event.target == this) $(this).hide(); }); };
 </script>
-
 </body>
 </html>

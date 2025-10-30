@@ -68,7 +68,6 @@ async def asignacion_equipos(request: Request, access_token: str = Cookie(None))
         total_impresoras = next((r['total'] for r in res_tipo if r['tipo'] == 'Impresora portátil'), 0)
         total_tablets = next((r['total'] for r in res_tipo if r['tipo'] == 'Tablet'), 0)
 
-
         # Total por área
         sql_por_area = """
             SELECT area, COUNT(*) as total
@@ -106,15 +105,14 @@ async def asignacion_equipos(request: Request, access_token: str = Cookie(None))
         "usuario": payload.get("Nombre") if payload else "Desconocido",
         "total_handheld": total_handheld,
         "total_impresoras": total_impresoras,
-        "total_tablets": total_tablets,   # <- agregado
+        "total_tablets": total_tablets,
         "total_fuera_servicio": total_fuera_servicio,
         "total_por_area": total_por_area,
         "status_por_area": status_por_area
     })
 
 
-
-# NUEVO EQUIPO
+# ---- NUEVO EQUIPO ----
 @router.post("/nuevo", response_class=JSONResponse)
 async def nuevo_equipo(
     codigo: str = Form(...),
@@ -133,21 +131,20 @@ async def nuevo_equipo(
     if tipo != "Handheld":
         modelo_hand = None
 
-    # Verificar duplicado
     existente = ejecutar_consulta_sql("SELECT TOP 1 id FROM ws_equipos WHERE codigo = ?", (codigo,), fetchone=True)
     if existente:
         return JSONResponse(status_code=409, content={"status": "error", "msg": f"El equipo con código '{codigo}' ya existe."})
 
-    # Insert
     insert_sql = """
         INSERT INTO ws_equipos
         (codigo, tipo, modelo_hand, area, estatus, responsable, fecha_asignacion, fecha_actualizacion, observaciones)
         VALUES (?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), ?)
     """
-    ejecutar_consulta_sql(insert_sql, (codigo, tipo, modelo_hand, area, estatus, responsable, observaciones))
+    ejecutar_consulta_sql(insert_sql, (codigo, tipo, modelo_hand, area, estatus, responsable, observaciones), commit=True)
     return JSONResponse({"status": "ok", "msg": "Equipo guardado con éxito"})
 
 
+# ---- EDITAR EQUIPO ----
 @router.post("/editar", response_class=JSONResponse)
 async def editar_equipo(
     id: int = Form(...),
@@ -156,7 +153,7 @@ async def editar_equipo(
     area: str = Form(...),
     responsable: str = Form(None),
     observaciones: str = Form(None),
-    modelo_hand: str | None = Form(None),  # opcional
+    modelo_hand: str | None = Form(None),
     access_token: str = Cookie(None)
 ):
     payload = get_payload_from_cookie(access_token)
@@ -171,38 +168,16 @@ async def editar_equipo(
         SET estatus=?, area=?, responsable=?, observaciones=?, modelo_hand=?, fecha_actualizacion=GETDATE()
         WHERE id=?
     """
-    ejecutar_consulta_sql(update_sql, (estatus, area, responsable, observaciones, modelo_hand, id))
+    ejecutar_consulta_sql(update_sql, (estatus, area, responsable, observaciones, modelo_hand, id), commit=True)
 
     sql_historial = """
         INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha)
         VALUES (?, 'Actualización', 'Edición de información del equipo', ?, GETDATE())
     """
     usuario = payload.get("Nombre") if payload else "sistema"
-    ejecutar_consulta_sql(sql_historial, (id, usuario))
+    ejecutar_consulta_sql(sql_historial, (id, usuario), commit=True)
 
     return JSONResponse({"status": "ok", "msg": "Equipo actualizado correctamente"})
-
-
-
-# ---- ACTUALIZAR SOLO FECHA ----
-@router.post("/refrescar_fecha", response_class=JSONResponse)
-async def refrescar_fecha(equipo_id: int = Form(...), access_token: str = Cookie(None)):
-    payload = get_payload_from_cookie(access_token)
-    if not validar_acceso_asignacion(payload):
-        return JSONResponse(status_code=403, content={"status": "error", "msg": "Acceso denegado"})
-
-    try:
-        ejecutar_consulta_sql("UPDATE ws_equipos SET fecha_actualizacion = GETDATE() WHERE id = ?", (equipo_id,))
-        sql_historial = """
-            INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha)
-            VALUES (?, 'Actualización rápida', 'Solo se actualizó la fecha de revisión', ?, GETDATE())
-        """
-        usuario = payload.get("Nombre") if payload else "sistema"
-        ejecutar_consulta_sql(sql_historial, (equipo_id, usuario))
-    except Exception as ex:
-        return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al refrescar fecha"})
-
-    return JSONResponse(content={"status": "ok", "msg": "Fecha de actualización registrada"})
 
 
 # ---- EDICIÓN COMPLETA ----
@@ -230,12 +205,12 @@ async def editar_completo_equipo(
         SET codigo=?, tipo=?, modelo_hand=?, estatus=?, area=?, responsable=?, observaciones=?, fecha_actualizacion=GETDATE()
         WHERE id=?
     """
-    ejecutar_consulta_sql(sql, (codigo, tipo, modelo_hand, estatus, area, responsable, observaciones, id))
+    ejecutar_consulta_sql(sql, (codigo, tipo, modelo_hand, estatus, area, responsable, observaciones, id), commit=True)
 
     usuario = payload.get("Nombre") if payload else "sistema"
     ejecutar_consulta_sql(
         "INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha) VALUES (?, 'Edición completa', 'Modificación total de datos', ?, GETDATE())",
-        (id, usuario)
+        (id, usuario), commit=True
     )
 
     return JSONResponse({"status": "ok", "msg": "Equipo actualizado correctamente."})
@@ -252,19 +227,40 @@ async def eliminar_equipo(id: int = Form(...), access_token: str = Cookie(None))
         usuario = payload.get("Nombre") if payload else "sistema"
 
         # 1️⃣ Borrar historial del equipo
-        ejecutar_consulta_sql("DELETE FROM ws_historial_equipos WHERE equipo_id = ?", (id,))
+        ejecutar_consulta_sql("DELETE FROM ws_historial_equipos WHERE equipo_id = ?", (id,), commit=True)
 
         # 2️⃣ Borrar equipo
-        ejecutar_consulta_sql("DELETE FROM ws_equipos WHERE id = ?", (id,))
+        ejecutar_consulta_sql("DELETE FROM ws_equipos WHERE id = ?", (id,), commit=True)
 
-        # 3️⃣ Registrar la acción en historial (opcional, aunque ya borraste el historial antiguo)
+        # 3️⃣ Registrar la acción en historial (opcional)
         ejecutar_consulta_sql(
             "INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha) VALUES (?, 'Eliminación', 'Registro eliminado del sistema', ?, GETDATE())",
-            (id, usuario)
+            (id, usuario), commit=True
         )
 
         return JSONResponse({"status": "ok", "msg": "Equipo eliminado correctamente."})
 
     except Exception as ex:
-        print(ex)  # útil para debug
+        print(ex)
         return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al eliminar equipo."})
+
+
+# ---- ACTUALIZAR SOLO FECHA ----
+@router.post("/refrescar_fecha", response_class=JSONResponse)
+async def refrescar_fecha(equipo_id: int = Form(...), access_token: str = Cookie(None)):
+    payload = get_payload_from_cookie(access_token)
+    if not validar_acceso_asignacion(payload):
+        return JSONResponse(status_code=403, content={"status": "error", "msg": "Acceso denegado"})
+
+    try:
+        ejecutar_consulta_sql("UPDATE ws_equipos SET fecha_actualizacion = GETDATE() WHERE id = ?", (equipo_id,), commit=True)
+        sql_historial = """
+            INSERT INTO ws_historial_equipos (equipo_id, accion, motivo, usuario, fecha)
+            VALUES (?, 'Actualización rápida', 'Solo se actualizó la fecha de revisión', ?, GETDATE())
+        """
+        usuario = payload.get("Nombre") if payload else "sistema"
+        ejecutar_consulta_sql(sql_historial, (equipo_id, usuario), commit=True)
+    except Exception as ex:
+        return JSONResponse(status_code=500, content={"status": "error", "msg": "Error al refrescar fecha"})
+
+    return JSONResponse(content={"status": "ok", "msg": "Fecha de actualización registrada"})

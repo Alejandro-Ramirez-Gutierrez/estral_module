@@ -105,15 +105,11 @@ def post_verificar_mfa(request: Request, login: str = Form(...), codigo: str = F
     # Limpiamos posibles espacios
     login = login.strip()
     codigo = codigo.strip()
-    print("DEBUG login MFA:", repr(login))
-    print("DEBUG código RECIBIDO:", repr(codigo))
 
     # 1. Traemos los datos completos del usuario (incluye el secreto MFA ya DESCIFRADO)
     user_data = obtener_datos_completos_usuario(login) # <--- USO DE FUNCIÓN SEGURA
     mfa_secret = user_data.get("mfa_secret") if user_data else None
     
-    # El mfa_secret ya viene DESCIFRADO desde db_service
-    print("DEBUG SECRETO DESCIFRADO (desde DB Service):", mfa_secret) 
 
     if not mfa_secret:
         return templates.TemplateResponse(
@@ -125,13 +121,11 @@ def post_verificar_mfa(request: Request, login: str = Form(...), codigo: str = F
     totp = pyotp.TOTP(mfa_secret)
     
     expected_code = totp.now() 
-    print(f"DEBUG CÓDIGO ESPERADO (Servidor): {expected_code}")
 
     # Verificamos con ventana de tolerancia (valid_window=1)
     if totp.verify(codigo, valid_window=1):
         # 3. Si el código es válido, usamos user_data para el resto de la info
         user_info = user_data 
-        print("DEBUG user_info después MFA:", user_info)
 
         if not user_info or not user_info.get("K_Empleado"):
             return templates.TemplateResponse(

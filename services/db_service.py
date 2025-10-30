@@ -104,6 +104,7 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
         user_data = {
             "K_Usuario": getattr(user_row, "K_Usuario", None),
             "D_Usuario": getattr(user_row, "D_Usuario", None),
+            "Login": getattr(user_row, "Login", None),
             "K_Empleado": getattr(user_row, "K_Empleado", None),
             "D_Empleado": getattr(user_row, "D_Empleado", None),
             "K_Oficina": getattr(user_row, "K_Oficina", None),
@@ -115,7 +116,6 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             "K_Departamento": getattr(user_row, "K_Departamento", None),
             "D_Departamento": getattr(user_row, "D_Departamento", None)
         }
-        print(user_data)
         return {"user": user_data}
     
     except Exception as e:
