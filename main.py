@@ -1,23 +1,30 @@
 # estral_modulo/main.py
 # -------------------- Encender entorno virtual --------------------
 # macOS: source venv/bin/activate
-# Windows PS: .\venv\Scripts\Activate.ps1
+# Windows PS: .\venv/Scripts/Activate.ps1
 # Levantar servidor: uvicorn main:app --reload
-
+from dotenv import load_dotenv
+load_dotenv() # <--- CRÍTICO: Carga la FERNET_KEY
 from fastapi import FastAPI, Request, Form, Cookie, Body, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from routers import auth_requisiciones, planeacion, fabricacion_mensual, fabricacion_mensual_partidas, quejas, embarques, cotizaciones
-from routers import asignacion_equipos
+from routers import asignacion_equipos, rh
 from utils.auth import crear_access_token, verificar_access_token
+import pyotp
 from services.db_service import (
     login_user,
     obtener_ordenes_para_autorizar,
     cancelar_orden_compra,
     obtener_motivos_cancelacion,
     autorizar_orden,
-    ejecutar_consulta_sql
+    ejecutar_consulta_sql,
+    # <--- NUEVOS IMPORTS SEGUROS
+    obtener_datos_completos_usuario, # Ahora devuelve el secreto descifrado y B_Activo
+    actualizar_mfa_secret_seguro, # Guarda el secreto CIFRADO
+    generar_mfa_secret, # Genera el secreto (pyotp)
+    generar_qr_uri # Genera el QR
 )
 from datetime import datetime
 from calendar import month_name
@@ -37,6 +44,7 @@ app.include_router(quejas.router, prefix="/quejas", tags=["Quejas"])
 app.include_router(embarques.router)
 app.include_router(cotizaciones.router, prefix="/cotizaciones", tags=["Cotizaciones"])
 app.include_router(asignacion_equipos.router, prefix="/asignacion_equipos", tags=["Asignación de Equipos"])
+app.include_router(rh.router, prefix="/rh", tags=["Recursos Humanos"])
 
 
 # -------------------- LOGIN --------------------
@@ -45,22 +53,165 @@ def get_login(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 
+# -------------------- LOGIN --------------------
 @app.post("/login", response_class=HTMLResponse)
 def post_login(request: Request, login: str = Form(...), contrasenia: str = Form(...)):
     resultado = login_user(login, contrasenia)
+
     if "user" in resultado:
         user = resultado["user"]
-        token_data = {"sub": login, "K_Empleado": user["K_Empleado"], "D_Empleado": user["D_Empleado"]}
+
+        # Revisamos MFA usando la función segura
+        # 🚨 CAMBIO CRÍTICO: Usamos obtener_datos_completos_usuario para centralizar la carga.
+        user_data_mfa = obtener_datos_completos_usuario(login)
+        mfa_enabled = user_data_mfa.get("mfa_enabled")
+
+        if mfa_enabled:
+            response = RedirectResponse(url=f"/verificar_mfa?login={login}", status_code=303)
+            response.set_cookie("pending_login", login)
+            return response
+
+        # Login normal
+        token_data = {
+            "sub": login,
+            "K_Empleado": user["K_Empleado"],
+            "D_Empleado": user["D_Empleado"],
+            "K_Area": user["K_Area"]
+        }
         token = crear_access_token(token_data)
-        response = RedirectResponse(url="/dashboard", status_code=303)
+
+        if user["K_Area"] == 200:
+            response = RedirectResponse(url="/rh", status_code=303)
+        else:
+            response = RedirectResponse(url="/dashboard", status_code=303)
+
         response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
         return response
+
     return templates.TemplateResponse(
         "login.html",
         {"request": request, "error": resultado.get("error", "Usuario o contraseña incorrectos")}
     )
 
+@app.get("/verificar_mfa", response_class=HTMLResponse)
+def get_verificar_mfa(request: Request, login: str = Query(...)):
+    """Muestra la página donde el usuario ingresa el código TOTP."""
+    return templates.TemplateResponse("verificar_mfa.html", {"request": request, "login": login})
 
+@app.post("/verificar_mfa", response_class=HTMLResponse)
+def post_verificar_mfa(request: Request, login: str = Form(...), codigo: str = Form(...)):
+    # 🚨 CAMBIOS CRÍTICOS: Eliminamos imports internos y la consulta SQL directa.
+    
+    # Limpiamos posibles espacios
+    login = login.strip()
+    codigo = codigo.strip()
+    print("DEBUG login MFA:", repr(login))
+    print("DEBUG código RECIBIDO:", repr(codigo))
+
+    # 1. Traemos los datos completos del usuario (incluye el secreto MFA ya DESCIFRADO)
+    user_data = obtener_datos_completos_usuario(login) # <--- USO DE FUNCIÓN SEGURA
+    mfa_secret = user_data.get("mfa_secret") if user_data else None
+    
+    # El mfa_secret ya viene DESCIFRADO desde db_service
+    print("DEBUG SECRETO DESCIFRADO (desde DB Service):", mfa_secret) 
+
+    if not mfa_secret:
+        return templates.TemplateResponse(
+            "verificar_mfa.html",
+            {"request": request, "error": "**Usuario sin MFA o secreto no encontrado**", "login": login}
+        )
+
+    # 2. Verificamos el código TOTP
+    totp = pyotp.TOTP(mfa_secret)
+    
+    expected_code = totp.now() 
+    print(f"DEBUG CÓDIGO ESPERADO (Servidor): {expected_code}")
+
+    # Verificamos con ventana de tolerancia (valid_window=1)
+    if totp.verify(codigo, valid_window=1):
+        # 3. Si el código es válido, usamos user_data para el resto de la info
+        user_info = user_data 
+        print("DEBUG user_info después MFA:", user_info)
+
+        if not user_info or not user_info.get("K_Empleado"):
+            return templates.TemplateResponse(
+                "verificar_mfa.html",
+                {"request": request, "error": "**Error al cargar datos de empleado. Usuario no encontrado.**", "login": login}
+            )
+
+        # 4. Generamos el token de acceso
+        token_data = {
+            "sub": login,
+            "K_Empleado": user_info["K_Empleado"],
+            "D_Empleado": user_info["D_Empleado"],
+            "K_Area": user_info["K_Area"]
+        }
+        token = crear_access_token(token_data)
+
+        # 5. Redirección final
+        if user_info["K_Area"] == 20:
+            response = RedirectResponse(url="/rh", status_code=303)
+        else:
+            response = RedirectResponse(url="/dashboard", status_code=303)
+
+        response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
+        return response
+    else:
+        # Código inválido
+        return templates.TemplateResponse(
+            "verificar_mfa.html",
+            {"request": request, "error": "**Código inválido**", "login": login}
+        )
+
+
+
+# main.py @app.get("/activar_mfa") - MODIFICADO
+@app.get("/activar_mfa", response_class=HTMLResponse)
+def activar_mfa(request: Request, login: str = Query(...)):
+    """Genera el secreto y el QR para vincular con Google Authenticator."""
+    
+    # Generamos el secreto único
+    secret = generar_mfa_secret()
+    uri, qr_b64 = generar_qr_uri(login, secret)
+    
+
+    return templates.TemplateResponse("activar_mfa.html", {
+        "request": request,
+        "login": login,
+        "qr_b64": qr_b64,
+        "secret_temporal": secret, # 👈 Asegúrate de pasar el secreto TEMPORAL al template
+        "uri": uri
+    })
+
+
+# main.py (Añadir después de /activar_mfa)
+# -------------------- CONFIRMACIÓN MFA --------------------
+@app.post("/confirmar_mfa", response_class=HTMLResponse)
+def post_confirmar_mfa(request: Request, login: str = Form(...), secret: str = Form(...), codigo: str = Form(...)):
+    """Verifica el código MFA y guarda el secreto en la DB si es válido."""
+    
+    # 1. Verificamos el código TOTP usando el secreto TEMPORAL (el que vino del formulario)
+    totp = pyotp.TOTP(secret.strip())
+    
+    # 2. El código es válido. Ahora sí, lo guardamos permanentemente.
+    if totp.verify(codigo.strip(), valid_window=1):
+        # 🚨 LA LÍNEA CRÍTICA: Guardar solo después de la verificación
+        actualizar_mfa_secret_seguro(login.strip(), secret.strip())
+        
+        # Opcional: Redireccionar a la página de login con mensaje de éxito o al dashboard
+        response = RedirectResponse(url="/", status_code=303)
+        # Limpiar cualquier cookie temporal si usaste una.
+        # Por ahora, simplemente redirigimos.
+        return response
+    else:
+        # Código inválido
+        return templates.TemplateResponse(
+            "activar_mfa.html",
+            {"request": request, "error": "**Código de verificación inválido. Intenta de nuevo.**", "login": login, "secret_temporal": secret}
+        )
+
+# -------------------- DASHBOARD --------------------
+# ... (El resto de las rutas no relacionadas con MFA permanecen igual) ...
 # -------------------- DASHBOARD --------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, access_token: str = Cookie(None)):
@@ -194,8 +345,8 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
         mes = datetime.now().strftime("%Y-%m")
     fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
-    # Totales por moneda
-    query_totales = f"""
+    # Totales por moneda (SEGURO: Usa ? y params)
+    query_totales = """
     SELECT 
         SUM(CASE WHEN K_Tipo_Moneda = 1 THEN precio_total_orden_compra ELSE 0 END) AS total_pesos,
         SUM(CASE WHEN K_Tipo_Moneda = 2 THEN precio_total_orden_compra ELSE 0 END) AS total_dolares,
@@ -208,56 +359,72 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
             END
         ) AS total_general_en_pesos
     FROM Ordenes_compra
-    WHERE F_Generacion >= '{fecha_inicio}' AND F_Generacion < '{fecha_fin}'
-      AND B_Cerrada = 1 AND (B_Cancelada IS NULL OR B_Cancelada = 0);
+    WHERE F_Generacion >= ? AND F_Generacion < ? 
+        AND B_Cerrada = 1 AND (B_Cancelada IS NULL OR B_Cancelada = 0);
     """
-    totales = ejecutar_consulta_sql(query_totales, fetchone=True)
+    totales = ejecutar_consulta_sql(
+        query_totales, 
+        params=(fecha_inicio, fecha_fin), 
+        fetchone=True
+    )
 
-    # Resumen
+    # Resumen (SEGURO: Usa ? y params para el Stored Procedure)
     anio, mes_num = map(int, mes.split("-"))
-    resumen_sp = ejecutar_consulta_sql(f"EXEC SK_Reporte_Ordenes_Compra_Resumen @Anio={anio}, @Mes={mes_num}", fetchone=True)
+    resumen_sp = ejecutar_consulta_sql(
+        "EXEC SK_Reporte_Ordenes_Compra_Resumen @Anio=?, @Mes=?", 
+        params=(anio, mes_num), 
+        fetchone=True
+    )
     resumen = {
-        "Total_Ordenes": resumen_sp["Todas"],
-        "Cerradas": resumen_sp["Autorizadas"],
-        "Sin_Autorizar": resumen_sp["SinAutorizar"],
-        "Canceladas": resumen_sp["Canceladas"],
-        "Recepcionadas_Completas": resumen_sp["Completas"],
-        "Recepcionadas_Parciales": resumen_sp["Parciales"],
-        "Sin_Recepcion": resumen_sp["SinRecepcion"]
+        "Total_Ordenes": resumen_sp.get("Todas", 0),
+        "Cerradas": resumen_sp.get("Autorizadas", 0),
+        "Sin_Autorizar": resumen_sp.get("SinAutorizar", 0),
+        "Canceladas": resumen_sp.get("Canceladas", 0),
+        "Recepcionadas_Completas": resumen_sp.get("Completas", 0),
+        "Recepcionadas_Parciales": resumen_sp.get("Parciales", 0),
+        "Sin_Recepcion": resumen_sp.get("SinRecepcion", 0)
     }
 
-    # Top proveedores
-    query_top_prov = f"""
+    # Top proveedores (SEGURO: Usa ? y params)
+    query_top_prov = """
     SELECT P.D_Proveedor,
-           SUM(O.precio_total_orden_compra *
-               CASE O.K_Tipo_Moneda
-                   WHEN 1 THEN 1
-                   WHEN 2 THEN 20
-                   WHEN 3 THEN 24
-               END
-           ) AS Monto_Total,
-           COUNT(O.K_Orden_Compra) AS Cantidad_Compras
+            SUM(O.precio_total_orden_compra *
+                CASE O.K_Tipo_Moneda
+                    WHEN 1 THEN 1
+                    WHEN 2 THEN 20
+                    WHEN 3 THEN 24
+                END
+            ) AS Monto_Total,
+            COUNT(O.K_Orden_Compra) AS Cantidad_Compras
     FROM Ordenes_compra O
     INNER JOIN Proveedores P ON O.K_Proveedor = P.K_Proveedor
-    WHERE O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
-      AND O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
+    WHERE O.F_Generacion >= ? AND O.F_Generacion < ?
+        AND O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
     GROUP BY P.D_Proveedor
     ORDER BY Monto_Total DESC;
     """
-    top_proveedores = ejecutar_consulta_sql(query_top_prov, fetchall=True)
-    top_proveedores_json = [{"Nombre_Proveedor":p["D_Proveedor"], "Monto_Total":float(p["Monto_Total"]), "Cantidad_Compras":int(p["Cantidad_Compras"])} for p in top_proveedores]
+    top_proveedores = ejecutar_consulta_sql(
+        query_top_prov, 
+        params=(fecha_inicio, fecha_fin), 
+        fetchall=True
+    )
+    
+    top_proveedores_json = [{
+        "Nombre_Proveedor":p["D_Proveedor"], 
+        "Monto_Total":float(p["Monto_Total"]), 
+        "Cantidad_Compras":int(p["Cantidad_Compras"])
+    } for p in top_proveedores]
 
     return {
         "resumen": resumen,
         "totales_monedas": {
-            "pesos": float(totales["total_pesos"]),
-            "dolares": float(totales["total_dolares"]),
-            "euros": float(totales["total_euros"]),
-            "total_general": float(totales["total_general_en_pesos"])
+            "pesos": float(totales.get("total_pesos", 0)),
+            "dolares": float(totales.get("total_dolares", 0)),
+            "euros": float(totales.get("total_euros", 0)),
+            "total_general": float(totales.get("total_general_en_pesos", 0))
         },
         "top_proveedores": top_proveedores_json
     }
-
 
 # -------------------- FRECUENCIA --------------------
 @app.get("/valance/frecuencia")
@@ -273,18 +440,27 @@ def valance_frecuencia(mes: str = Query("", description="Mes en formato YYYY-MM"
         mes = datetime.now().strftime("%Y-%m")
     fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
-    query_frecuencia = f"""
+    # Query corregido (SEGURO: Usa ? y params)
+    query_frecuencia = """
     SELECT TOP 10 P.D_Proveedor, COUNT(O.K_Orden_Compra) AS Cantidad_Compras, SUM(O.precio_total_orden_compra) AS Monto_Total
     FROM Ordenes_compra O
     INNER JOIN Proveedores P ON O.K_Proveedor = P.K_Proveedor
-    WHERE O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
-      AND O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
+    WHERE O.F_Generacion >= ? AND O.F_Generacion < ?
+        AND O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
     GROUP BY P.D_Proveedor
     ORDER BY Cantidad_Compras DESC;
     """
-    top_proveedores = ejecutar_consulta_sql(query_frecuencia, fetchall=True)
-    return {"top_proveedores":[{"Nombre_Proveedor":p["D_Proveedor"],"Cantidad_Compras":int(p["Cantidad_Compras"]),"Monto_Total":float(p["Monto_Total"])} for p in top_proveedores]}
-
+    top_proveedores = ejecutar_consulta_sql(
+        query_frecuencia, 
+        params=(fecha_inicio, fecha_fin), 
+        fetchall=True
+    )
+    
+    return {"top_proveedores":[{
+        "Nombre_Proveedor":p["D_Proveedor"],
+        "Cantidad_Compras":int(p["Cantidad_Compras"]),
+        "Monto_Total":float(p["Monto_Total"])
+    } for p in top_proveedores]}
 
 # -------------------- DETALLE PROVEEDOR --------------------
 @app.get("/valance/detalle_proveedor")
@@ -300,17 +476,24 @@ def detalle_proveedor(proveedor: str = Query(...), mes: str = Query("", descript
         mes = datetime.now().strftime("%Y-%m")
     fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
-    query = f"""
+    # Query corregido (SEGURO: Usa ? para el proveedor y las fechas)
+    query = """
     SELECT O.K_Orden_Compra, O.F_Generacion, O.precio_total_orden_compra AS Monto,
-           CASE WHEN O.B_Cerrada = 1 THEN 'Cerrada' ELSE 'Sin Autorizar' END AS Estado
+            CASE WHEN O.B_Cerrada = 1 THEN 'Cerrada' ELSE 'Sin Autorizar' END AS Estado
     FROM Ordenes_compra O
     INNER JOIN Proveedores P ON O.K_Proveedor = P.K_Proveedor
-    WHERE P.D_Proveedor = '{proveedor}'
-      AND O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
-      AND O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
+    WHERE P.D_Proveedor = ?
+        AND O.F_Generacion >= ? AND O.F_Generacion < ?
+        AND O.B_Cerrada = 1 AND (O.B_Cancelada IS NULL OR O.B_Cancelada = 0)
     ORDER BY O.F_Generacion ASC;
     """
-    detalle = ejecutar_consulta_sql(query, fetchall=True)
+    # Pasamos los 3 parámetros en la tupla, en el orden correcto
+    detalle = ejecutar_consulta_sql(
+        query, 
+        params=(proveedor, fecha_inicio, fecha_fin), 
+        fetchall=True
+    )
+    
     return [
         {
             "K_Orden_Compra": d["K_Orden_Compra"],
@@ -334,7 +517,8 @@ def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), 
         mes = datetime.now().strftime("%Y-%m")
     fecha_inicio, fecha_fin = calcular_rango_mes(mes)
 
-    query = f"""
+    # Query corregido (SEGURO: Usa ? y params)
+    query = """
     SELECT T.D_Familia_Articulo AS Familia, SUM(T.Total) AS Total
     FROM (
         SELECT O.K_Orden_Compra, SUM(D.Total) AS Total, T.D_Familia_Articulo
@@ -342,15 +526,19 @@ def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), 
         JOIN Detalle_Ordenes_Compra D ON O.K_Orden_Compra = D.K_Orden_Compra
         JOIN VW_Articulos_Todos T ON D.SKU = T.SKU
         WHERE ISNULL(O.B_Cancelada,0)=0 AND ISNULL(O.B_Completa,0)=0
-          AND O.F_Generacion >= '{fecha_inicio}' AND O.F_Generacion < '{fecha_fin}'
+          AND O.F_Generacion >= ? AND O.F_Generacion < ?
         GROUP BY O.K_Orden_Compra, T.D_Familia_Articulo
     ) T
     GROUP BY T.D_Familia_Articulo
     ORDER BY T.D_Familia_Articulo;
     """
-    data = ejecutar_consulta_sql(query, fetchall=True)
+    data = ejecutar_consulta_sql(
+        query, 
+        params=(fecha_inicio, fecha_fin), 
+        fetchall=True
+    )
+    
     return [{"Familia": d["Familia"].strip(), "Total": float(d["Total"])} for d in data]
-
 
 # -------------------- LOGOUT --------------------
 @app.get("/logout")

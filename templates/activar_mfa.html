@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔐 Activar Verificación en Dos Pasos</title>
+  <style>
+    /* Variables y Reset */
+    :root {
+      --primary-color: #0078d4; /* Azul de Microsoft/Windows */
+      --secondary-color: #f6f8fa;
+      --text-color: #333;
+      --gray-light: #f0f0f0;
+      --gray-dark: #666;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--secondary-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      line-height: 1.6;
+    }
+    .card {
+      background: #fff;
+      padding: 2.5rem;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+    }
+    h2 { 
+      color: var(--primary-color); 
+      margin-bottom: 0.5rem; 
+      font-weight: 600;
+    }
+    .subtitle {
+      color: var(--gray-dark);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+    }
+    .qr-container {
+      padding: 1rem;
+      border: 1px solid var(--gray-light);
+      border-radius: 8px;
+      display: inline-block;
+      margin: 1rem 0;
+    }
+    img { 
+      display: block;
+      width: 180px; 
+      height: 180px;
+    }
+    .manual-code {
+      background: var(--gray-light);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    .manual-code strong { color: var(--text-color); display: block; margin-bottom: 0.5rem; }
+    .manual-code code {
+      display: block;
+      background: #fff;
+      padding: 0.5rem;
+      border-radius: 4px;
+      word-break: break-all;
+      font-weight: bold;
+    }
+    input[type="text"] {
+        width: calc(100% - 1.2rem);
+        padding: 0.8rem 0.6rem;
+        font-size: 1.1rem;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        text-align: center;
+        margin-bottom: 1rem;
+        box-sizing: border-box;
+    }
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.7rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 1rem;
+    }
+    button:hover { background-color: #005fa3; }
+    button:active { transform: scale(0.99); }
+    .error {
+        color: #d93025;
+        margin-top: 1rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="{{ url_for('static', path='img/estral_loguito.png') }}" alt="Logo" style="width: 50px; margin: 0 auto 1.5rem;">
+    <h2>Paso 1: Configurar MFA</h2>
+    <p class="subtitle">Escanea el código QR con tu aplicación **Authenticator**.</p>
+    
+    <div class="qr-container">
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="Código QR para MFA">
+    </div>
+    
+    <div class="manual-code">
+        <strong>O ingresa manualmente el secreto:</strong>
+        <code>{{ secret_temporal }}</code>
+        <p style="margin: 0; margin-top: 0.5rem; color: var(--gray-dark);">Cuenta: **{{ login }}**</p>
+    </div>
+
+    <form method="POST" action="/confirmar_mfa">
+        <input type="hidden" name="login" value="{{ login }}">
+        <input type="hidden" name="secret" value="{{ secret_temporal }}"> 
+        
+        <p style="margin-top: 1.5rem; font-weight: 600;">Paso 2: Confirma el código</p>
+        <input type="text" name="codigo" maxlength="6" placeholder="Ingresa el código de 6 dígitos" required>
+        
+        <button type="submit">Activar y Continuar</button>
+    </form>
+
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+
+  </div>
+</body>
+</html>

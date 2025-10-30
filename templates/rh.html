@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
+    <title>Dashboard RH - Estral (DIRECCIÓN)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --estral-azul: #0052cc;
+            --estral-naranja: #ff6600;
+            --estral-gris-claro: #f4f6f9; /* Color de fondo más suave */
+        }
+        .bg-estral-azul { background-color: var(--estral-azul); }
+        .bg-estral-naranja { background-color: var(--estral-naranja); }
+        .text-estral-azul { color: var(--estral-azul); }
+        .text-estral-naranja { color: var(--estral-naranja); }
+        .border-estral-naranja-500 { border-color: #ff6600; }
+        .card-shadow { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .content-card {
+            @apply bg-white p-6 rounded-2xl card-shadow; /* Borde más redondeado y sombra más pronunciada */
+        }
+        .kpi-card {
+            @apply bg-white p-5 rounded-xl shadow-lg border-l-4 border-estral-azul hover:scale-[1.02] transition duration-300;
+        }
+    </style>
+</head>
+<body class="bg-estral-gris-claro font-sans antialiased" x-data="{ activeTab: 'empleados', searchTerm: '' }">
+
+    <header class="bg-estral-azul text-white p-6 flex justify-between items-center shadow-2xl sticky top-0 z-10 rounded-b-2xl">
+        <div>
+            <h1 class="text-4xl font-extrabold tracking-wider">📊 ESTRAL | Dashboard RH (Dirección)</h1>
+            <p class="mt-1 text-gray-300">Visión estratégica de RRHH, estructura y finanzas.</p>
+        </div>
+        <div class="flex items-center space-x-8">
+            <div class="text-center bg-white/20 p-2 rounded-lg">
+                <p class="text-lg font-bold">Total Empleados</p>
+                <p class="text-3xl font-extrabold">{{ empleados|length }}</p>
+            </div>
+            <div class="text-center bg-white/20 p-2 rounded-lg">
+                <p class="text-lg font-bold">Ubicaciones</p>
+                <p class="text-3xl font-extrabold">{{ oficinas|length }}</p>
+            </div>
+            <div class="text-center flex items-center space-x-3 bg-white/20 p-2 rounded-lg">
+                <i class="fas fa-user-circle text-4xl text-estral-naranja"></i>
+                <span class="text-xl font-light">Bienvenido, <strong class="font-medium">{{ usuario }}</strong></span>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex min-h-screen">
+
+        <aside class="w-64 bg-white shadow-2xl p-6 border-r border-gray-200 sticky top-20 h-screen overflow-y-auto">
+            <h2 class="text-estral-naranja font-extrabold mb-8 text-xl border-b pb-2">Menú Estratégico</h2>
+            <ul class="space-y-3">
+                <template x-for="tab in [
+                    {id:'empleados', label:'Gestión de Empleados', icon:'fas fa-users'},
+                    {id:'historial', label:'Historial de Personal', icon:'fas fa-chart-line'},
+                    {id:'viaticos', label:'Reporte de Viáticos', icon:'fas fa-plane-departure'},
+                    {id:'autorizaciones', label:'Autorizaciones', icon:'fas fa-check-square'},
+                    {id:'areas', label:'Áreas & Estructura', icon:'fas fa-building'},
+                    {id:'oficinas', label:'Oficinas', icon:'fas fa-map-marker-alt'}
+                ]" :key="tab.id">
+                    <li>
+                        <button @click="activeTab=tab.id" 
+                                :class="{'bg-estral-naranja text-white font-bold shadow-xl': activeTab==tab.id, 'text-gray-700': activeTab!=tab.id}"
+                                class="w-full text-left p-3 rounded-xl transition duration-200 ease-in-out flex items-center space-x-3 hover:bg-estral-azul hover:text-white group">
+                            <i :class="tab.icon + ' w-5 ' + (activeTab==tab.id ? 'text-white':'text-estral-naranja group-hover:text-white')"></i>
+                            <span x-text="tab.label"></span>
+                        </button>
+                    </li>
+                </template>
+                <li class="pt-4 border-t border-gray-200 mt-4">
+                    <a href="/logout" class="block p-3 rounded-xl text-red-600 transition duration-200 ease-in-out flex items-center space-x-3 hover:bg-red-600 hover:text-white font-semibold">
+                        <i class="fas fa-sign-out-alt w-5"></i>
+                        <span>Cerrar sesión</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <main class="flex-1 p-8 space-y-10">
+
+            <section x-show="activeTab=='empleados'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
+                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
+                    <i class="fas fa-users text-estral-naranja"></i>
+                    <span>Gestión de Empleados</span>
+                </h2>
+
+                <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-6">
+                    <div class="kpi-card border-l-4 border-green-500">
+                        <p class="text-sm font-medium text-gray-500">Total de Empleados</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ empleados|length }}</p>
+                        <p class="text-xs text-green-600 font-semibold mt-1"><i class="fas fa-arrow-up"></i> +2% vs. Mes Ant.</p>
+                    </div>
+                    <div class="kpi-card border-l-4 border-purple-500">
+                        <p class="text-sm font-medium text-gray-500">Antigüedad Promedio</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">3.5 Años</p>
+                        <p class="text-xs text-purple-600 font-semibold mt-1">Dato clave para retención.</p>
+                    </div>
+                    <div class="kpi-card border-l-4 border-red-500">
+                        <p class="text-sm font-medium text-gray-500">Rotación Mensual (Estimada)</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">1.2%</p>
+                        <p class="text-xs text-red-600 font-semibold mt-1"><i class="fas fa-arrow-up"></i> Meta: 1.0%</p>
+                    </div>
+                    <div class="kpi-card border-l-4 border-yellow-500">
+                        <p class="text-sm font-medium text-gray-500">Vacantes Abiertas</p>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">15</p>
+                        <p class="text-xs text-yellow-600 font-semibold mt-1">En proceso de contratación.</p>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h3 class="text-2xl font-bold text-estral-azul mb-4 border-b pb-2">Directorio Activo</h3>
+
+                    <div class="mb-4">
+                        <input x-model="searchTerm" type="text" placeholder="🔍 Buscar por Nombre, Área o Puesto..."
+                               class="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg shadow-inner focus:ring-estral-naranja focus:border-estral-naranja transition duration-150">
+                    </div>
+
+                    <div class="overflow-x-auto border border-gray-200 rounded-xl">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-estral-azul text-white">
+                                <tr>
+                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider rounded-tl-xl">#Empleado</th>
+                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Nombre</th>
+                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Área</th>
+                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Puesto</th>
+                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Oficina</th>
+                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider rounded-tr-xl">Teléfono</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for emp in empleados %}
+                                <tr x-show="
+                                    !searchTerm || 
+                                    '{{ emp.D_Empleado | lower }}'.includes(searchTerm.toLowerCase()) ||
+                                    '{{ emp.D_Area | lower }}'.includes(searchTerm.toLowerCase()) ||
+                                    '{{ emp.D_Puesto | lower }}'.includes(searchTerm.toLowerCase())
+                                    "
+                                    class="hover:bg-blue-50 even:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
+                                    title="Click para ver detalle (Funcionalidad pendiente)">
+                                    <td class="py-3 px-6 whitespace-nowrap text-sm font-medium text-estral-azul">{{ emp.K_Empleado }}</td>
+                                    <td class="py-3 px-6 whitespace-nowrap text-sm font-semibold text-gray-900">{{ emp.D_Empleado }}</td>
+                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.D_Area }}</td>
+                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.D_Puesto }}</td>
+                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.D_Oficina }}</td>
+                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.Telefono or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section x-show="activeTab=='historial'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
+                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
+                    <i class="fas fa-chart-line text-estral-naranja"></i>
+                    <span>Historial de Personal y Rotación</span>
+                </h2>
+                <p class="text-gray-600">Visualización de movimientos de altas y bajas en la organización para monitoreo de la rotación.</p>
+
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <div class="content-card">
+                        <h3 class="text-2xl font-bold text-estral-azul mb-4 border-b pb-2">Altas y Bajas Mensuales (Últimos 6 Meses)</h3>
+                        <canvas id="chartAltasBajas"></canvas>
+                    </div>
+
+                    <div class="content-card">
+                        <h3 class="text-2xl font-bold text-estral-naranja mb-4 border-b pb-2">Bajas Clave Recientes</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Fecha</th>
+                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Empleado</th>
+                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Área</th>
+                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Motivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr class="hover:bg-red-50">
+                                        <td class="py-3 px-4 text-sm text-gray-700">25/10/2025</td>
+                                        <td class="py-3 px-4 text-sm font-medium text-gray-900">Juan Pérez</td>
+                                        <td class="py-3 px-4 text-sm text-gray-700">Ventas</td>
+                                        <td class="py-3 px-4 text-sm text-red-600 font-semibold">Renuncia Voluntaria</td>
+                                    </tr>
+                                    <tr class="hover:bg-red-50">
+                                        <td class="py-3 px-4 text-sm text-gray-700">10/10/2025</td>
+                                        <td class="py-3 px-4 text-sm font-medium text-gray-900">Ana Gómez</td>
+                                        <td class="py-3 px-4 text-sm text-gray-700">Marketing</td>
+                                        <td class="py-3 px-4 text-sm text-red-600 font-semibold">Término de Contrato</td>
+                                    </tr>
+                                    <tr class="hover:bg-red-50">
+                                        <td class="py-3 px-4 text-sm text-gray-700">01/09/2025</td>
+                                        <td class="py-3 px-4 text-sm font-medium text-gray-900">Carlos Díaz</td>
+                                        <td class="py-3 px-4 text-sm text-gray-700">TI</td>
+                                        <td class="py-3 px-4 text-sm text-red-600 font-semibold">Reestructuración</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section x-show="activeTab=='viaticos'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
+                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
+                    <i class="fas fa-plane-departure text-estral-naranja"></i>
+                    <span>Reporte y Gestión Estratégica de Viáticos</span>
+                </h2>
+
+                <div class="grid md:grid-cols-3 gap-6">
+
+                    <div class="kpi-card border-l-4 border-estral-naranja-500 text-center">
+                        <i class="fas fa-hourglass-half text-4xl text-estral-naranja mb-2"></i>
+                        <h3 class="text-xl font-bold text-estral-naranja">Pendientes Aprobación</h3>
+                        <p class="text-gray-900 mt-1 text-3xl font-extrabold">34</p>
+                        <p class="text-sm text-gray-500">Viáticos por validar</p>
+                    </div>
+
+                    <div class="kpi-card border-l-4 border-estral-azul text-center">
+                        <i class="fas fa-check-circle text-4xl text-estral-azul mb-2"></i>
+                        <h3 class="text-xl font-bold text-estral-azul">Aprobados (Mes)</h3>
+                        <p class="text-gray-900 mt-1 text-3xl font-extrabold text-green-600">$150,000</p>
+                        <p class="text-sm text-gray-500">Total en el mes actual</p>
+                    </div>
+
+                    <div class="kpi-card border-l-4 border-pink-500 text-center">
+                        <i class="fas fa-exclamation-triangle text-4xl text-pink-600 mb-2"></i>
+                        <h3 class="text-xl font-bold text-pink-600">Monto Excedido</h3>
+                        <p class="text-gray-900 mt-1 text-3xl font-extrabold text-red-600">$12,500</p>
+                        <p class="text-sm text-gray-500">Exceso del presupuesto</p>
+                    </div>
+
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <div class="content-card">
+                        <h3 class="text-2xl font-bold text-estral-azul mb-4 border-b pb-2">Viáticos Aprobados por Área</h3>
+                        <canvas id="chartViaticosArea"></canvas>
+                    </div>
+
+                    <div class="content-card">
+                        <h3 class="text-2xl font-bold text-estral-naranja mb-4 border-b pb-2">Distribución por Concepto</h3>
+                        <canvas id="chartViaticosConcepto"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section x-show="activeTab=='autorizaciones'" x-transition.opacity x-transition.duration.500ms class="space-y-8 content-card">
+                <h2 class="text-4xl font-extrabold text-estral-azul mb-4 flex items-center space-x-4">
+                    <i class="fas fa-check-square text-estral-naranja"></i>
+                    <span>Gestión de Autorizaciones y Flujo de Trabajo</span>
+                </h2>
+                <p class="text-gray-600 mb-6">Acciones estratégicas pendientes de su aprobación.</p>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-estral-naranja hover:shadow-2xl hover:scale-105 transition duration-300">
+                        <h3 class="text-2xl font-bold text-estral-naranja flex items-center space-x-3">
+                            <i class="fas fa-money-check-alt"></i>
+                            <span>Gastos a Autorizar</span>
+                        </h3>
+                        <p class="text-gray-700 mt-3 text-3xl font-extrabold">5</p>
+                        <p class="text-sm text-gray-500">Solicitudes pendientes</p>
+                        <button class="mt-4 bg-estral-naranja text-white py-2 px-4 rounded-lg font-semibold hover:bg-orange-700 transition duration-200 w-full">Revisar Gastos</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-estral-azul hover:shadow-2xl hover:scale-105 transition duration-300">
+                        <h3 class="text-2xl font-bold text-estral-azul flex items-center space-x-3">
+                            <i class="fas fa-sun"></i>
+                            <span>Vacaciones Pendientes</span>
+                        </h3>
+                        <p class="text-gray-700 mt-3 text-3xl font-extrabold">12</p>
+                        <p class="text-sm text-gray-500">Empleados en espera</p>
+                        <button class="mt-4 bg-estral-azul text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 w-full">Gestionar Vacaciones</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-green-500 hover:shadow-2xl hover:scale-105 transition duration-300">
+                        <h3 class="text-2xl font-bold text-green-600 flex items-center space-x-3">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Nuevas Contrataciones</span>
+                        </h3>
+                        <p class="text-gray-700 mt-3 text-3xl font-extrabold">3</p>
+                        <p class="text-sm text-gray-500">Aprobación de Contrato</p>
+                        <button class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition duration-200 w-full">Revisar Altas</button>
+                    </div>
+                </div>
+            </section>
+
+
+            <section x-show="activeTab=='areas'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
+                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
+                    <i class="fas fa-building text-estral-naranja"></i>
+                    <span>Estructura Organizacional: Áreas y Departamentos</span>
+                </h2>
+                <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
+                    {% for area in areas %}
+                    <div class="content-card border-t-4 border-estral-naranja hover:shadow-2xl hover:scale-[1.03] transition duration-300">
+                        <h3 class="text-xl font-bold text-estral-azul mb-3 flex items-center space-x-2">
+                            <i class="fas fa-folder-open text-lg text-estral-naranja"></i>
+                            <span>{{ area.D_Area }}</span>
+                        </h3>
+                        <p class="text-sm text-gray-500 mb-3">Departamentos asociados ({{ area.departamentos|length }}):</p>
+                        <ul class="mt-2 list-none space-y-1 pl-2">
+                            {% for dep in area.departamentos %}
+                            <li class="text-gray-700 flex items-center space-x-2 text-sm">
+                                <i class="fas fa-caret-right text-estral-naranja text-xs"></i>
+                                <span>{{ dep.D_Departamento }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section x-show="activeTab=='oficinas'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
+                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
+                    <i class="fas fa-map-marker-alt text-estral-naranja"></i>
+                    <span>Ubicaciones de Oficinas y Contacto</span>
+                </h2>
+                <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-8">
+                    {% for oficina in oficinas %}
+                    <div class="content-card border-l-4 border-estral-azul hover:shadow-2xl hover:scale-[1.03] transition duration-300">
+                        <h3 class="text-xl font-bold text-estral-naranja mb-2">{{ oficina.D_Oficina }}</h3>
+                        <p class="text-gray-600 mt-3 flex items-start space-x-2">
+                            <i class="fas fa-location-arrow text-estral-azul pt-1"></i>
+                            <span class="text-sm">{{ oficina.Calle }} {{ oficina.Numero_Externo or '' }}, C.P. {{ oficina.Codigo_Postal }}</span>
+                        </p>
+                        <p class="text-gray-600 mt-2 flex items-center space-x-2">
+                            <i class="fas fa-phone-alt text-estral-azul"></i>
+                            <span class="text-sm">Tel: <strong class="font-medium">{{ oficina.Telefono or 'No disponible' }}</strong></span>
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // Datos simulados (deberían venir de tu backend)
+        const viaticosAreaLabels = ['Ventas', 'TI', 'RRHH', 'Marketing', 'Operaciones'];
+        const viaticosAreaData = [50000, 30000, 40000, 20000, 45000];
+        const viaticosConceptoLabels = ['Transporte', 'Alojamiento', 'Alimentos', 'Otros'];
+        const viaticosConceptoData = [75000, 40000, 30000, 5000];
+        const altasBajasLabels = ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
+        const altasData = [5, 8, 7, 10, 6, 9];
+        const bajasData = [2, 4, 3, 5, 4, 2];
+
+        // Función para crear Gráfica de Barras (Viáticos por Área)
+        function createViaticosAreaChart() {
+            const ctxArea = document.getElementById('chartViaticosArea')?.getContext('2d');
+            if (ctxArea) {
+                new Chart(ctxArea, {
+                    type: 'bar',
+                    data: {
+                        labels: viaticosAreaLabels,
+                        datasets: [{
+                            label: 'Viáticos Aprobados ($)',
+                            data: viaticosAreaData,
+                            backgroundColor: ['#0052cc','#ff6600','#00cc99','#ffcc00', '#cc00cc'],
+                            borderRadius: 5,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false, position: 'top' }, title: { display: true, text: 'Gasto por Área' } },
+                        scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return '$' + value.toLocaleString(); } } } }
+                    }
+                });
+            }
+        }
+
+        // Función para crear Gráfica de Rosquilla (Viáticos por Concepto)
+        function createViaticosConceptoChart() {
+            const ctxConcepto = document.getElementById('chartViaticosConcepto')?.getContext('2d');
+            if (ctxConcepto) {
+                new Chart(ctxConcepto, {
+                    type: 'doughnut',
+                    data: {
+                        labels: viaticosConceptoLabels,
+                        datasets: [{
+                            label: 'Gasto por Concepto',
+                            data: viaticosConceptoData,
+                            backgroundColor: ['#0052cc', '#ff6600', '#00cc99', '#cc00cc'],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Distribución de Gasto' } }
+                    }
+                });
+            }
+        }
+
+        // Función para crear Gráfica de Líneas (Altas y Bajas)
+        function createAltasBajasChart() {
+            const ctxAltasBajas = document.getElementById('chartAltasBajas')?.getContext('2d');
+            if (ctxAltasBajas) {
+                new Chart(ctxAltasBajas, {
+                    type: 'line',
+                    data: {
+                        labels: altasBajasLabels,
+                        datasets: [
+                            {
+                                label: 'Altas (Contrataciones)',
+                                data: altasData,
+                                borderColor: '#0052cc',
+                                backgroundColor: 'rgba(0, 82, 204, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                            },
+                            {
+                                label: 'Bajas (Rotación)',
+                                data: bajasData,
+                                borderColor: '#ff6600',
+                                backgroundColor: 'rgba(255, 102, 0, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'top' }, title: { display: false } },
+                        scales: { y: { beginAtZero: true, suggestedMax: 12 } }
+                    }
+                });
+            }
+        }
+
+        // Inicializar gráficas cuando se active la pestaña correspondiente
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('body', () => ({
+                activeTab: 'empleados',
+                searchTerm: '',
+                init() {
+                    this.$watch('activeTab', (value) => {
+                        if (value === 'viaticos') {
+                            setTimeout(() => { // Pequeño delay para asegurar que el canvas está visible
+                                createViaticosAreaChart();
+                                createViaticosConceptoChart();
+                            }, 100);
+                        } else if (value === 'historial') {
+                            setTimeout(createAltasBajasChart, 100);
+                        }
+                    });
+                    // Cargar la gráfica inicial si la pestaña es 'viaticos' al cargar
+                    if (this.activeTab === 'viaticos') {
+                        setTimeout(() => {
+                            createViaticosAreaChart();
+                            createViaticosConceptoChart();
+                        }, 100);
+                    }
+                }
+            }));
+            // Inicializar las gráficas por si 'empleados' fuera la pestaña inicial
+            createViaticosAreaChart(); // Se llama una vez por si el usuario cambia rápido
+            createViaticosConceptoChart();
+            createAltasBajasChart();
+        });
+    </script>
+
+</body>
+</html>

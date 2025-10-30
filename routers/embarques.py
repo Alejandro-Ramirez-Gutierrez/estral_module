@@ -1,10 +1,8 @@
-# routers/embarques.py
-
 from fastapi import APIRouter, Request, Cookie, Query
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from utils.auth import verificar_access_token 
-from services.db_service import ejecutar_consulta_sql
+from services.db_service import ejecutar_consulta_sql # ¡ASUMO que esta función puede recibir parámetros!
 from datetime import datetime, date
 import calendar # Para obtener el nombre del mes
 
@@ -27,30 +25,33 @@ def validar_token_embarques(access_token: str):
         return payload
     return None
 
+# --- CONSULTAS SQL (CORREGIDAS Y PARAMETRIZADAS) ---
 
-# --- CONSULTAS SQL (adaptadas para MES y AÑO dinámicos) ---
-
-def get_query_embarques_diarios(mes: int, anio: int) -> str:
-    """Query 1: Embarques realizados por día y Kgs totales (Estral y CIMSA)."""
-    return f"""
+def get_query_embarques_diarios(mes: int, anio: int) -> tuple[str, tuple]:
+    """Query 1: Embarques realizados por día y Kgs totales (Estral y CIMSA).
+    
+    Retorna: (sql_query, parametros)
+    """
+    # Usaremos '?' o '%s' como placeholders. Asumo '?' ya que es común con pyodbc/ODBC.
+    sql_query = """
     -- EMBARQUES REALIZADOS POR DIA Y KGS TOTALES (REMISIONES ÚNICAS + PEDIDOS)
     SELECT 
         CONVERT(date, e.Fecha) AS DiaEmbarque,
         'ESTRAL' AS Planta,
         COUNT(DISTINCT e.Remision) AS Total_de_Viajes,
         (SELECT STRING_AGG(CAST(Remision AS VARCHAR(20)), ', ')
-          FROM (SELECT DISTINCT Remision 
-                FROM Embarques e2 
-                WHERE CONVERT(date, e2.Fecha) = CONVERT(date, e.Fecha)) AS R) AS Lista_Remisiones,
+         FROM (SELECT DISTINCT Remision 
+               FROM Embarques e2 
+               WHERE CONVERT(date, e2.Fecha) = CONVERT(date, e.Fecha)) AS R) AS Lista_Remisiones,
         COUNT(DISTINCT e.Pedido) AS Total_Pedidos,
         (SELECT STRING_AGG(CAST(Pedido AS VARCHAR(50)), ', ')
-          FROM (SELECT DISTINCT Pedido 
-                FROM Embarques e3 
-                WHERE CONVERT(date, e3.Fecha) = CONVERT(date, e.Fecha)) AS P) AS Lista_Pedidos,
+         FROM (SELECT DISTINCT Pedido 
+               FROM Embarques e3 
+               WHERE CONVERT(date, e3.Fecha) = CONVERT(date, e.Fecha)) AS P) AS Lista_Pedidos,
         ROUND(SUM(e.KgTotal), 2) AS Total_Kg_Dia
     FROM Embarques e
-    WHERE YEAR(e.Fecha) = {anio}
-      AND MONTH(e.Fecha) = {mes}
+    WHERE YEAR(e.Fecha) = ? -- Placeholder 1: anio
+      AND MONTH(e.Fecha) = ? -- Placeholder 2: mes
     GROUP BY CONVERT(date, e.Fecha)
 
     UNION ALL
@@ -60,25 +61,31 @@ def get_query_embarques_diarios(mes: int, anio: int) -> str:
         'CIMSA' AS Planta,
         COUNT(DISTINCT c.Remision) AS Total_de_Viajes,
         (SELECT STRING_AGG(CAST(Remision AS VARCHAR(20)), ', ')
-          FROM (SELECT DISTINCT Remision 
-                FROM CimsaEmbarques c2 
-                WHERE CONVERT(date, c2.Fecha) = CONVERT(date, c.Fecha)) AS R) AS Lista_Remisiones,
+         FROM (SELECT DISTINCT Remision 
+               FROM CimsaEmbarques c2 
+               WHERE CONVERT(date, c2.Fecha) = CONVERT(date, c.Fecha)) AS R) AS Lista_Remisiones,
         COUNT(DISTINCT c.Pedido) AS Total_Pedidos,
         (SELECT STRING_AGG(CAST(Pedido AS VARCHAR(50)), ', ')
-          FROM (SELECT DISTINCT Pedido 
-                FROM CimsaEmbarques c3 
-                WHERE CONVERT(date, c3.Fecha) = CONVERT(date, c.Fecha)) AS P) AS Lista_Pedidos,
+         FROM (SELECT DISTINCT Pedido 
+               FROM CimsaEmbarques c3 
+               WHERE CONVERT(date, c3.Fecha) = CONVERT(date, c.Fecha)) AS P) AS Lista_Pedidos,
         ROUND(SUM(c.KgTotal), 2) AS Total_Kg_Dia
     FROM CimsaEmbarques c
-    WHERE YEAR(c.Fecha) = {anio}
-      AND MONTH(c.Fecha) = {mes}
+    WHERE YEAR(c.Fecha) = ? -- Placeholder 3: anio
+      AND MONTH(c.Fecha) = ? -- Placeholder 4: mes
     GROUP BY CONVERT(date, c.Fecha)
     ORDER BY DiaEmbarque, Planta;
     """
+    # Los parámetros se pasan en el orden de los placeholders '?'
+    parametros = (anio, mes, anio, mes)
+    return sql_query, parametros
 
-def get_query_progreso_mensual(mes: int, anio: int) -> str:
-    """Query 3: Progreso de embarque (Historico vs Mes) basado en WS_Planeacion."""
-    return f"""
+def get_query_progreso_mensual(mes: int, anio: int) -> tuple[str, tuple]:
+    """Query 3: Progreso de embarque (Historico vs Mes) basado en WS_Planeacion.
+    
+    Retorna: (sql_query, parametros)
+    """
+    sql_query = """
     -- CON BASE AL MES PROGRAMADO, TENEMOS EL EMBARQUE HISTORICO DEL PEDIDO Y EN EL MES CUANTOS HAN SIDO
     SELECT 
         t.Pedido,
@@ -91,16 +98,16 @@ def get_query_progreso_mensual(mes: int, anio: int) -> str:
             p.Pedido,
             COUNT(DISTINCT e.Remision) AS Embarques_Historico,
             COUNT(DISTINCT CASE 
-                                WHEN YEAR(e.Fecha) = {anio}
-                                 AND MONTH(e.Fecha) = {mes}
+                                WHEN YEAR(e.Fecha) = ? -- 1: anio
+                                 AND MONTH(e.Fecha) = ? -- 2: mes
                                 THEN e.Remision 
                             END) AS Embarques_Mes,
             ISNULL(SUM(e.KgTotal), 0) AS Kg_Historico,
             ISNULL(SUM(CASE 
-                                 WHEN YEAR(e.Fecha) = {anio}
-                                 AND MONTH(e.Fecha) = {mes}
+                                WHEN YEAR(e.Fecha) = ? -- 3: anio
+                                 AND MONTH(e.Fecha) = ? -- 4: mes
                                  THEN e.KgTotal 
-                             END), 0) AS Kg_Mes
+                            END), 0) AS Kg_Mes
         FROM WS_Planeacion p
         LEFT JOIN (
             SELECT Pedido, Remision, Fecha, KgTotal FROM Embarques
@@ -125,16 +132,16 @@ def get_query_progreso_mensual(mes: int, anio: int) -> str:
             p.Pedido,
             COUNT(DISTINCT e.Remision) AS Embarques_Historico,
             COUNT(DISTINCT CASE 
-                                WHEN YEAR(e.Fecha) = {anio}
-                                 AND MONTH(e.Fecha) = {mes}
+                                WHEN YEAR(e.Fecha) = ? -- 5: anio
+                                 AND MONTH(e.Fecha) = ? -- 6: mes
                                 THEN e.Remision 
                             END) AS Embarques_Mes,
             ISNULL(SUM(e.KgTotal), 0) AS Kg_Historico,
             ISNULL(SUM(CASE 
-                                 WHEN YEAR(e.Fecha) = {anio}
-                                 AND MONTH(e.Fecha) = {mes}
+                                WHEN YEAR(e.Fecha) = ? -- 7: anio
+                                 AND MONTH(e.Fecha) = ? -- 8: mes
                                  THEN e.KgTotal 
-                             END), 0) AS Kg_Mes
+                            END), 0) AS Kg_Mes
         FROM WS_Planeacion p
         LEFT JOIN (
             SELECT Pedido, Remision, Fecha, KgTotal FROM Embarques
@@ -145,13 +152,15 @@ def get_query_progreso_mensual(mes: int, anio: int) -> str:
         GROUP BY p.Pedido
     ) t;
     """
+    parametros = (anio, mes, anio, mes, anio, mes, anio, mes)
+    return sql_query, parametros
 
-# CONSULTA SQL PARA LA TENDENCIA ANUAL
-def get_query_tendencia_anual(anio: int) -> str:
-    """Query 4: Kilos totales embarcados por mes para el año seleccionado."""
-    # Como ya tienes Embarques y CimsaEmbarques unidos en otras consultas,
-    # lo haré aquí directamente para sumarizar por mes.
-    return f"""
+def get_query_tendencia_anual(anio: int) -> tuple[str, tuple]:
+    """Query 4: Kilos totales embarcados por mes para el año seleccionado.
+    
+    Retorna: (sql_query, parametros)
+    """
+    sql_query = """
     SELECT
         MONTH(e.Fecha) AS Mes,
         ROUND(SUM(e.KgTotal), 2) AS Total_Kg
@@ -161,14 +170,16 @@ def get_query_tendencia_anual(anio: int) -> str:
         UNION ALL
         SELECT Fecha, KgTotal FROM CimsaEmbarques
     ) e
-    WHERE YEAR(e.Fecha) = {anio}
+    WHERE YEAR(e.Fecha) = ? -- Placeholder 1: anio
     GROUP BY MONTH(e.Fecha)
     ORDER BY Mes ASC;
     """
+    parametros = (anio,)
+    return sql_query, parametros
 
 # ----------------------------------------------------
 
-# --- RUTA PRINCIPAL ---
+# --- RUTA PRINCIPAL (CORREGIDA) ---
 
 @router.get("/embarques", response_class=HTMLResponse)
 def embarques_page(
@@ -177,12 +188,12 @@ def embarques_page(
     mes: int = Query(None),
     anio: int = Query(None)
 ):
-    # 1. Validación de Acceso
+    # 1. Validación de Acceso (Sin cambios)
     payload = validar_token_embarques(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado. No tienes permisos para esta sección."})
 
-    # 2. Manejo de Parámetros de Tiempo (Mes y Año)
+    # 2. Manejo de Parámetros de Tiempo (Sin cambios)
     today = datetime.now()
     if mes is None:
         mes = today.month
@@ -190,34 +201,32 @@ def embarques_page(
         anio = today.year
 
     try:
-        # 3. Ejecución de Consultas
-        sql_diarios = get_query_embarques_diarios(mes, anio)
-        data_diarios = ejecutar_consulta_sql(sql_diarios, fetchall=True)
+        # 3. Ejecución de Consultas (¡CAMBIOS AQUÍ!)
+        # Desempaquetamos la consulta SQL y los parámetros
+        sql_diarios, params_diarios = get_query_embarques_diarios(mes, anio)
+        # Pasamos la consulta y los parámetros a la función
+        data_diarios = ejecutar_consulta_sql(sql_diarios, params=params_diarios, fetchall=True)
 
-        sql_progreso = get_query_progreso_mensual(mes, anio)
-        data_progreso = ejecutar_consulta_sql(sql_progreso, fetchall=True)
+        sql_progreso, params_progreso = get_query_progreso_mensual(mes, anio)
+        data_progreso = ejecutar_consulta_sql(sql_progreso, params=params_progreso, fetchall=True)
         
         # Esto evita el error "TypeError: Object of type date is not JSON serializable" 
-        # cuando se usa el filtro 'tojson' en Jinja.
         for item in data_diarios:
             if 'DiaEmbarque' in item and isinstance(item['DiaEmbarque'], date):
-                # Usar strftime para convertir el objeto date a string 'YYYY-MM-DD'
                 item['DiaEmbarque'] = item['DiaEmbarque'].strftime('%Y-%m-%d')
 
     except Exception as e:
         # Si la consulta a la BD falla, devolvemos el error 500
         return JSONResponse(status_code=500, content={"error": "Error al consultar la base de datos de Embarques.", "detail": str(e)})
 
-    # 4. Preparación de Datos
-    # calendar.month_name es en inglés, por eso se puede usar el mapping si se requiere español, pero lo dejaremos así por ahora si ya está funcionando.
+    # 4. Preparación de Datos (Sin cambios)
     nombre_mes = calendar.month_name[mes].capitalize()
     
-    # Separar Total (KPI) del Detalle
     progreso_total = next((item for item in data_progreso if item['Pedido'] == 'TOTAL MES'), {})
     progreso_detalle = [item for item in data_progreso if item['Pedido'] != 'TOTAL MES']
 
 
-    # 5. Renderización de la Template
+    # 5. Renderización de la Template (Sin cambios)
     return templates.TemplateResponse("embarques.html", {
         "request": request,
         "usuario": payload.get("sub", "Usuario"),
@@ -225,40 +234,38 @@ def embarques_page(
         "anio_actual": anio,
         "nombre_mes": nombre_mes,
         "anio": anio,
-        # data_diarios ya tiene las fechas como strings
         "data_diarios": data_diarios, 
         "progreso_total": progreso_total,
         "progreso_detalle": progreso_detalle
     })
 
-# ENDPOINT PARA LA GRÁFICA MENSUAL (CONSUMIDO POR JAVASCRIPT)
+# ENDPOINT PARA LA GRÁFICA MENSUAL (CORREGIDO)
 @router.get("/embarques/tendencia_anual", response_class=JSONResponse)
 def tendencia_anual_endpoint(
     access_token: str = Cookie(None),
     anio: int = Query(None)
 ):
-    # 1. Validación de Acceso
+    # 1. Validación de Acceso (Sin cambios)
     payload = validar_token_embarques(access_token)
     if not payload:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado."})
 
-    # 2. Manejo de Parámetros de Tiempo
+    # 2. Manejo de Parámetros de Tiempo (Sin cambios)
     if anio is None:
         return JSONResponse(status_code=400, content={"error": "El parámetro 'anio' es requerido."})
 
     try:
-        # 3. Ejecución de la Consulta SQL
-        sql_tendencia = get_query_tendencia_anual(anio)
+        # 3. Ejecución de la Consulta SQL (¡CAMBIOS AQUÍ!)
+        sql_tendencia, params_tendencia = get_query_tendencia_anual(anio)
         
         # Ejecutar la consulta y obtener los resultados
-        # Nota: Asumo que ejecutar_consulta_sql devuelve una lista de diccionarios/objetos
-        resultados = ejecutar_consulta_sql(sql_tendencia, fetchall=True)
+        resultados = ejecutar_consulta_sql(sql_tendencia, params=params_tendencia, fetchall=True)
         
     except Exception as e:
-        # 4. Manejo de errores de BD
+        # 4. Manejo de errores de BD (Sin cambios)
         return JSONResponse(status_code=500, content={"error": "Error al consultar la tendencia anual.", "detail": str(e)})
 
-    # 5. Devolver el JSON con el formato que espera el frontend
+    # 5. Devolver el JSON (Sin cambios)
     return JSONResponse(content={
         "tendencia_mensual": resultados
     })

@@ -1,9 +1,51 @@
 # services/db_service.py
-from config import get_connection,get_mysql_connection
+import os
+from config import get_connection, get_mysql_connection
 import requests
 import pyodbc
-import os
 import traceback
+import pyotp
+import base64
+import qrcode
+from io import BytesIO
+
+# 🛑 CRÍTICO: Importar Fernet para encriptación
+from cryptography.fernet import Fernet
+# Asegúrate de que esta clave se carga ANTES de importar este archivo (ej. en main.py con load_dotenv())
+FERNET_KEY = os.environ.get("FERNET_KEY") 
+
+if not FERNET_KEY:
+    # 🚨 Fallamos si la clave no está, es CRÍTICO para la seguridad
+    raise ValueError("La variable de entorno FERNET_KEY no está configurada o no se cargó.")
+
+# Inicializar la suite de cifrado
+try:
+    cipher_suite = Fernet(FERNET_KEY.encode())
+except Exception as e:
+    raise ValueError(f"Error al inicializar Fernet. Verifica la clave FERNET_KEY. Error: {e}")
+
+
+# -------------------- Funciones de Cifrado/Descifrado MFA --------------------
+
+def cifrar_mfa_secret(secret: str) -> str:
+    """Cifra el secreto MFA usando Fernet antes de guardarlo en la DB."""
+    # Los datos a cifrar deben ser bytes
+    cifrado_bytes = cipher_suite.encrypt(secret.encode())
+    return cifrado_bytes.decode()
+
+def descifrar_mfa_secret(cifrado: str) -> str | None:
+    """Descifra el secreto MFA traído de la DB."""
+    if not cifrado:
+        return None
+    try:
+        # Los datos cifrados deben ser bytes para el descifrado
+        descifrado_bytes = cipher_suite.decrypt(cifrado.encode())
+        return descifrado_bytes.decode()
+    except Exception as e:
+        # Esto podría ocurrir si la clave Fernet es incorrecta o los datos están corruptos
+        print(f"ERROR descifrando MFA secret: {e}")
+        return None
+
 
 # -------------------- Helpers --------------------
 def safe_fetch(cursor):
@@ -14,6 +56,7 @@ def safe_fetch(cursor):
         return None
 
 # -------------------- Login --------------------
+# services/db_service.py
 def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
                version: str = "1.1.5.18", b_web: int = 1):
     """
@@ -23,6 +66,7 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        # Ejecutar procedure con parámetro OUTPUT
         cursor.execute("""
             DECLARE @pmsMsg VARCHAR(254);
             EXEC Gp_Valida_Usuario_Nuevo
@@ -35,21 +79,28 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             SELECT @pmsMsg AS pmsMsg;
         """, username, password, aplicacion, version, b_web)
 
-        
-        user_row = safe_fetch(cursor)
-
+        user_row = None
         pmsMsg = None
-        if cursor.nextset():
-            msg_row = safe_fetch(cursor)
-            if msg_row and hasattr(msg_row, "pmsMsg"):
-                pmsMsg = msg_row.pmsMsg
 
+        # Iteramos por todos los result sets
+        while True:
+            row = safe_fetch(cursor)
+            if row and hasattr(row, "K_Usuario"):
+                user_row = row  # este es nuestro user real
+            elif row and hasattr(row, "pmsMsg"):
+                pmsMsg = row.pmsMsg  # mensaje del procedure
+            if not cursor.nextset():
+                break
+
+        # Revisamos si hubo algún mensaje de error
         if pmsMsg and len(pmsMsg.strip()) > 0:
             return {"error": pmsMsg}
 
-        if not user_row or not getattr(user_row, "K_Usuario", None):
+        # Si no se obtuvo usuario, retornamos error
+        if not user_row:
             return {"error": "Usuario o contraseña incorrectos"}
 
+        # Construimos el dict del usuario
         user_data = {
             "K_Usuario": getattr(user_row, "K_Usuario", None),
             "D_Usuario": getattr(user_row, "D_Usuario", None),
@@ -64,9 +115,9 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             "K_Departamento": getattr(user_row, "K_Departamento", None),
             "D_Departamento": getattr(user_row, "D_Departamento", None)
         }
-
+        print(user_data)
         return {"user": user_data}
-
+    
     except Exception as e:
         print("ERROR LOGIN_USER:", e)
         return {"error": str(e)}
@@ -79,6 +130,53 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
 def valida_usuario(username: str, password: str):
     result = login_user(username, password)
     return "user" in result
+
+
+def obtener_datos_completos_usuario(login: str):
+    """
+    Obtiene K_Empleado, D_Empleado, K_Area, y mfa_secret (descifrado)
+    a partir del login.
+    """
+    
+    # 🛑 CRÍTICO: Incluir mfa_secret y mfa_enabled en el query
+    query = """
+    SELECT 
+        E.K_Empleado, 
+        E.D_Empleado, 
+        E.K_Area, 
+        U.mfa_secret,
+        U.mfa_enabled 
+    FROM Usuario U
+    JOIN Empleado E ON U.K_Usuario = E.K_Usuario 
+    WHERE UPPER(LTRIM(RTRIM(U.D_Usuario))) = UPPER(LTRIM(RTRIM(?)))
+    """
+    
+    print(f"DEBUG: Ejecutando consulta de datos de usuario para: {login}")
+    
+    result = ejecutar_consulta_sql(
+        query, 
+        params=(login,),
+        fetchone=True
+    )
+
+    # 🛑 CRÍTICO: Descifrar el secreto antes de retornarlo
+    if result and result.get("mfa_secret"):
+        result["mfa_secret"] = descifrar_mfa_secret(result["mfa_secret"])
+        
+    return result
+
+
+def actualizar_mfa_secret_seguro(login: str, secret: str):
+    """Cifra el secreto MFA y lo guarda en la base de datos, habilitando el MFA."""
+    # 🛑 CRÍTICO: Ciframos el secreto antes de guardarlo
+    secret_cifrado = cifrar_mfa_secret(secret)
+    
+    query = "UPDATE Usuario SET mfa_secret = ?, mfa_enabled = 1 WHERE D_Usuario = ?"
+    params = (secret_cifrado, login)
+    
+    # Usamos la función base para ejecutar la consulta, asumiendo commit=True por defecto o en los parámetros.
+    ejecutar_consulta_sql(query, params=params, commit=True)
+
 
 # -------------------- Órdenes --------------------
 def obtener_ordenes_para_autorizar(k_empleado: int):
@@ -98,6 +196,7 @@ def obtener_ordenes_para_autorizar(k_empleado: int):
             pdf_path = ""
 
             try:
+                # La URL del servicio debe ser HTTPS y segura en un entorno real
                 response = requests.post(
                     "https://dev.altisconsultores.com.mx/wsEstral/getOrdenCompra",
                     json=payload
@@ -216,7 +315,7 @@ def autorizar_orden(k_orden, k_empleado):
         conn.close()
 
 # -------------------- Consulta SQL genérica (¡AJUSTADA!) --------------------
-def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetchall: bool = False):
+def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetchall: bool = False, commit: bool = False):
     """
     Ejecuta una consulta SQL genérica.
     Acepta 'params' (lista o tupla) para consultas parametrizadas seguras.
@@ -241,10 +340,12 @@ def ejecutar_consulta_sql(query: str, params=None, fetchone: bool = False, fetch
             rows = cursor.fetchall()
             return [dict(zip(columns, r)) for r in rows]
             
-        conn.commit()
+        if commit: # Solo hace commit si se pide explícitamente
+            conn.commit()
         return {}
         
     except Exception as e:
+        print(f"ERROR en ejecutar_consulta_sql: {e}")
         if fetchall:
              return [] 
         return {}
@@ -276,11 +377,10 @@ def ejecutar_consulta_mysql(query: str, params: tuple = None, fetchall: bool = T
             cursor.execute(query)
 
         # 1. Fetch de resultados
-        # Se leen todos los resultados para liberar el cursor, como ya lo hacías.
         resultados = cursor.fetchall() if fetchall else cursor.fetchone()
 
         # 2. COMMIT CONDICIONAL 🚨
-        # Solo hacemos commit si la consulta NO es un SELECT, para evitar el error.
+        # Solo hacemos commit si la consulta NO es un SELECT
         if not query.strip().upper().startswith("SELECT"):
             conn.commit() 
         
@@ -297,3 +397,30 @@ def ejecutar_consulta_mysql(query: str, params: tuple = None, fetchall: bool = T
             cursor.close()
         if conn:
             conn.close()
+
+# -------------------- Funciones MFA (Generación y Verificación) --------------------
+
+def generar_mfa_secret():
+    """Genera un secreto único base32 (para enlazar con Google Authenticator)."""
+    return pyotp.random_base32()
+
+def generar_qr_uri(usuario: str, secret: str):
+    """
+    Devuelve el URI y la imagen QR para vincular en Google Authenticator.
+    """
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=usuario, issuer_name="EstralModulo")
+    qr = qrcode.make(uri)
+    buffer = BytesIO()
+    qr.save(buffer, format="PNG")
+    qr_bytes = buffer.getvalue()
+    return uri, base64.b64encode(qr_bytes).decode('utf-8')
+
+def verificar_codigo_mfa(secret: str, codigo: str) -> bool:
+    """
+    Verifica si el código TOTP ingresado es válido.
+    ⚠️ Nota: Esta función es la base, pero en main.py se usa .verify(codigo, valid_window=1)
+    """
+    totp = pyotp.TOTP(secret)
+    # Por si alguien usa esta función directamente, le damos la ventana de tolerancia
+    return totp.verify(codigo, valid_window=1)
