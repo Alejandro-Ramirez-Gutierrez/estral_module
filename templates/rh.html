@@ -1,472 +1,532 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
-    <title>Dashboard RH - Estral (DIRECCIÓN)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% extends "base.html" %}
+{% block content %}
 
-    <style>
-        :root {
-            --estral-azul: #0052cc;
-            --estral-naranja: #ff6600;
-            --estral-gris-claro: #f4f6f9; /* Color de fondo más suave */
-        }
-        .bg-estral-azul { background-color: var(--estral-azul); }
-        .bg-estral-naranja { background-color: var(--estral-naranja); }
-        .text-estral-azul { color: var(--estral-azul); }
-        .text-estral-naranja { color: var(--estral-naranja); }
-        .border-estral-naranja-500 { border-color: #ff6600; }
-        .card-shadow { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-        .content-card {
-            @apply bg-white p-6 rounded-2xl card-shadow; /* Borde más redondeado y sombra más pronunciada */
-        }
-        .kpi-card {
-            @apply bg-white p-5 rounded-xl shadow-lg border-l-4 border-estral-azul hover:scale-[1.02] transition duration-300;
-        }
-    </style>
-</head>
-<body class="bg-estral-gris-claro font-sans antialiased" x-data="{ activeTab: 'empleados', searchTerm: '' }">
-
-    <header class="bg-estral-azul text-white p-6 flex justify-between items-center shadow-2xl sticky top-0 z-10 rounded-b-2xl">
+<div x-data="rhDashboard()" x-init="initData()" class="p-6 bg-gray-100 min-h-screen">
+    
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Dashboard RH 👩‍💼</h1>
+        <button @click="initData()" 
+                class="px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 transition">
+            🔄 Actualizar Todo
+        </button>
+    </div>
+    
+    <h2 class="text-2xl font-semibold mb-4 text-gray-700">Indicadores Clave (KPIs)</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-blue-500">
+            <p class="text-sm font-medium text-gray-500">Plantilla Autorizada</p>
+            <p class="text-3xl font-bold text-gray-900" x-text="kpis.total_plantilla"></p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-green-500">
+            <p class="text-sm font-medium text-gray-500">Empleados Activos</p>
+            <p class="text-3xl font-bold text-gray-900" x-text="kpis.total_activos"></p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-red-500">
+            <p class="text-sm font-medium text-gray-500">Vacantes Disponibles</p>
+            <p class="text-3xl font-bold text-gray-900" x-text="kpis.total_vacantes"></p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-purple-500">
+            <p class="text-sm font-medium text-gray-500">Tasa de Ocupación</p>
+            <p class="text-3xl font-bold text-gray-900" x-text="kpis.tasa_ocupacion + '%'"></p>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
-            <h1 class="text-4xl font-extrabold tracking-wider">📊 ESTRAL | Dashboard RH (Dirección)</h1>
-            <p class="mt-1 text-gray-300">Visión estratégica de RRHH, estructura y finanzas.</p>
-        </div>
-        <div class="flex items-center space-x-8">
-            <div class="text-center bg-white/20 p-2 rounded-lg">
-                <p class="text-lg font-bold">Total Empleados</p>
-                <p class="text-3xl font-extrabold">{{ empleados|length }}</p>
-            </div>
-            <div class="text-center bg-white/20 p-2 rounded-lg">
-                <p class="text-lg font-bold">Ubicaciones</p>
-                <p class="text-3xl font-extrabold">{{ oficinas|length }}</p>
-            </div>
-            <div class="text-center flex items-center space-x-3 bg-white/20 p-2 rounded-lg">
-                <i class="fas fa-user-circle text-4xl text-estral-naranja"></i>
-                <span class="text-xl font-light">Bienvenido, <strong class="font-medium">{{ usuario }}</strong></span>
-            </div>
-        </div>
-    </header>
+            <div class="bg-white p-6 rounded-2xl shadow mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">✍️ Registro Nuevo Empleado</h2>
+                <form @submit.prevent="registrarEmpleado" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <h3 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-600">Puesto y Salario</h3>
+                    
+                    <div class="col-span-full md:col-span-1">
+                        <label class="block text-sm text-gray-600">1. Seleccionar Planta</label>
+                        <select x-model="filtro.id_planta" @change="form.id_plantilla = ''" required class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-200">
+                            <option value="">Selecciona una planta...</option>
+                            <template x-for="p in plantas" :key="p.id_planta">
+                                <option :value="p.id_planta" x-text="p.nombre_planta"></option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <div class="col-span-full md:col-span-1">
+                        <label class="block text-sm text-gray-600">2. Vacante Disponible (Filtrada)</label>
+                        <select x-model="form.id_plantilla" :disabled="!filtro.id_planta" required class="w-full p-2 border rounded-lg focus:ring focus:ring-blue-200">
+                            <option value="">Selecciona una vacante...</option>
+                            <template x-for="v in vacantesFiltradasRegistro" :key="v.id_plantilla">
+                                <option :value="v.id_plantilla" 
+                                    x-text="`${v.nombre_puesto} (${v.departamento}) - ${v.vacantes_disponibles} Disp.`">
+                                </option>
+                            </template>
+                        </select>
+                        <p x-show="filtro.id_planta && vacantesFiltradasRegistro.length === 0" class="text-xs text-red-500 mt-1">
+                            No hay vacantes disponibles que coincidan en esta planta.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-600">Salario Diario</label>
+                        <input type="number" step="0.01" x-model.number="form.salario_diario" required class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-600">Tipo de Empleado</label>
+                        <select x-model="form.tipo_empleado" required class="w-full p-2 border rounded-lg">
+                            <option value="">Selecciona tipo</option>
+                            <option value="Operativo">Operativo</option>
+                            <option value="Administrativo">Administrativo</option>
+                            <option value="Gerencial">Gerencial</option>
+                        </select>
+                    </div>
 
-    <div class="flex min-h-screen">
+                    <h3 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-600">Datos Personales y Documentos</h3>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-600">Nombre Completo</label>
+                        <input type="text" x-model="form.nombre_completo" required class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Apellido Paterno</label>
+                        <input type="text" x-model="form.apellido_paterno" required class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Apellido Materno (Opcional)</label>
+                        <input type="text" x-model="form.apellido_materno" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Fecha de Nacimiento</label>
+                        <input type="date" x-model="form.fecha_nacimiento" required class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm text-gray-600">CURP</label>
+                        <input type="text" x-model="form.curp" required maxlength="18" class="w-full p-2 border rounded-lg uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">RFC</label>
+                        <input type="text" x-model="form.rfc" required maxlength="13" class="w-full p-2 border rounded-lg uppercase">
+                    </div>
+                    <div class="col-span-full md:col-span-1">
+                        <label class="block text-sm text-gray-600">NSS</label>
+                        <input type="text" x-model="form.nss" required maxlength="20" class="w-full p-2 border rounded-lg">
+                    </div>
 
-        <aside class="w-64 bg-white shadow-2xl p-6 border-r border-gray-200 sticky top-20 h-screen overflow-y-auto">
-            <h2 class="text-estral-naranja font-extrabold mb-8 text-xl border-b pb-2">Menú Estratégico</h2>
-            <ul class="space-y-3">
-                <template x-for="tab in [
-                    {id:'empleados', label:'Gestión de Empleados', icon:'fas fa-users'},
-                    {id:'historial', label:'Historial de Personal', icon:'fas fa-chart-line'},
-                    {id:'viaticos', label:'Reporte de Viáticos', icon:'fas fa-plane-departure'},
-                    {id:'autorizaciones', label:'Autorizaciones', icon:'fas fa-check-square'},
-                    {id:'areas', label:'Áreas & Estructura', icon:'fas fa-building'},
-                    {id:'oficinas', label:'Oficinas', icon:'fas fa-map-marker-alt'}
-                ]" :key="tab.id">
-                    <li>
-                        <button @click="activeTab=tab.id" 
-                                :class="{'bg-estral-naranja text-white font-bold shadow-xl': activeTab==tab.id, 'text-gray-700': activeTab!=tab.id}"
-                                class="w-full text-left p-3 rounded-xl transition duration-200 ease-in-out flex items-center space-x-3 hover:bg-estral-azul hover:text-white group">
-                            <i :class="tab.icon + ' w-5 ' + (activeTab==tab.id ? 'text-white':'text-estral-naranja group-hover:text-white')"></i>
-                            <span x-text="tab.label"></span>
+                    <div class="col-span-full mt-4 flex justify-end">
+                        <button type="submit" class="px-5 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition">
+                            💾 Registrar Empleado
                         </button>
-                    </li>
-                </template>
-                <li class="pt-4 border-t border-gray-200 mt-4">
-                    <a href="/logout" class="block p-3 rounded-xl text-red-600 transition duration-200 ease-in-out flex items-center space-x-3 hover:bg-red-600 hover:text-white font-semibold">
-                        <i class="fas fa-sign-out-alt w-5"></i>
-                        <span>Cerrar sesión</span>
-                    </a>
-                </li>
-            </ul>
-        </aside>
-
-        <main class="flex-1 p-8 space-y-10">
-
-            <section x-show="activeTab=='empleados'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
-                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
-                    <i class="fas fa-users text-estral-naranja"></i>
-                    <span>Gestión de Empleados</span>
-                </h2>
-
-                <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-6">
-                    <div class="kpi-card border-l-4 border-green-500">
-                        <p class="text-sm font-medium text-gray-500">Total de Empleados</p>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1">{{ empleados|length }}</p>
-                        <p class="text-xs text-green-600 font-semibold mt-1"><i class="fas fa-arrow-up"></i> +2% vs. Mes Ant.</p>
                     </div>
-                    <div class="kpi-card border-l-4 border-purple-500">
-                        <p class="text-sm font-medium text-gray-500">Antigüedad Promedio</p>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1">3.5 Años</p>
-                        <p class="text-xs text-purple-600 font-semibold mt-1">Dato clave para retención.</p>
-                    </div>
-                    <div class="kpi-card border-l-4 border-red-500">
-                        <p class="text-sm font-medium text-gray-500">Rotación Mensual (Estimada)</p>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1">1.2%</p>
-                        <p class="text-xs text-red-600 font-semibold mt-1"><i class="fas fa-arrow-up"></i> Meta: 1.0%</p>
-                    </div>
-                    <div class="kpi-card border-l-4 border-yellow-500">
-                        <p class="text-sm font-medium text-gray-500">Vacantes Abiertas</p>
-                        <p class="text-3xl font-extrabold text-gray-900 mt-1">15</p>
-                        <p class="text-xs text-yellow-600 font-semibold mt-1">En proceso de contratación.</p>
-                    </div>
-                </div>
-
-                <div class="content-card">
-                    <h3 class="text-2xl font-bold text-estral-azul mb-4 border-b pb-2">Directorio Activo</h3>
-
-                    <div class="mb-4">
-                        <input x-model="searchTerm" type="text" placeholder="🔍 Buscar por Nombre, Área o Puesto..."
-                               class="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg shadow-inner focus:ring-estral-naranja focus:border-estral-naranja transition duration-150">
-                    </div>
-
-                    <div class="overflow-x-auto border border-gray-200 rounded-xl">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-estral-azul text-white">
-                                <tr>
-                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider rounded-tl-xl">#Empleado</th>
-                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Nombre</th>
-                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Área</th>
-                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Puesto</th>
-                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider">Oficina</th>
-                                    <th class="py-3 px-6 text-left text-xs font-bold uppercase tracking-wider rounded-tr-xl">Teléfono</th>
+                </form>
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Vacantes Disponibles (Detalle)</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left border border-gray-200 rounded-xl">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2">Planta</th>
+                                <th class="px-4 py-2">Puesto</th>
+                                <th class="px-4 py-2 text-center">Autorizada</th>
+                                <th class="px-4 py-2 text-center">Vacantes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="v in vacantes.filter(v => v.vacantes_disponibles > 0)" :key="v.id_plantilla">
+                                <tr class="hover:bg-gray-50 border-b">
+                                    <td class="px-4 py-2" x-text="v.nombre_planta"></td>
+                                    <td class="px-4 py-2" x-text="v.nombre_puesto"></td>
+                                    <td class="px-4 py-2 text-center" x-text="v.plantilla_autorizada"></td>
+                                    <td class="px-4 py-2 text-center font-bold text-green-600" x-text="v.vacantes_disponibles"></td>
                                 </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                {% for emp in empleados %}
-                                <tr x-show="
-                                    !searchTerm || 
-                                    '{{ emp.D_Empleado | lower }}'.includes(searchTerm.toLowerCase()) ||
-                                    '{{ emp.D_Area | lower }}'.includes(searchTerm.toLowerCase()) ||
-                                    '{{ emp.D_Puesto | lower }}'.includes(searchTerm.toLowerCase())
-                                    "
-                                    class="hover:bg-blue-50 even:bg-gray-100 transition duration-150 ease-in-out cursor-pointer"
-                                    title="Click para ver detalle (Funcionalidad pendiente)">
-                                    <td class="py-3 px-6 whitespace-nowrap text-sm font-medium text-estral-azul">{{ emp.K_Empleado }}</td>
-                                    <td class="py-3 px-6 whitespace-nowrap text-sm font-semibold text-gray-900">{{ emp.D_Empleado }}</td>
-                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.D_Area }}</td>
-                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.D_Puesto }}</td>
-                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.D_Oficina }}</td>
-                                    <td class="py-3 px-6 whitespace-nowrap text-sm text-gray-700">{{ emp.Telefono or '-' }}</td>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1">
+            <div class="bg-white p-6 rounded-2xl shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Empleados Activos</h2>
+                <input type="text" x-model="busquedaEmpleados" placeholder="Buscar por Nombre, Puesto o CURP..." 
+                       class="w-full p-2 border rounded-lg mb-4">
+                
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-sm text-left border border-gray-200 rounded-xl">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2">Nombre</th>
+                                <th class="px-4 py-2">Puesto</th>
+                                <th class="px-4 py-2">Planta</th>
+                                <th class="px-4 py-2 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="e in empleadosFiltrados" :key="e.id_empleado">
+                                <tr class="hover:bg-gray-50 border-b">
+                                    <td class="px-4 py-2" x-text="`${e.nombre_completo} ${e.apellido_paterno}`"></td>
+                                    <td class="px-4 py-2" x-text="e.nombre_puesto"></td>
+                                    <td class="px-4 py-2" x-text="e.nombre_planta"></td>
+                                    <td class="px-4 py-2 text-center flex space-x-2 justify-center">
+                                        <button @click="abrirModalEdicion(e)" class="text-blue-600 hover:text-blue-800 text-lg" title="Editar">
+                                            ✏️
+                                        </button>
+                                        <button @click="abrirModalBaja(e)" class="text-red-600 hover:text-red-800 text-lg" title="Dar de Baja">
+                                            🗑️
+                                        </button>
+                                    </td>
                                 </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                            </template>
+                        </tbody>
+                    </table>
+                    <p x-show="empleadosFiltrados.length === 0" class="p-4 text-center text-gray-500">
+                        No hay empleados activos o no coinciden con la búsqueda.
+                    </p>
                 </div>
-            </section>
+            </div>
+        </div>
+    </div>
+    
+    <div x-show="modal.edicion" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50" style="display: none;">
+        <div class="relative top-10 mx-auto p-5 border w-4/5 md:w-1/2 shadow-lg rounded-md bg-white">
+            <h3 class="text-xl font-bold mb-4">Editar Empleado: <span x-text="formEdicion.nombre_completo"></span></h3>
+            <form @submit.prevent="guardarEdicion" class="grid grid-cols-2 gap-4">
+                <input type="hidden" x-model="formEdicion.id_empleado">
 
-            <section x-show="activeTab=='historial'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
-                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
-                    <i class="fas fa-chart-line text-estral-naranja"></i>
-                    <span>Historial de Personal y Rotación</span>
-                </h2>
-                <p class="text-gray-600">Visualización de movimientos de altas y bajas en la organización para monitoreo de la rotación.</p>
-
-                <div class="grid lg:grid-cols-2 gap-8">
-                    <div class="content-card">
-                        <h3 class="text-2xl font-bold text-estral-azul mb-4 border-b pb-2">Altas y Bajas Mensuales (Últimos 6 Meses)</h3>
-                        <canvas id="chartAltasBajas"></canvas>
-                    </div>
-
-                    <div class="content-card">
-                        <h3 class="text-2xl font-bold text-estral-naranja mb-4 border-b pb-2">Bajas Clave Recientes</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Fecha</th>
-                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Empleado</th>
-                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Área</th>
-                                        <th class="py-3 px-4 text-left text-xs font-bold uppercase tracking-wider">Motivo</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr class="hover:bg-red-50">
-                                        <td class="py-3 px-4 text-sm text-gray-700">25/10/2025</td>
-                                        <td class="py-3 px-4 text-sm font-medium text-gray-900">Juan Pérez</td>
-                                        <td class="py-3 px-4 text-sm text-gray-700">Ventas</td>
-                                        <td class="py-3 px-4 text-sm text-red-600 font-semibold">Renuncia Voluntaria</td>
-                                    </tr>
-                                    <tr class="hover:bg-red-50">
-                                        <td class="py-3 px-4 text-sm text-gray-700">10/10/2025</td>
-                                        <td class="py-3 px-4 text-sm font-medium text-gray-900">Ana Gómez</td>
-                                        <td class="py-3 px-4 text-sm text-gray-700">Marketing</td>
-                                        <td class="py-3 px-4 text-sm text-red-600 font-semibold">Término de Contrato</td>
-                                    </tr>
-                                    <tr class="hover:bg-red-50">
-                                        <td class="py-3 px-4 text-sm text-gray-700">01/09/2025</td>
-                                        <td class="py-3 px-4 text-sm font-medium text-gray-900">Carlos Díaz</td>
-                                        <td class="py-3 px-4 text-sm text-gray-700">TI</td>
-                                        <td class="py-3 px-4 text-sm text-red-600 font-semibold">Reestructuración</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div><label class="block text-sm text-gray-600">Nombre Completo</label><input type="text" x-model="formEdicion.nombre_completo" required class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Apellido Paterno</label><input type="text" x-model="formEdicion.apellido_paterno" required class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Apellido Materno</label><input type="text" x-model="formEdicion.apellido_materno" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Fecha Nacimiento</label><input type="date" x-model="formEdicion.fecha_nacimiento" required class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">CURP</label><input type="text" x-model="formEdicion.curp" required class="w-full p-2 border rounded-lg uppercase"></div>
+                <div><label class="block text-sm text-gray-600">RFC</label><input type="text" x-model="formEdicion.rfc" required class="w-full p-2 border rounded-lg uppercase"></div>
+                <div><label class="block text-sm text-gray-600">NSS</label><input type="text" x-model="formEdicion.nss" required class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Salario Diario</label><input type="number" step="0.01" x-model.number="formEdicion.salario_diario" required class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Tipo Empleado</label>
+                    <select x-model="formEdicion.tipo_empleado" required class="w-full p-2 border rounded-lg">
+                        <option value="Operativo">Operativo</option>
+                        <option value="Administrativo">Administrativo</option>
+                        <option value="Gerencial">Gerencial</option>
+                    </select>
                 </div>
-            </section>
-
-            <section x-show="activeTab=='viaticos'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
-                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
-                    <i class="fas fa-plane-departure text-estral-naranja"></i>
-                    <span>Reporte y Gestión Estratégica de Viáticos</span>
-                </h2>
-
-                <div class="grid md:grid-cols-3 gap-6">
-
-                    <div class="kpi-card border-l-4 border-estral-naranja-500 text-center">
-                        <i class="fas fa-hourglass-half text-4xl text-estral-naranja mb-2"></i>
-                        <h3 class="text-xl font-bold text-estral-naranja">Pendientes Aprobación</h3>
-                        <p class="text-gray-900 mt-1 text-3xl font-extrabold">34</p>
-                        <p class="text-sm text-gray-500">Viáticos por validar</p>
-                    </div>
-
-                    <div class="kpi-card border-l-4 border-estral-azul text-center">
-                        <i class="fas fa-check-circle text-4xl text-estral-azul mb-2"></i>
-                        <h3 class="text-xl font-bold text-estral-azul">Aprobados (Mes)</h3>
-                        <p class="text-gray-900 mt-1 text-3xl font-extrabold text-green-600">$150,000</p>
-                        <p class="text-sm text-gray-500">Total en el mes actual</p>
-                    </div>
-
-                    <div class="kpi-card border-l-4 border-pink-500 text-center">
-                        <i class="fas fa-exclamation-triangle text-4xl text-pink-600 mb-2"></i>
-                        <h3 class="text-xl font-bold text-pink-600">Monto Excedido</h3>
-                        <p class="text-gray-900 mt-1 text-3xl font-extrabold text-red-600">$12,500</p>
-                        <p class="text-sm text-gray-500">Exceso del presupuesto</p>
-                    </div>
-
+                <div class="col-span-2">
+                    <label class="block text-sm text-gray-600 font-bold">Puesto / Plantilla Nueva</label>
+                    <select x-model="formEdicion.id_plantilla_nueva" required class="w-full p-2 border rounded-lg">
+                        <template x-for="v in vacantes" :key="v.id_plantilla">
+                            <option :value="v.id_plantilla" 
+                                :disabled="v.vacantes_disponibles <= 0 && v.id_plantilla !== formEdicion.id_plantilla_original"
+                                x-text="`${v.nombre_planta} | ${v.nombre_puesto} (${v.vacantes_disponibles > 0 ? v.vacantes_disponibles : 'LLENO'})`">
+                            </option>
+                        </template>
+                    </select>
                 </div>
-
-                <div class="grid lg:grid-cols-2 gap-8">
-                    <div class="content-card">
-                        <h3 class="text-2xl font-bold text-estral-azul mb-4 border-b pb-2">Viáticos Aprobados por Área</h3>
-                        <canvas id="chartViaticosArea"></canvas>
-                    </div>
-
-                    <div class="content-card">
-                        <h3 class="text-2xl font-bold text-estral-naranja mb-4 border-b pb-2">Distribución por Concepto</h3>
-                        <canvas id="chartViaticosConcepto"></canvas>
-                    </div>
+                <div class="col-span-2 flex justify-end space-x-4 mt-4">
+                    <button type="button" @click="modal.edicion = false" class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar Cambios</button>
                 </div>
-            </section>
-
-            <section x-show="activeTab=='autorizaciones'" x-transition.opacity x-transition.duration.500ms class="space-y-8 content-card">
-                <h2 class="text-4xl font-extrabold text-estral-azul mb-4 flex items-center space-x-4">
-                    <i class="fas fa-check-square text-estral-naranja"></i>
-                    <span>Gestión de Autorizaciones y Flujo de Trabajo</span>
-                </h2>
-                <p class="text-gray-600 mb-6">Acciones estratégicas pendientes de su aprobación.</p>
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-estral-naranja hover:shadow-2xl hover:scale-105 transition duration-300">
-                        <h3 class="text-2xl font-bold text-estral-naranja flex items-center space-x-3">
-                            <i class="fas fa-money-check-alt"></i>
-                            <span>Gastos a Autorizar</span>
-                        </h3>
-                        <p class="text-gray-700 mt-3 text-3xl font-extrabold">5</p>
-                        <p class="text-sm text-gray-500">Solicitudes pendientes</p>
-                        <button class="mt-4 bg-estral-naranja text-white py-2 px-4 rounded-lg font-semibold hover:bg-orange-700 transition duration-200 w-full">Revisar Gastos</button>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-estral-azul hover:shadow-2xl hover:scale-105 transition duration-300">
-                        <h3 class="text-2xl font-bold text-estral-azul flex items-center space-x-3">
-                            <i class="fas fa-sun"></i>
-                            <span>Vacaciones Pendientes</span>
-                        </h3>
-                        <p class="text-gray-700 mt-3 text-3xl font-extrabold">12</p>
-                        <p class="text-sm text-gray-500">Empleados en espera</p>
-                        <button class="mt-4 bg-estral-azul text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 w-full">Gestionar Vacaciones</button>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-green-500 hover:shadow-2xl hover:scale-105 transition duration-300">
-                        <h3 class="text-2xl font-bold text-green-600 flex items-center space-x-3">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Nuevas Contrataciones</span>
-                        </h3>
-                        <p class="text-gray-700 mt-3 text-3xl font-extrabold">3</p>
-                        <p class="text-sm text-gray-500">Aprobación de Contrato</p>
-                        <button class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition duration-200 w-full">Revisar Altas</button>
-                    </div>
+            </form>
+        </div>
+    </div>
+    
+    <div x-show="modal.baja" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50" style="display: none;">
+        <div class="relative top-10 mx-auto p-5 border w-1/3 shadow-lg rounded-md bg-white">
+            <h3 class="text-xl font-bold mb-4">Dar de Baja a: <span x-text="formBaja.nombre_completo"></span></h3>
+            <form @submit.prevent="confirmarBaja">
+                <input type="hidden" x-model="formBaja.id_empleado">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-600">Motivo de Baja</label>
+                    <input type="text" x-model="formBaja.motivo" required class="w-full p-2 border rounded-lg">
                 </div>
-            </section>
-
-
-            <section x-show="activeTab=='areas'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
-                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
-                    <i class="fas fa-building text-estral-naranja"></i>
-                    <span>Estructura Organizacional: Áreas y Departamentos</span>
-                </h2>
-                <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
-                    {% for area in areas %}
-                    <div class="content-card border-t-4 border-estral-naranja hover:shadow-2xl hover:scale-[1.03] transition duration-300">
-                        <h3 class="text-xl font-bold text-estral-azul mb-3 flex items-center space-x-2">
-                            <i class="fas fa-folder-open text-lg text-estral-naranja"></i>
-                            <span>{{ area.D_Area }}</span>
-                        </h3>
-                        <p class="text-sm text-gray-500 mb-3">Departamentos asociados ({{ area.departamentos|length }}):</p>
-                        <ul class="mt-2 list-none space-y-1 pl-2">
-                            {% for dep in area.departamentos %}
-                            <li class="text-gray-700 flex items-center space-x-2 text-sm">
-                                <i class="fas fa-caret-right text-estral-naranja text-xs"></i>
-                                <span>{{ dep.D_Departamento }}</span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endfor %}
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-600">Observaciones</label>
+                    <textarea x-model="formBaja.observaciones" class="w-full p-2 border rounded-lg"></textarea>
                 </div>
-            </section>
-
-            <section x-show="activeTab=='oficinas'" x-transition.opacity x-transition.duration.500ms class="space-y-8">
-                <h2 class="text-4xl font-extrabold text-estral-azul flex items-center space-x-4">
-                    <i class="fas fa-map-marker-alt text-estral-naranja"></i>
-                    <span>Ubicaciones de Oficinas y Contacto</span>
-                </h2>
-                <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-8">
-                    {% for oficina in oficinas %}
-                    <div class="content-card border-l-4 border-estral-azul hover:shadow-2xl hover:scale-[1.03] transition duration-300">
-                        <h3 class="text-xl font-bold text-estral-naranja mb-2">{{ oficina.D_Oficina }}</h3>
-                        <p class="text-gray-600 mt-3 flex items-start space-x-2">
-                            <i class="fas fa-location-arrow text-estral-azul pt-1"></i>
-                            <span class="text-sm">{{ oficina.Calle }} {{ oficina.Numero_Externo or '' }}, C.P. {{ oficina.Codigo_Postal }}</span>
-                        </p>
-                        <p class="text-gray-600 mt-2 flex items-center space-x-2">
-                            <i class="fas fa-phone-alt text-estral-azul"></i>
-                            <span class="text-sm">Tel: <strong class="font-medium">{{ oficina.Telefono or 'No disponible' }}</strong></span>
-                        </p>
-                    </div>
-                    {% endfor %}
+                <div class="flex justify-end space-x-4 mt-4">
+                    <button type="button" @click="modal.baja = false" class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Confirmar Baja</button>
                 </div>
-            </section>
-
-        </main>
+            </form>
+        </div>
     </div>
 
-    <script>
-        // Datos simulados (deberían venir de tu backend)
-        const viaticosAreaLabels = ['Ventas', 'TI', 'RRHH', 'Marketing', 'Operaciones'];
-        const viaticosAreaData = [50000, 30000, 40000, 20000, 45000];
-        const viaticosConceptoLabels = ['Transporte', 'Alojamiento', 'Alimentos', 'Otros'];
-        const viaticosConceptoData = [75000, 40000, 30000, 5000];
-        const altasBajasLabels = ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
-        const altasData = [5, 8, 7, 10, 6, 9];
-        const bajasData = [2, 4, 3, 5, 4, 2];
+</div>
 
-        // Función para crear Gráfica de Barras (Viáticos por Área)
-        function createViaticosAreaChart() {
-            const ctxArea = document.getElementById('chartViaticosArea')?.getContext('2d');
-            if (ctxArea) {
-                new Chart(ctxArea, {
-                    type: 'bar',
-                    data: {
-                        labels: viaticosAreaLabels,
-                        datasets: [{
-                            label: 'Viáticos Aprobados ($)',
-                            data: viaticosAreaData,
-                            backgroundColor: ['#0052cc','#ff6600','#00cc99','#ffcc00', '#cc00cc'],
-                            borderRadius: 5,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false, position: 'top' }, title: { display: true, text: 'Gasto por Área' } },
-                        scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return '$' + value.toLocaleString(); } } } }
-                    }
-                });
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+<script>
+function rhDashboard() {
+    return {
+        // DATOS PRINCIPALES
+        kpis: { total_plantilla: 0, total_activos: 0, total_vacantes: 0, tasa_ocupacion: 0 },
+        plantas: [], // Lista de plantas
+        vacantes: [], // Todas las plantillas
+        empleados: [], // Lista de empleados activos
+        
+        // FILTROS
+        busquedaEmpleados: '',
+        filtro: {
+            id_planta: '', // Para filtrar registro de vacantes
+            busqueda_vacante: '' // Para buscar en el select
+        },
+        
+        // FORMULARIO DE REGISTRO
+        form: {
+            id_plantilla: '', 
+            nombre_completo: '',
+            apellido_paterno: '',
+            apellido_materno: '',
+            curp: '',
+            nss: '',
+            rfc: '',
+            fecha_nacimiento: '',
+            salario_diario: null,
+            tipo_empleado: '',
+        },
+
+        // MODALES
+        modal: { edicion: false, baja: false },
+        
+        // FORMULARIO DE EDICIÓN
+        formEdicion: {
+            id_empleado: null,
+            id_plantilla_original: null,
+            id_plantilla_nueva: null,
+            nombre_completo: '',
+            apellido_paterno: '',
+            apellido_materno: '',
+            fecha_nacimiento: '',
+            curp: '',
+            nss: '',
+            rfc: '',
+            salario_diario: null,
+            tipo_empleado: '',
+        },
+
+        // FORMULARIO DE BAJA
+        formBaja: {
+            id_empleado: null,
+            nombre_completo: '',
+            motivo: '',
+            observaciones: ''
+        },
+
+        // ==========================================
+        //         CÁLCULOS Y FILTROS
+        // ==========================================
+
+        get empleadosFiltrados() {
+            const q = this.busquedaEmpleados.toLowerCase();
+            return this.empleados.filter(e =>
+                e.nombre_completo.toLowerCase().includes(q) ||
+                e.apellido_paterno.toLowerCase().includes(q) ||
+                e.nombre_puesto.toLowerCase().includes(q) ||
+                e.curp.toLowerCase().includes(q)
+            );
+        },
+
+        get vacantesFiltradasRegistro() {
+            // Aseguramos que la selección sea un NÚMERO entero o 0 si está vacío
+            const id_planta_seleccionada = parseInt(this.filtro.id_planta) || 0; 
+            
+            if (id_planta_seleccionada === 0) return []; // No mostrar nada si no hay planta seleccionada
+            
+            return this.vacantes.filter(v =>
+                // Solo comparamos el ID de la planta y que haya vacantes disponibles
+                v.id_planta === id_planta_seleccionada && 
+                v.vacantes_disponibles > 0 
+            );
+        },
+
+        // ==========================================
+        //             CARGA DE DATOS
+        // ==========================================
+
+        async cargarPlantas() {
+            const res = await fetch('/rh/plantas', { credentials: 'include' });
+            if (!res.ok) throw new Error('Error al obtener plantas');
+            this.plantas = await res.json();
+        },
+        
+        async cargarVacantes() {
+            const res = await fetch('/rh/vacantes_disponibles', { credentials: 'include' });
+            if (!res.ok) throw new Error('Error al obtener vacantes');
+            this.vacantes = await res.json();
+        },
+
+        async cargarEmpleados() {
+            const res = await fetch('/rh/empleados', { credentials: 'include' });
+            if (!res.ok) throw new Error('Error al obtener empleados');
+            this.empleados = await res.json();
+        },
+        
+        async cargarKpis() {
+            const res = await fetch('/rh/kpis_plantilla', { credentials: 'include' });
+            if (!res.ok) throw new Error('Error al obtener KPIs');
+            this.kpis = await res.json();
+        },
+        
+        async initData() {
+            try {
+                // Carga inicial de todo lo necesario
+                await Promise.all([
+                    this.cargarKpis(),
+                    this.cargarPlantas(),
+                    this.cargarVacantes(),
+                    this.cargarEmpleados()
+                ]);
+            } catch (e) {
+                alert('⚠️ Error crítico al cargar datos. Asegúrate que tu backend esté corriendo y las tablas tengan datos. Ver consola.');
+                console.error(e);
             }
-        }
+        },
+        
+        // ==========================================
+        //          LÓGICA DE REGISTRO
+        // ==========================================
 
-        // Función para crear Gráfica de Rosquilla (Viáticos por Concepto)
-        function createViaticosConceptoChart() {
-            const ctxConcepto = document.getElementById('chartViaticosConcepto')?.getContext('2d');
-            if (ctxConcepto) {
-                new Chart(ctxConcepto, {
-                    type: 'doughnut',
-                    data: {
-                        labels: viaticosConceptoLabels,
-                        datasets: [{
-                            label: 'Gasto por Concepto',
-                            data: viaticosConceptoData,
-                            backgroundColor: ['#0052cc', '#ff6600', '#00cc99', '#cc00cc'],
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Distribución de Gasto' } }
-                    }
-                });
+        async registrarEmpleado() {
+            if (!this.form.id_plantilla) {
+                alert('Selecciona una vacante válida');
+                return;
             }
-        }
-
-        // Función para crear Gráfica de Líneas (Altas y Bajas)
-        function createAltasBajasChart() {
-            const ctxAltasBajas = document.getElementById('chartAltasBajas')?.getContext('2d');
-            if (ctxAltasBajas) {
-                new Chart(ctxAltasBajas, {
-                    type: 'line',
-                    data: {
-                        labels: altasBajasLabels,
-                        datasets: [
-                            {
-                                label: 'Altas (Contrataciones)',
-                                data: altasData,
-                                borderColor: '#0052cc',
-                                backgroundColor: 'rgba(0, 82, 204, 0.1)',
-                                tension: 0.4,
-                                fill: true,
-                            },
-                            {
-                                label: 'Bajas (Rotación)',
-                                data: bajasData,
-                                borderColor: '#ff6600',
-                                backgroundColor: 'rgba(255, 102, 0, 0.1)',
-                                tension: 0.4,
-                                fill: true,
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { position: 'top' }, title: { display: false } },
-                        scales: { y: { beginAtZero: true, suggestedMax: 12 } }
-                    }
-                });
+            if (this.form.salario_diario <= 0 || !this.form.tipo_empleado) {
+                alert('Completa los campos de Salario Diario y Tipo de Empleado.');
+                return;
             }
-        }
 
-        // Inicializar gráficas cuando se active la pestaña correspondiente
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('body', () => ({
-                activeTab: 'empleados',
-                searchTerm: '',
-                init() {
-                    this.$watch('activeTab', (value) => {
-                        if (value === 'viaticos') {
-                            setTimeout(() => { // Pequeño delay para asegurar que el canvas está visible
-                                createViaticosAreaChart();
-                                createViaticosConceptoChart();
-                            }, 100);
-                        } else if (value === 'historial') {
-                            setTimeout(createAltasBajasChart, 100);
-                        }
-                    });
-                    // Cargar la gráfica inicial si la pestaña es 'viaticos' al cargar
-                    if (this.activeTab === 'viaticos') {
-                        setTimeout(() => {
-                            createViaticosAreaChart();
-                            createViaticosConceptoChart();
-                        }, 100);
-                    }
+            try {
+                const formData = new FormData();
+                // Mapeo de TODOS los 10 campos obligatorios del backend
+                formData.append('id_plantilla', this.form.id_plantilla);
+                formData.append('nombre_completo', this.form.nombre_completo);
+                formData.append('apellido_paterno', this.form.apellido_paterno);
+                formData.append('apellido_materno', this.form.apellido_materno);
+                formData.append('curp', this.form.curp.toUpperCase());
+                formData.append('nss', this.form.nss);
+                formData.append('rfc', this.form.rfc.toUpperCase());
+                formData.append('fecha_nacimiento', this.form.fecha_nacimiento);
+                formData.append('salario_diario', this.form.salario_diario);
+                formData.append('tipo_empleado', this.form.tipo_empleado);
+                
+                const res = await fetch('/rh/registrar_empleado', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('✅ ' + (data.mensaje || 'Empleado registrado correctamente'));
+                    // Limpiar y recargar
+                    this.form = { id_plantilla: '', nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '', salario_diario: null, tipo_empleado: '' };
+                    this.filtro.id_planta = ''; // Limpiar filtro de planta
+                    this.initData();
+                } else {
+                    alert('❌ Error: ' + (data.error || 'No se pudo registrar al empleado.'));
                 }
-            }));
-            // Inicializar las gráficas por si 'empleados' fuera la pestaña inicial
-            createViaticosAreaChart(); // Se llama una vez por si el usuario cambia rápido
-            createViaticosConceptoChart();
-            createAltasBajasChart();
-        });
-    </script>
+            } catch (e) {
+                alert('⚠️ Error de conexión al registrar empleado');
+                console.error('Error en registrarEmpleado:', e);
+            }
+        },
 
-</body>
-</html>
+        // ==========================================
+        //          LÓGICA DE EDICIÓN
+        // ==========================================
+
+        abrirModalEdicion(empleado) {
+            // Cargar datos del empleado y formatear la fecha a YYYY-MM-DD
+            this.formEdicion = {
+                id_empleado: empleado.id_empleado,
+                id_plantilla_original: empleado.id_plantilla,
+                id_plantilla_nueva: empleado.id_plantilla, // Valor inicial
+                nombre_completo: empleado.nombre_completo,
+                apellido_paterno: empleado.apellido_paterno,
+                apellido_materno: empleado.apellido_materno,
+                fecha_nacimiento: empleado.fecha_nacimiento ? empleado.fecha_nacimiento.substring(0, 10) : '',
+                curp: empleado.curp,
+                nss: empleado.nss,
+                rfc: empleado.rfc,
+                salario_diario: empleado.salario_diario,
+                tipo_empleado: empleado.tipo_empleado,
+            };
+            this.modal.edicion = true;
+        },
+
+        async guardarEdicion() {
+            const formData = new FormData();
+            
+            // Asignar todos los campos del formEdicion
+            for (const key in this.formEdicion) {
+                if (key !== 'id_plantilla_original') {
+                    formData.append(key, this.formEdicion[key]);
+                }
+            }
+
+            try {
+                const res = await fetch('/rh/editar_empleado', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('✅ ' + (data.mensaje || 'Empleado actualizado.'));
+                    this.modal.edicion = false;
+                    this.initData(); // Recargar todo
+                } else {
+                    alert('❌ Error: ' + (data.error || 'No se pudo actualizar el empleado.'));
+                }
+            } catch (e) {
+                alert('⚠️ Error de conexión al editar empleado.');
+                console.error(e);
+            }
+        },
+        
+        // ==========================================
+        //           LÓGICA DE BAJA
+        // ==========================================
+
+        abrirModalBaja(empleado) {
+            this.formBaja = {
+                id_empleado: empleado.id_empleado,
+                nombre_completo: `${empleado.nombre_completo} ${empleado.apellido_paterno}`,
+                motivo: '',
+                observaciones: ''
+            };
+            this.modal.baja = true;
+        },
+
+        async confirmarBaja() {
+            const formData = new FormData();
+            formData.append('id_empleado', this.formBaja.id_empleado);
+            formData.append('motivo', this.formBaja.motivo);
+            formData.append('observaciones', this.formBaja.observaciones);
+
+            try {
+                const res = await fetch('/rh/baja_empleado', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('✅ ' + (data.mensaje || 'Baja registrada.'));
+                    this.modal.baja = false;
+                    this.initData(); // Recargar todo
+                } else {
+                    alert('❌ Error: ' + (data.error || 'No se pudo dar de baja al empleado.'));
+                }
+            } catch (e) {
+                alert('⚠️ Error de conexión al registrar baja.');
+                console.error(e);
+            }
+        }
+    }
+}
+</script>
+
+{% endblock %}

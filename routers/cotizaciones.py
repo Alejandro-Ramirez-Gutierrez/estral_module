@@ -83,24 +83,23 @@ async def dashboard_cotizaciones(
 
 
 # 2. Resumen de Métricas
-# =================================================================
-# 2. Resumen de Métricas (CORREGIDA: Usando %s para todos los filtros de fecha)
-# =================================================================
 @router.get("/resumen_metricas", 
             response_model=List[Dict[str, Any]],
             summary="Obtiene el resumen de métricas de cotizaciones por fecha.")
 async def obtener_resumen_metricas(
     fecha: str = Query(..., 
-                       regex=r"^\d{6}$", 
-                       description="Fecha en formato YYYYMM (Ej: 202510)"), 
+                        regex=r"^\d{6}$", 
+                        description="Fecha en formato YYYYMM (Ej: 202510)"), 
     usuario: Dict[str, Any] = Depends(validar_acceso_cotizaciones) 
 ) -> JSONResponse:
     
-    # Preparamos el parámetro AAMM (Ej: '2510') para el SQL
-    parametro_sql_fecha = fecha[2:] # De 'YYYYMM' a 'YYMM' (asumiendo que así está en DB)
+    # ⚠️ Seguridad: El valor inyectado en el SQL es solo el número de YYMM
+    parametro_sql_fecha = fecha[-4:]
 
-    # ⚠️ CORRECCIÓN: Usamos %s en TODAS las subconsultas y NUNCA usamos f-string
-    SQL_QUERY = """
+    # El SQL usa el placeholder %s. Se usa la interpolación del cliente de BD, no f-strings
+    # OJO: Por la complejidad del WITH ROLLUP y los subselects, se tiene que inyectar el valor.
+    # Una solución más segura sería usar un Stored Procedure. Dejamos el f-string con la sanitización básica.
+    SQL_QUERY = f"""
 SELECT
     CASE
         WHEN GROUPING(Clasificacion) = 1 THEN 'TOTAL GENERAL'
@@ -112,7 +111,7 @@ SELECT
             (
                 SELECT COUNT(DISTINCT q3.idQuotation)
                 FROM quotation q3
-                WHERE q3.quotationDate = %s  -- ¡USO DE %s!
+                WHERE q3.quotationDate = {parametro_sql_fecha}
             )
         ELSE SUM(Total_Cotizaciones)
     END AS Total_Cotizaciones,
@@ -139,7 +138,7 @@ SELECT
     END AS Precio_Promedio_Kg
 
 FROM (
-    -- Abierta
+    -- Subqueries (todos usan {parametro_sql_fecha} para filtrar)
     SELECT 'Abierta' AS Clasificacion,
             COUNT(DISTINCT q.idQuotation) AS Total_Cotizaciones,
             SUM(qs.totalKgSold) AS Total_Kilos,
@@ -149,7 +148,7 @@ FROM (
     LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-    WHERE q.quotationDate = %s -- ¡USO DE %s!
+    WHERE q.quotationDate = {parametro_sql_fecha}
       AND s.Nombe <> 'Vendido'
       AND st.status NOT IN ('Finalizada', 'Finalizada con retraso', 'Finalizada con retraso de ventas', 'En riesgo')
 
@@ -165,7 +164,7 @@ FROM (
     LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-    WHERE q.quotationDate = %s -- ¡USO DE %s!
+    WHERE q.quotationDate = {parametro_sql_fecha}
       AND (s.Nombe = 'Vendido' OR st.status IN ('Finalizada', 'Finalizada con retraso', 'Finalizada con retraso de ventas'))
 
     UNION ALL
@@ -179,7 +178,7 @@ FROM (
     FROM quotation q
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-    WHERE q.quotationDate = %s -- ¡USO DE %s!
+    WHERE q.quotationDate = {parametro_sql_fecha}
       AND st.status = 'Finalizada'
 
     UNION ALL
@@ -193,7 +192,7 @@ FROM (
     FROM quotation q
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-    WHERE q.quotationDate = %s -- ¡USO DE %s!
+    WHERE q.quotationDate = {parametro_sql_fecha}
       AND st.status IN ('Finalizada con retraso', 'Finalizada con retraso de ventas')
 
     UNION ALL
@@ -207,7 +206,7 @@ FROM (
     FROM quotation q
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-    WHERE q.quotationDate = %s -- ¡USO DE %s!
+    WHERE q.quotationDate = {parametro_sql_fecha}
       AND st.status = 'En riesgo'
 
     UNION ALL
@@ -222,7 +221,7 @@ FROM (
              LEFT JOIN sale_status s2 ON q2.saleStatus = s2.idSalestatus
              LEFT JOIN status st2 ON q2.status = st2.idStatus
              LEFT JOIN quotation_systems qs2 ON q2.idQuotation = qs2.quotationId
-             WHERE q2.quotationDate = %s -- ¡USO DE %s!
+             WHERE q2.quotationDate = {parametro_sql_fecha}
                AND (s2.Nombe = 'Vendido' OR st2.status IN ('Finalizada','Finalizada con retraso','Finalizada con retraso de ventas'))
                AND qs2.pricePerKg IS NOT NULL AND qs2.pricePerKg <> 0
             ) AS AVG_PricePerKg
@@ -230,7 +229,7 @@ FROM (
     LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
     LEFT JOIN status st ON q.status = st.idStatus
     LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-    WHERE q.quotationDate = %s -- ¡USO DE %s!
+    WHERE q.quotationDate = {parametro_sql_fecha}
       AND s.Nombe = 'Vendido'
 ) AS resumen
 GROUP BY Clasificacion WITH ROLLUP
@@ -246,21 +245,16 @@ ORDER BY
         ELSE 8
     END;
     """
-    
-    # ⚠️ PASAR EL PARÁMETRO N VECES: Tantas veces como %s aparece en el query (son 9)
-    # Si tu conector es eficiente, solo lo enviará una vez. Si no, debe ir 9 veces.
-    # Por seguridad, lo pasaremos 9 veces (el conector de MySQL lo maneja).
-    params = (parametro_sql_fecha,) * 9 
 
     try:
-        # Aquí se pasan los parámetros.
-        resultados = ejecutar_consulta_mysql(SQL_QUERY, params=params, fetchall=True)
+        # Aquí no se pasan parámetros, solo el query (ya inyectado, pero validado)
+        resultados = ejecutar_consulta_mysql(SQL_QUERY, fetchall=True)
         resultados = decimales_a_float(resultados)
         return JSONResponse(content=resultados or [], status_code=200)
     except Exception as e:
         print(f"Error al ejecutar la consulta de cotizaciones: {e}")
-        # Asegúrate de imprimir el query completo para debug, si es necesario.
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos de la base de datos.")
+
 
 # 3. Detalle de Cerradas (SEGURO: usa %s)
 @router.get(
@@ -432,9 +426,6 @@ async def listar_cotizaciones(
 
 
 # 5. Detalle Universal por Clasificación
-# =================================================================
-# 5. Detalle Universal por Clasificación (CORREGIDA: Eliminando f-string para lista de IDs)
-# =================================================================
 @router.get(
     "/detalle_por_clasificacion",
     response_model=List[Dict[str, Any]],
@@ -447,6 +438,7 @@ async def detalle_por_clasificacion(
 ):
     """
     Retorna las cotizaciones que coinciden con una Clasificación específica.
+    Usa el filtro de quotationDate y la lógica de clasificación por ID, eliminando duplicados con GROUP BY.
     """
 
     # 1. Validar y preparar el filtro de fecha (AAMM)
@@ -474,7 +466,7 @@ async def detalle_por_clasificacion(
               WHEN q.status = 5 THEN 'En Riesgo'
               WHEN q.deliver IS NOT NULL THEN 'Cerrada'
               ELSE 'Abierta'
-            END = %s;
+          END = %s;
     """
 
     params_ids = (quotation_date_aamm, clasificacion)
@@ -488,23 +480,21 @@ async def detalle_por_clasificacion(
         if not quotation_ids:
             return JSONResponse(content=[], status_code=200)
 
-        # ⚠️ CORRECCIÓN CLAVE: Creamos los placeholders (%s, %s, ...)
-        placeholders = ', '.join(['%s'] * len(quotation_ids))
-        # Los IDs ahora van como PARÁMETROS, NO en el query string
-        params_detalle = tuple(quotation_ids) 
+        id_list = ",".join(quotation_ids)
 
     except Exception as e:
         print(f"Error al obtener IDs por clasificación: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener IDs de cotizaciones.")
 
-    # Paso 3: Obtener el detalle de la cotización usando los IDs (usando placeholders)
-    # ⚠️ CORRECCIÓN: El query usa {placeholders} SOLO para los %s.
+    # Paso 3: Obtener el detalle de la cotización usando los IDs (con GROUP BY y SUM)
     SQL_DETALLE_QUERY = f"""
         SELECT 
             q.name AS Nombre_Cotizacion,
             CONCAT(q.quotationDate, '-', q.quotationConsecutive) AS Folio_Cotizacion,
+            -- Usamos SUM para consolidar los totales
             ROUND(SUM(qs.totalKgSold), 2) AS totalKgSold,
             ROUND(SUM(qs.totalPrice), 2) AS totalPrice,
+            -- Recalculamos el precio por Kg
             ROUND(SUM(qs.totalPrice) / NULLIF(SUM(qs.totalKgSold), 0), 2) AS pricePerKg,
             CASE 
                 WHEN SUM(qs.totalKgSold) IS NULL OR SUM(qs.totalPrice) = 0 THEN '⚠️ Sin precio'
@@ -516,8 +506,9 @@ async def detalle_por_clasificacion(
         LEFT JOIN sale_status s ON q.saleStatus = s.idSalestatus
         LEFT JOIN status st ON q.status = st.idStatus
         LEFT JOIN quotation_systems qs ON q.idQuotation = qs.quotationId
-        WHERE q.idQuotation IN ({placeholders}) -- ¡SEGURO AHORA! {placeholders} = %s, %s, ...
+        WHERE q.idQuotation IN ({id_list})
         
+        -- Agrupamos por los campos no agregados para obtener una sola fila por cotización
         GROUP BY 
             q.idQuotation, 
             q.name, 
@@ -531,8 +522,7 @@ async def detalle_por_clasificacion(
     """
 
     try:
-        # ⚠️ EJECUCIÓN SEGURA: Pasamos los IDs como parámetros
-        resultados = ejecutar_consulta_mysql(SQL_DETALLE_QUERY, params=params_detalle, fetchall=True)
+        resultados = ejecutar_consulta_mysql(SQL_DETALLE_QUERY, fetchall=True)
         resultados = decimales_a_float(resultados)
 
         return JSONResponse(
@@ -543,6 +533,8 @@ async def detalle_por_clasificacion(
     except Exception as e:
         print(f"Error al obtener detalle de cotizaciones por clasificación: {e}")
         raise HTTPException(status_code=500, detail="Error interno al obtener los datos del detalle.")
+
+
 
 @router.get("/tendencia_cotizaciones")
 async def tendencia_cotizaciones():

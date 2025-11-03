@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Dashboard RH{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+  <style>
+    body {
+      background-color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+
+<body class="text-gray-800">
+  <!-- Navbar superior -->
+  <header class="bg-white shadow-md py-3 px-6 flex items-center justify-between sticky top-0 z-50">
+    <h1 class="text-xl font-bold text-blue-700">Sistema RH - Estral</h1>
+    <div class="flex items-center gap-4">
+      <span class="text-gray-600 text-sm">{{ user.Nombre if user else 'Usuario' }}</span>
+      <form action="/logout" method="post">
+        <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
+          Cerrar sesión
+        </button>
+      </form>
+    </div>
+  </header>
+
+  <!-- Layout principal -->
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-900 text-white min-h-screen hidden md:block">
+      <nav class="p-4 space-y-2">
+        <a href="/rh/" class="block px-3 py-2 rounded hover:bg-gray-800">🏢 Dashboard RH</a>
+        <a href="/rh/empleados" class="block px-3 py-2 rounded hover:bg-gray-800">👥 Empleados</a>
+        <a href="/rh/vacantes" class="block px-3 py-2 rounded hover:bg-gray-800">📋 Vacantes</a>
+      </nav>
+    </aside>
+
+    <!-- Contenido dinámico -->
+    <main class="flex-1 p-6">
+      {% block content %}
+      {% endblock %}
+    </main>
+  </div>
+
+</body>
+</html>
