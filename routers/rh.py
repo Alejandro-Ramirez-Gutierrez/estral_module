@@ -64,7 +64,7 @@ def registrar_empleado(
     id_plantilla: int = Form(...),
     salario_diario: float = Form(...),
     tipo_empleado: str = Form(...),
-    fecha_ingreso: str = Form(...),
+    fecha_alta: str = Form(...),
     
     # NUEVOS CAMPOS AGREGADOS desde la tabla
     numero_empleado: str = Form(None),
@@ -123,7 +123,7 @@ def registrar_empleado(
     params_insert = (
     id_plantilla, curp, nss, rfc, nombre_completo, apellido_paterno, apellido_materno, 
     fecha_nacimiento, 
-    fecha_ingreso, 
+    fecha_alta, 
     salario_diario, tipo_empleado,
     numero_empleado, estado_civil, sexo, telefono_movil, calle, cp, municipio, colonia, 
     contacto_emergencia, parentesco_emergencia, tel_emergencia, email_corp, tipo_relacion_laboral, escolaridad
@@ -346,7 +346,6 @@ def editar_empleado(
             salario_diario = ?,
             tipo_empleado = ?,
             
-            -- 💥 CAMPOS NUEVOS EN EL UPDATE
             numero_empleado = ?,
             estado_civil = ?,
             sexo = ?,
@@ -433,10 +432,10 @@ def buscar_empleado_baja(
     access_token: str = Cookie(None)
 ):
     # 1. Buscar al empleado por numero_empleado (debe estar inactivo)
-    # Usando 'activo = 0' según tu corrección
+    # ¡CORRECCIÓN! Usamos el entero 0, consistente con la baja
     query_empleado = """
         SELECT * FROM ws_rh_Empleados 
-        WHERE numero_empleado = ? AND activo = '0'
+        WHERE numero_empleado = ? AND activo = 0
     """
     empleado = ejecutar_consulta_sql(query_empleado, params=(numero_empleado,), fetchone=True)
 
@@ -446,7 +445,6 @@ def buscar_empleado_baja(
     id_empleado = empleado["id_empleado"]
 
     # 2. Buscar el último registro de baja (el más reciente)
-    # 💥 Corregido: Uso de TOP 1 para SQL Server
     query_baja = """
         SELECT TOP 1 motivo, observaciones 
         FROM ws_rh_Bajas 
@@ -461,12 +459,12 @@ def buscar_empleado_baja(
 
     # 3. Devolver los datos del empleado y el motivo de baja
     empleado_data = {}
-    # 💥 Corregido: Conversión de fechas (date/datetime) Y números decimales (Decimal)
+    # Conversión de fechas (date/datetime) Y números decimales (Decimal)
     for key, value in empleado.items():
         if isinstance(value, (date, datetime)):
             empleado_data[key] = value.isoformat()
         elif isinstance(value, Decimal):
-            empleado_data[key] = float(value) # Convierte Decimal a float para JSON
+            empleado_data[key] = float(value) 
         else:
             empleado_data[key] = value
     
@@ -475,14 +473,13 @@ def buscar_empleado_baja(
         "baja": baja
     })
 
-
 # -------------------- PROCESAR REINGRESO DE EMPLEADO --------------------
 @router.post("/reingreso_empleado", response_class=JSONResponse)
 def reingreso_empleado(
     id_empleado: int = Form(...),
     id_plantilla_anterior: int = Form(...),
     id_plantilla_nueva: int = Form(...),
-    fecha_ingreso: str = Form(...),
+    fecha_alta: str = Form(...),
     salario_diario: float = Form(...),
     telefono_movil: str = Form(None),
     access_token: str = Cookie(None)
@@ -499,7 +496,7 @@ def reingreso_empleado(
     if vacante_nueva["empleados_activos"] >= vacante_nueva["plantilla_autorizada"]:
         return JSONResponse(status_code=400, content={"error": "No hay vacantes disponibles en el nuevo puesto."})
 
-    # 2. Lógica de Actualización de Plantilla
+    # 2. Lógica de Actualización de Plantilla (sin cambios)
     if id_plantilla_nueva != id_plantilla_anterior:
         # 2a. Liberar vacante de la plantilla ANTERIOR (si se movió de puesto)
         ejecutar_consulta_sql(
@@ -516,8 +513,6 @@ def reingreso_empleado(
         )
     else:
         # Si es la misma plantilla, solo sumar 1 
-        # (Esto asume que el contador se redujo a 0 cuando se dio de baja.
-        # En este caso, solo necesitas ocuparla una vez.)
         ejecutar_consulta_sql(
             "UPDATE ws_rh_PuestosPlantilla SET empleados_activos = empleados_activos + 1 WHERE id_plantilla = ?",
             params=(id_plantilla_nueva,),
@@ -528,9 +523,9 @@ def reingreso_empleado(
     # 3. Reestablecer el registro del empleado
     query_update = """
         UPDATE ws_rh_Empleados SET
-            activo = 1,                 -- 💥 Corregido: Usa la columna 'activo' (booleano 1/0)
+            activo = 1,                 
             id_plantilla = ?,
-            fecha_ingreso = ?,
+            fecha_alta = ?,
             salario_diario = ?,
             telefono_movil = ? 
         WHERE id_empleado = ?
@@ -539,7 +534,7 @@ def reingreso_empleado(
         query_update,
         params=(
             id_plantilla_nueva, 
-            fecha_ingreso, 
+            fecha_alta, 
             salario_diario, 
             telefono_movil, 
             id_empleado

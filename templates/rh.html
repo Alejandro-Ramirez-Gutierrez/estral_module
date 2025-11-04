@@ -73,7 +73,7 @@
                     
                     <div class="col-span-full md:col-span-1">
                         <label class="block text-sm text-gray-600">3. Fecha de Ingreso</label>
-                        <input type="date" x-model="form.fecha_ingreso" required class="w-full p-2 border rounded-lg">
+                        <input type="date" x-model="form.fecha_alta" required class="w-full p-2 border rounded-lg">
                     </div>
 
                     <div>
@@ -384,7 +384,7 @@
                     
                     <div class="col-span-full md:col-span-1">
                         <label class="block text-sm text-gray-600 font-bold">Nueva Fecha de Ingreso</label>
-                        <input type="date" x-model="formReingreso.fecha_ingreso" required class="w-full p-2 border rounded-lg">
+                        <input type="date" x-model="formReingreso.fecha_alta" required class="w-full p-2 border rounded-lg">
                     </div>
                     
                     <div class="col-span-full md:col-span-1">
@@ -437,7 +437,7 @@ function rhDashboard() {
             id_plantilla: '', 
             nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '',
             salario_diario: null, tipo_empleado: '',
-            fecha_ingreso: '', numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '',
+            fecha_alta: '', numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '',
             calle: '', cp: '', municipio: '', colonia: '', contacto_emergencia: '', parentesco_emergencia: '',
             tel_emergencia: '', email_corp: '', tipo_relacion_laboral: '', escolaridad: '',
         },
@@ -465,7 +465,7 @@ function rhDashboard() {
         busqueda: { numero_empleado: '', error: '' }, 
         formReingreso: {
             id_empleado: null, id_plantilla_anterior: null, id_plantilla_nueva: '', nombre_completo: '', 
-            salario_diario: null, telefono_movil: '', fecha_ingreso: '', motivo_baja: '', observaciones_baja: ''
+            salario_diario: null, telefono_movil: '', fecha_alta: '', motivo_baja: '', observaciones_baja: ''
         },
 
 
@@ -549,16 +549,16 @@ function rhDashboard() {
                 const formData = new FormData();
                 // 24 campos mapeados
                 formData.append('id_plantilla', this.form.id_plantilla);
-                formData.append('nombre_completo', this.form.nombre_completo);
-                formData.append('apellido_paterno', this.form.apellido_paterno);
-                formData.append('apellido_materno', this.form.apellido_materno);
+                formData.append('nombre_completo', this.form.nombre_completo.toUpperCase());
+                formData.append('apellido_paterno', this.form.apellido_paterno.toUpperCase());
+                formData.append('apellido_materno', this.form.apellido_materno.toUpperCase());
                 formData.append('curp', this.form.curp.toUpperCase());
                 formData.append('nss', this.form.nss);
                 formData.append('rfc', this.form.rfc.toUpperCase());
                 formData.append('fecha_nacimiento', this.form.fecha_nacimiento);
                 formData.append('salario_diario', this.form.salario_diario);
                 formData.append('tipo_empleado', this.form.tipo_empleado);
-                formData.append('fecha_ingreso', this.form.fecha_ingreso);
+                formData.append('fecha_alta', this.form.fecha_alta);
                 formData.append('numero_empleado', this.form.numero_empleado);
                 formData.append('estado_civil', this.form.estado_civil);
                 formData.append('sexo', this.form.sexo);
@@ -567,7 +567,7 @@ function rhDashboard() {
                 formData.append('cp', this.form.cp);
                 formData.append('municipio', this.form.municipio);
                 formData.append('colonia', this.form.colonia);
-                formData.append('contacto_emergencia', this.form.contacto_emergencia);
+                formData.append('contacto_emergencia', this.form.contacto_emergencia.toUpperCase());
                 formData.append('parentesco_emergencia', this.form.parentesco_emergencia);
                 formData.append('tel_emergencia', this.form.tel_emergencia);
                 formData.append('email_corp', this.form.email_corp);
@@ -586,7 +586,7 @@ function rhDashboard() {
                 if (res.ok) {
                     alert('✅ ' + (data.mensaje || 'Empleado registrado correctamente'));
                     // Limpiar y recargar
-                    this.form = { id_plantilla: '', nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '', salario_diario: null, tipo_empleado: '', fecha_ingreso: '', numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '', calle: '', cp: '', municipio: '', colonia: '', contacto_emergencia: '', parentesco_emergencia: '', tel_emergencia: '', email_corp: '', tipo_relacion_laboral: '', escolaridad: '' };
+                    this.form = { id_plantilla: '', nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '', salario_diario: null, tipo_empleado: '', fecha_alta: '', numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '', calle: '', cp: '', municipio: '', colonia: '', contacto_emergencia: '', parentesco_emergencia: '', tel_emergencia: '', email_corp: '', tipo_relacion_laboral: '', escolaridad: '' };
                     this.filtro.id_planta = ''; 
                     this.initData();
                 } else {
@@ -718,7 +718,7 @@ function rhDashboard() {
             this.busqueda = { numero_empleado: '', error: '' };
             this.formReingreso = {
                 id_empleado: null, id_plantilla_anterior: null, id_plantilla_nueva: '', nombre_completo: '', 
-                salario_diario: null, telefono_movil: '', fecha_ingreso: '', motivo_baja: '', observaciones_baja: ''
+                salario_diario: null, telefono_movil: '', fecha_alta: '', motivo_baja: '', observaciones_baja: ''
             };
             this.modal.reingreso = true;
         },
@@ -746,7 +746,7 @@ function rhDashboard() {
                         nombre_completo: `${data.empleado.nombre_completo} ${data.empleado.apellido_paterno}`,
                         salario_diario: data.empleado.salario_diario,
                         telefono_movil: data.empleado.telefono_movil,
-                        fecha_ingreso: new Date().toISOString().substring(0, 10), // Fecha actual por defecto
+                        fecha_alta: new Date().toISOString().substring(0, 10), // Fecha actual por defecto
                         motivo_baja: data.baja.motivo,
                         observaciones_baja: data.baja.observaciones,
                     };
@@ -761,7 +761,7 @@ function rhDashboard() {
         },
 
         async confirmarReingreso() {
-            if (!this.formReingreso.id_empleado || !this.formReingreso.id_plantilla_nueva || !this.formReingreso.fecha_ingreso) {
+            if (!this.formReingreso.id_empleado || !this.formReingreso.id_plantilla_nueva || !this.formReingreso.fecha_alta) {
                 alert('Faltan campos obligatorios.');
                 return;
             }
@@ -770,7 +770,7 @@ function rhDashboard() {
             formData.append('id_empleado', this.formReingreso.id_empleado);
             formData.append('id_plantilla_anterior', this.formReingreso.id_plantilla_anterior);
             formData.append('id_plantilla_nueva', this.formReingreso.id_plantilla_nueva);
-            formData.append('fecha_ingreso', this.formReingreso.fecha_ingreso);
+            formData.append('fecha_alta', this.formReingreso.fecha_alta);
             formData.append('salario_diario', this.formReingreso.salario_diario);
             formData.append('telefono_movil', this.formReingreso.telefono_movil);
             
