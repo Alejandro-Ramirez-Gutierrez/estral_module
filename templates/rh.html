@@ -34,7 +34,14 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
             <div class="bg-white p-6 rounded-2xl shadow mb-8">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">✍️ Registro Nuevo Empleado</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">✍️ Registro Nuevo Empleado</h2>
+                    <button @click="abrirModalReingreso()" 
+                            class="px-4 py-2 bg-purple-600 text-white rounded-xl shadow hover:bg-purple-700 transition">
+                        🔄 Reingreso de Empleado
+                    </button>
+                </div>
+
                 <form @submit.prevent="registrarEmpleado" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     
                     <h3 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-600">Puesto y Salario</h3>
@@ -64,6 +71,11 @@
                         </p>
                     </div>
                     
+                    <div class="col-span-full md:col-span-1">
+                        <label class="block text-sm text-gray-600">3. Fecha de Ingreso</label>
+                        <input type="date" x-model="form.fecha_ingreso" required class="w-full p-2 border rounded-lg">
+                    </div>
+
                     <div>
                         <label class="block text-sm text-gray-600">Salario Diario</label>
                         <input type="number" step="0.01" x-model.number="form.salario_diario" required class="w-full p-2 border rounded-lg">
@@ -111,6 +123,81 @@
                         <input type="text" x-model="form.nss" required maxlength="20" class="w-full p-2 border rounded-lg">
                     </div>
 
+                    <h3 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-600">Información Adicional</h3>
+
+                    <div>
+                        <label class="block text-sm text-gray-600">Número de Empleado</label>
+                        <input type="text" x-model="form.numero_empleado" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Estado Civil</label>
+                        <select x-model="form.estado_civil" class="w-full p-2 border rounded-lg">
+                            <option value="">Selecciona...</option>
+                            <option value="SOLTERO">Soltero</option>
+                            <option value="CASADO">Casado</option>
+                            <option value="UNION LIBRE">Unión Libre</option>
+                            <option value="DIVORCIADO">Divorciado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Sexo</label>
+                        <select x-model="form.sexo" class="w-full p-2 border rounded-lg">
+                            <option value="">Selecciona...</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Teléfono Móvil</label>
+                        <input type="text" x-model="form.telefono_movil" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Email Corporativo</label>
+                        <input type="email" x-model="form.email_corp" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Escolaridad</label>
+                        <input type="text" x-model="form.escolaridad" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Tipo Relación Laboral</label>
+                        <input type="text" x-model="form.tipo_relacion_laboral" class="w-full p-2 border rounded-lg">
+                    </div>
+
+                    <h3 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-600">Dirección</h3>
+
+                    <div>
+                        <label class="block text-sm text-gray-600">Calle</label>
+                        <input type="text" x-model="form.calle" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Colonia</label>
+                        <input type="text" x-model="form.colonia" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Municipio</label>
+                        <input type="text" x-model="form.municipio" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">CP</label>
+                        <input type="text" x-model="form.cp" class="w-full p-2 border rounded-lg">
+                    </div>
+
+                    <h3 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-600">Contacto de Emergencia</h3>
+
+                    <div>
+                        <label class="block text-sm text-gray-600">Nombre Contacto Emergencia</label>
+                        <input type="text" x-model="form.contacto_emergencia" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Parentesco Emergencia</label>
+                        <input type="text" x-model="form.parentesco_emergencia" class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Teléfono Emergencia</label>
+                        <input type="text" x-model="form.tel_emergencia" class="w-full p-2 border rounded-lg">
+                    </div>
+                    
                     <div class="col-span-full mt-4 flex justify-end">
                         <button type="submit" class="px-5 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition">
                             💾 Registrar Empleado
@@ -150,7 +237,7 @@
             <div class="bg-white p-6 rounded-2xl shadow">
                 <h2 class="text-xl font-semibold mb-4 text-gray-700">Empleados Activos</h2>
                 <input type="text" x-model="busquedaEmpleados" placeholder="Buscar por Nombre, Puesto o CURP..." 
-                       class="w-full p-2 border rounded-lg mb-4">
+                        class="w-full p-2 border rounded-lg mb-4">
                 
                 <div class="overflow-x-auto max-h-96">
                     <table class="w-full text-sm text-left border border-gray-200 rounded-xl">
@@ -210,8 +297,8 @@
                     </select>
                 </div>
                 <div class="col-span-2">
-                    <label class="block text-sm text-gray-600 font-bold">Puesto / Plantilla Nueva</label>
-                    <select x-model="formEdicion.id_plantilla_nueva" required class="w-full p-2 border rounded-lg">
+                    <label class="block text-sm text-gray-600 font-bold">Puesto / Plantilla Nueva (Actual: <span x-text="vacantes.find(v => v.id_plantilla === formEdicion.id_plantilla_original)?.nombre_puesto || 'Cargando...'"></span>)</label>
+                    <select x-model.number="formEdicion.id_plantilla_nueva" required class="w-full p-2 border rounded-lg">
                         <template x-for="v in vacantes" :key="v.id_plantilla">
                             <option :value="v.id_plantilla" 
                                 :disabled="v.vacantes_disponibles <= 0 && v.id_plantilla !== formEdicion.id_plantilla_original"
@@ -220,6 +307,22 @@
                         </template>
                     </select>
                 </div>
+                <h4 class="col-span-full font-bold border-b pb-1 mt-2 text-blue-500">Datos Adicionales</h4>
+                <div><label class="block text-sm text-gray-600">Núm. Empleado</label><input type="text" x-model="formEdicion.numero_empleado" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Estado Civil</label><input type="text" x-model="formEdicion.estado_civil" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Sexo</label><input type="text" x-model="formEdicion.sexo" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Teléfono Móvil</label><input type="text" x-model="formEdicion.telefono_movil" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Email Corporativo</label><input type="email" x-model="formEdicion.email_corp" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Escolaridad</label><input type="text" x-model="formEdicion.escolaridad" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Tipo Relación</label><input type="text" x-model="formEdicion.tipo_relacion_laboral" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Calle</label><input type="text" x-model="formEdicion.calle" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Colonia</label><input type="text" x-model="formEdicion.colonia" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Municipio</label><input type="text" x-model="formEdicion.municipio" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">CP</label><input type="text" x-model="formEdicion.cp" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Contacto Emergencia</label><input type="text" x-model="formEdicion.contacto_emergencia" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Parentesco Emergencia</label><input type="text" x-model="formEdicion.parentesco_emergencia" class="w-full p-2 border rounded-lg"></div>
+                <div><label class="block text-sm text-gray-600">Teléfono Emergencia</label><input type="text" x-model="formEdicion.tel_emergencia" class="w-full p-2 border rounded-lg"></div>
+                
                 <div class="col-span-2 flex justify-end space-x-4 mt-4">
                     <button type="button" @click="modal.edicion = false" class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">Cancelar</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar Cambios</button>
@@ -249,7 +352,67 @@
         </div>
     </div>
 
-</div>
+    <div x-show="modal.reingreso" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50" style="display: none;">
+        <div class="relative top-10 mx-auto p-5 border w-4/5 md:w-3/5 shadow-lg rounded-md bg-white">
+            <h3 class="text-xl font-bold mb-4">🔁 Proceso de Reingreso</h3>
+            
+            <div x-show="!formReingreso.id_empleado">
+                <label class="block text-sm text-gray-600 font-bold mb-2">1. Ingresa el Número de Empleado Anterior</label>
+                <div class="flex space-x-2">
+                    <input type="text" x-model="busqueda.numero_empleado" placeholder="Ejem: 12345" class="flex-grow p-2 border rounded-lg">
+                    <button @click="buscarEmpleadoReingreso()" 
+                            :disabled="!busqueda.numero_empleado"
+                            class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400">
+                        🔍 Buscar
+                    </button>
+                </div>
+                <p x-show="busqueda.error" class="text-red-500 mt-2" x-text="busqueda.error"></p>
+            </div>
+            
+            <div x-show="formReingreso.id_empleado">
+                <h4 class="text-lg font-semibold border-b pb-2 mb-4 text-green-700">2. Datos de Reingreso de: <span x-text="formReingreso.nombre_completo"></span></h4>
+                
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+                    <p class="font-bold text-yellow-800">⚠️ Historial de Baja Anterior:</p>
+                    <p class="text-sm">**Motivo:** <span x-text="formReingreso.motivo_baja || 'N/A'"></span></p>
+                    <p class="text-sm">**Observaciones:** <span x-text="formReingreso.observaciones_baja || 'N/A'"></span></p>
+                </div>
+
+                <form @submit.prevent="confirmarReingreso" class="grid grid-cols-2 gap-4">
+                    <input type="hidden" x-model="formReingreso.id_empleado">
+                    <input type="hidden" x-model="formReingreso.id_plantilla_anterior">
+                    
+                    <div class="col-span-full md:col-span-1">
+                        <label class="block text-sm text-gray-600 font-bold">Nueva Fecha de Ingreso</label>
+                        <input type="date" x-model="formReingreso.fecha_ingreso" required class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div class="col-span-full md:col-span-1">
+                        <label class="block text-sm text-gray-600 font-bold">Seleccionar Nuevo Puesto / Plantilla</label>
+                        <select x-model.number="formReingreso.id_plantilla_nueva" required class="w-full p-2 border rounded-lg">
+                            <option value="">Selecciona un puesto...</option>
+                            <template x-for="v in vacantes" :key="v.id_plantilla">
+                                <option :value="v.id_plantilla" 
+                                    :disabled="v.vacantes_disponibles <= 0 && v.id_plantilla !== formReingreso.id_plantilla_anterior"
+                                    x-text="`${v.nombre_planta} | ${v.nombre_puesto} (${v.vacantes_disponibles} disp.)`">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+                    
+                    <div><label class="block text-sm text-gray-600">Salario Diario</label><input type="number" step="0.01" x-model.number="formReingreso.salario_diario" required class="w-full p-2 border rounded-lg"></div>
+                    <div><label class="block text-sm text-gray-600">Teléfono Móvil</label><input type="text" x-model="formReingreso.telefono_movil" class="w-full p-2 border rounded-lg"></div>
+
+                    <div class="col-span-2 flex justify-end space-x-4 mt-4">
+                        <button type="button" @click="cerrarModalReingreso()" class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">✅ Confirmar Reingreso</button>
+                    </div>
+                </form>
+            </div>
+            <button @click="modal.reingreso = false" class="absolute top-3 right-5 text-xl font-bold text-gray-700 hover:text-gray-900">&times;</button>
+        </div>
+    </div>
+    </div>
 
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
@@ -258,60 +421,56 @@ function rhDashboard() {
     return {
         // DATOS PRINCIPALES
         kpis: { total_plantilla: 0, total_activos: 0, total_vacantes: 0, tasa_ocupacion: 0 },
-        plantas: [], // Lista de plantas
-        vacantes: [], // Todas las plantillas
-        empleados: [], // Lista de empleados activos
+        plantas: [], 
+        vacantes: [], 
+        empleados: [], 
         
         // FILTROS
         busquedaEmpleados: '',
         filtro: {
-            id_planta: '', // Para filtrar registro de vacantes
-            busqueda_vacante: '' // Para buscar en el select
+            id_planta: '', 
+            busqueda_vacante: '' 
         },
         
         // FORMULARIO DE REGISTRO
         form: {
             id_plantilla: '', 
-            nombre_completo: '',
-            apellido_paterno: '',
-            apellido_materno: '',
-            curp: '',
-            nss: '',
-            rfc: '',
-            fecha_nacimiento: '',
-            salario_diario: null,
-            tipo_empleado: '',
+            nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '',
+            salario_diario: null, tipo_empleado: '',
+            fecha_ingreso: '', numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '',
+            calle: '', cp: '', municipio: '', colonia: '', contacto_emergencia: '', parentesco_emergencia: '',
+            tel_emergencia: '', email_corp: '', tipo_relacion_laboral: '', escolaridad: '',
         },
 
         // MODALES
-        modal: { edicion: false, baja: false },
+        modal: { edicion: false, baja: false, reingreso: false }, // 💥 Agregado reingreso
         
         // FORMULARIO DE EDICIÓN
         formEdicion: {
-            id_empleado: null,
-            id_plantilla_original: null,
-            id_plantilla_nueva: null,
-            nombre_completo: '',
-            apellido_paterno: '',
-            apellido_materno: '',
-            fecha_nacimiento: '',
-            curp: '',
-            nss: '',
-            rfc: '',
-            salario_diario: null,
-            tipo_empleado: '',
+            id_empleado: null, id_plantilla_original: null, id_plantilla_nueva: null, nombre_completo: '',
+            apellido_paterno: '', apellido_materno: '', fecha_nacimiento: '', curp: '', nss: '', rfc: '',
+            salario_diario: null, tipo_empleado: '',
+            // 💥 Campos adicionales para edición
+            numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '', email_corp: '', escolaridad: '',
+            tipo_relacion_laboral: '', calle: '', colonia: '', municipio: '', cp: '', contacto_emergencia: '', 
+            parentesco_emergencia: '', tel_emergencia: '',
         },
 
         // FORMULARIO DE BAJA
         formBaja: {
-            id_empleado: null,
-            nombre_completo: '',
-            motivo: '',
-            observaciones: ''
+            id_empleado: null, nombre_completo: '', motivo: '', observaciones: ''
         },
 
+        // 💥 Lógica de Reingreso
+        busqueda: { numero_empleado: '', error: '' }, 
+        formReingreso: {
+            id_empleado: null, id_plantilla_anterior: null, id_plantilla_nueva: '', nombre_completo: '', 
+            salario_diario: null, telefono_movil: '', fecha_ingreso: '', motivo_baja: '', observaciones_baja: ''
+        },
+
+
         // ==========================================
-        //         CÁLCULOS Y FILTROS
+        //      CÁLCULOS Y FILTROS
         // ==========================================
 
         get empleadosFiltrados() {
@@ -320,27 +479,26 @@ function rhDashboard() {
                 e.nombre_completo.toLowerCase().includes(q) ||
                 e.apellido_paterno.toLowerCase().includes(q) ||
                 e.nombre_puesto.toLowerCase().includes(q) ||
-                e.curp.toLowerCase().includes(q)
+                (e.curp || '').toLowerCase().includes(q)
             );
         },
 
         get vacantesFiltradasRegistro() {
-            // Aseguramos que la selección sea un NÚMERO entero o 0 si está vacío
             const id_planta_seleccionada = parseInt(this.filtro.id_planta) || 0; 
             
-            if (id_planta_seleccionada === 0) return []; // No mostrar nada si no hay planta seleccionada
+            if (id_planta_seleccionada === 0) return []; 
             
             return this.vacantes.filter(v =>
-                // Solo comparamos el ID de la planta y que haya vacantes disponibles
                 v.id_planta === id_planta_seleccionada && 
                 v.vacantes_disponibles > 0 
             );
         },
 
         // ==========================================
-        //             CARGA DE DATOS
+        //      CARGA DE DATOS
         // ==========================================
-
+        // ... (cargarPlantas, cargarVacantes, cargarEmpleados, cargarKpis, initData se mantienen igual)
+        
         async cargarPlantas() {
             const res = await fetch('/rh/plantas', { credentials: 'include' });
             if (!res.ok) throw new Error('Error al obtener plantas');
@@ -367,7 +525,6 @@ function rhDashboard() {
         
         async initData() {
             try {
-                // Carga inicial de todo lo necesario
                 await Promise.all([
                     this.cargarKpis(),
                     this.cargarPlantas(),
@@ -379,24 +536,18 @@ function rhDashboard() {
                 console.error(e);
             }
         },
-        
+
         // ==========================================
-        //          LÓGICA DE REGISTRO
+        //      LÓGICA DE REGISTRO (se mantiene igual)
         // ==========================================
 
         async registrarEmpleado() {
-            if (!this.form.id_plantilla) {
-                alert('Selecciona una vacante válida');
-                return;
-            }
-            if (this.form.salario_diario <= 0 || !this.form.tipo_empleado) {
-                alert('Completa los campos de Salario Diario y Tipo de Empleado.');
-                return;
-            }
+            if (!this.form.id_plantilla) { alert('Selecciona una vacante válida'); return; }
+            if (this.form.salario_diario <= 0 || !this.form.tipo_empleado) { alert('Completa Salario y Tipo de Empleado.'); return; }
 
             try {
                 const formData = new FormData();
-                // Mapeo de TODOS los 10 campos obligatorios del backend
+                // 24 campos mapeados
                 formData.append('id_plantilla', this.form.id_plantilla);
                 formData.append('nombre_completo', this.form.nombre_completo);
                 formData.append('apellido_paterno', this.form.apellido_paterno);
@@ -407,6 +558,22 @@ function rhDashboard() {
                 formData.append('fecha_nacimiento', this.form.fecha_nacimiento);
                 formData.append('salario_diario', this.form.salario_diario);
                 formData.append('tipo_empleado', this.form.tipo_empleado);
+                formData.append('fecha_ingreso', this.form.fecha_ingreso);
+                formData.append('numero_empleado', this.form.numero_empleado);
+                formData.append('estado_civil', this.form.estado_civil);
+                formData.append('sexo', this.form.sexo);
+                formData.append('telefono_movil', this.form.telefono_movil);
+                formData.append('calle', this.form.calle);
+                formData.append('cp', this.form.cp);
+                formData.append('municipio', this.form.municipio);
+                formData.append('colonia', this.form.colonia);
+                formData.append('contacto_emergencia', this.form.contacto_emergencia);
+                formData.append('parentesco_emergencia', this.form.parentesco_emergencia);
+                formData.append('tel_emergencia', this.form.tel_emergencia);
+                formData.append('email_corp', this.form.email_corp);
+                formData.append('tipo_relacion_laboral', this.form.tipo_relacion_laboral);
+                formData.append('escolaridad', this.form.escolaridad);
+                
                 
                 const res = await fetch('/rh/registrar_empleado', {
                     method: 'POST',
@@ -419,8 +586,8 @@ function rhDashboard() {
                 if (res.ok) {
                     alert('✅ ' + (data.mensaje || 'Empleado registrado correctamente'));
                     // Limpiar y recargar
-                    this.form = { id_plantilla: '', nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '', salario_diario: null, tipo_empleado: '' };
-                    this.filtro.id_planta = ''; // Limpiar filtro de planta
+                    this.form = { id_plantilla: '', nombre_completo: '', apellido_paterno: '', apellido_materno: '', curp: '', nss: '', rfc: '', fecha_nacimiento: '', salario_diario: null, tipo_empleado: '', fecha_ingreso: '', numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '', calle: '', cp: '', municipio: '', colonia: '', contacto_emergencia: '', parentesco_emergencia: '', tel_emergencia: '', email_corp: '', tipo_relacion_laboral: '', escolaridad: '' };
+                    this.filtro.id_planta = ''; 
                     this.initData();
                 } else {
                     alert('❌ Error: ' + (data.error || 'No se pudo registrar al empleado.'));
@@ -431,16 +598,17 @@ function rhDashboard() {
             }
         },
 
+
         // ==========================================
-        //          LÓGICA DE EDICIÓN
+        //      LÓGICA DE EDICIÓN (Todos los campos)
         // ==========================================
 
         abrirModalEdicion(empleado) {
-            // Cargar datos del empleado y formatear la fecha a YYYY-MM-DD
+            // Cargar datos (incluyendo los nuevos campos)
             this.formEdicion = {
                 id_empleado: empleado.id_empleado,
                 id_plantilla_original: empleado.id_plantilla,
-                id_plantilla_nueva: empleado.id_plantilla, // Valor inicial
+                id_plantilla_nueva: empleado.id_plantilla, 
                 nombre_completo: empleado.nombre_completo,
                 apellido_paterno: empleado.apellido_paterno,
                 apellido_materno: empleado.apellido_materno,
@@ -450,6 +618,22 @@ function rhDashboard() {
                 rfc: empleado.rfc,
                 salario_diario: empleado.salario_diario,
                 tipo_empleado: empleado.tipo_empleado,
+                
+                // 💥 Campos adicionales
+                numero_empleado: empleado.numero_empleado,
+                estado_civil: empleado.estado_civil,
+                sexo: empleado.sexo,
+                telefono_movil: empleado.telefono_movil,
+                email_corp: empleado.email_corp,
+                escolaridad: empleado.escolaridad,
+                tipo_relacion_laboral: empleado.tipo_relacion_laboral,
+                calle: empleado.calle,
+                colonia: empleado.colonia,
+                municipio: empleado.municipio,
+                cp: empleado.cp,
+                contacto_emergencia: empleado.contacto_emergencia,
+                parentesco_emergencia: empleado.parentesco_emergencia,
+                tel_emergencia: empleado.tel_emergencia,
             };
             this.modal.edicion = true;
         },
@@ -475,7 +659,7 @@ function rhDashboard() {
                 if (res.ok) {
                     alert('✅ ' + (data.mensaje || 'Empleado actualizado.'));
                     this.modal.edicion = false;
-                    this.initData(); // Recargar todo
+                    this.initData(); 
                 } else {
                     alert('❌ Error: ' + (data.error || 'No se pudo actualizar el empleado.'));
                 }
@@ -486,7 +670,7 @@ function rhDashboard() {
         },
         
         // ==========================================
-        //           LÓGICA DE BAJA
+        //      LÓGICA DE BAJA (se mantiene igual)
         // ==========================================
 
         abrirModalBaja(empleado) {
@@ -516,13 +700,99 @@ function rhDashboard() {
                 if (res.ok) {
                     alert('✅ ' + (data.mensaje || 'Baja registrada.'));
                     this.modal.baja = false;
-                    this.initData(); // Recargar todo
+                    this.initData(); 
                 } else {
                     alert('❌ Error: ' + (data.error || 'No se pudo dar de baja al empleado.'));
                 }
             } catch (e) {
                 alert('⚠️ Error de conexión al registrar baja.');
                 console.error(e);
+            }
+        },
+        
+        // ==========================================
+        //      💥 LÓGICA DE REINGRESO
+        // ==========================================
+
+        abrirModalReingreso() {
+            this.busqueda = { numero_empleado: '', error: '' };
+            this.formReingreso = {
+                id_empleado: null, id_plantilla_anterior: null, id_plantilla_nueva: '', nombre_completo: '', 
+                salario_diario: null, telefono_movil: '', fecha_ingreso: '', motivo_baja: '', observaciones_baja: ''
+            };
+            this.modal.reingreso = true;
+        },
+
+        cerrarModalReingreso() {
+            this.modal.reingreso = false;
+        },
+
+        async buscarEmpleadoReingreso() {
+            this.busqueda.error = '';
+            this.formReingreso.id_empleado = null; 
+            
+            if (!this.busqueda.numero_empleado) return;
+
+            try {
+                const res = await fetch(`/rh/buscar_empleado_baja/${this.busqueda.numero_empleado}`, { credentials: 'include' });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // Rellenar formulario con datos encontrados y la baja
+                    this.formReingreso = {
+                        id_empleado: data.empleado.id_empleado,
+                        id_plantilla_anterior: data.empleado.id_plantilla,
+                        id_plantilla_nueva: data.empleado.id_plantilla, 
+                        nombre_completo: `${data.empleado.nombre_completo} ${data.empleado.apellido_paterno}`,
+                        salario_diario: data.empleado.salario_diario,
+                        telefono_movil: data.empleado.telefono_movil,
+                        fecha_ingreso: new Date().toISOString().substring(0, 10), // Fecha actual por defecto
+                        motivo_baja: data.baja.motivo,
+                        observaciones_baja: data.baja.observaciones,
+                    };
+                    this.busqueda.error = '';
+                } else {
+                    this.busqueda.error = data.error || 'Empleado no encontrado o sigue activo.';
+                }
+            } catch (e) {
+                this.busqueda.error = 'Error de conexión al buscar empleado.';
+                console.error('Error en buscarEmpleadoReingreso:', e);
+            }
+        },
+
+        async confirmarReingreso() {
+            if (!this.formReingreso.id_empleado || !this.formReingreso.id_plantilla_nueva || !this.formReingreso.fecha_ingreso) {
+                alert('Faltan campos obligatorios.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('id_empleado', this.formReingreso.id_empleado);
+            formData.append('id_plantilla_anterior', this.formReingreso.id_plantilla_anterior);
+            formData.append('id_plantilla_nueva', this.formReingreso.id_plantilla_nueva);
+            formData.append('fecha_ingreso', this.formReingreso.fecha_ingreso);
+            formData.append('salario_diario', this.formReingreso.salario_diario);
+            formData.append('telefono_movil', this.formReingreso.telefono_movil);
+            
+            try {
+                const res = await fetch('/rh/reingreso_empleado', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('✅ Reingreso completado: ' + (data.mensaje || 'Empleado reingresado correctamente.'));
+                    this.cerrarModalReingreso();
+                    this.initData(); 
+                } else {
+                    alert('❌ Error al confirmar reingreso: ' + (data.error || 'Error desconocido.'));
+                }
+            } catch (e) {
+                alert('⚠️ Error de conexión al procesar reingreso.');
+                console.error('Error en confirmarReingreso:', e);
             }
         }
     }

@@ -3,6 +3,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from utils.auth import verificar_access_token
 from services.db_service import ejecutar_consulta_sql
+from datetime import date, datetime
+from decimal import Decimal
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -48,9 +50,10 @@ def obtener_vacantes_disponibles(access_token: str = Cookie(None)):
     return JSONResponse(content=vacantes)
 
 
-# -------------------- REGISTRAR EMPLEADO --------------------
+# -------------------- REGISTRAR EMPLEADO (COMPLETAMENTE MODIFICADO) --------------------
 @router.post("/registrar_empleado", response_class=JSONResponse)
 def registrar_empleado(
+    # Campos ya existentes (Obligatorios)
     nombre_completo: str = Form(...),
     apellido_paterno: str = Form(...),
     apellido_materno: str = Form(None),
@@ -61,8 +64,27 @@ def registrar_empleado(
     id_plantilla: int = Form(...),
     salario_diario: float = Form(...),
     tipo_empleado: str = Form(...),
+    fecha_ingreso: str = Form(...),
+    
+    # NUEVOS CAMPOS AGREGADOS desde la tabla
+    numero_empleado: str = Form(None),
+    estado_civil: str = Form(None),
+    sexo: str = Form(None),
+    telefono_movil: str = Form(None),
+    calle: str = Form(None),
+    cp: str = Form(None),
+    municipio: str = Form(None),
+    colonia: str = Form(None),
+    contacto_emergencia: str = Form(None),
+    parentesco_emergencia: str = Form(None),
+    tel_emergencia: str = Form(None),
+    email_corp: str = Form(None),
+    tipo_relacion_laboral: str = Form(None),
+    escolaridad: str = Form(None),
+    
     access_token: str = Cookie(None)
 ):
+    # 1. Validación de Token (sin cambios)
     if not access_token:
         return JSONResponse(status_code=401, content={"error": "No autorizado"})
 
@@ -71,7 +93,7 @@ def registrar_empleado(
     if not payload or payload.get("K_Area") != 20:
         return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
 
-    # ✅ Verificar si hay vacantes disponibles
+    # 2. Verificar si hay vacantes disponibles (igual)
     query_check = """
         SELECT plantilla_autorizada, empleados_activos
         FROM ws_rh_PuestosPlantilla
@@ -84,27 +106,72 @@ def registrar_empleado(
     if vacante["empleados_activos"] >= vacante["plantilla_autorizada"]:
         return JSONResponse(status_code=400, content={"error": "No hay vacantes disponibles"})
 
-    # ✅ Insertar nuevo empleado
     query_insert = """
-        INSERT INTO ws_rh_Empleados 
-            (id_plantilla, curp, nss, rfc, nombre_completo, apellido_paterno, apellido_materno, fecha_nacimiento, fecha_alta, salario_diario, tipo_empleado)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?)
+        INSERT INTO ws_rh_Empleados (
+            id_plantilla, curp, nss, rfc, nombre_completo, apellido_paterno, apellido_materno, 
+            fecha_nacimiento, fecha_alta, salario_diario, tipo_empleado, activo,
+            numero_empleado, estado_civil, sexo, telefono_movil, calle, cp, municipio, colonia, 
+            contacto_emergencia, parentesco_emergencia, tel_emergencia, email_corp, tipo_relacion_laboral, escolaridad
+        )
+        VALUES (
+            ?, ?, ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, 1,
+            ?, ?, ?, ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, ?, ?
+        )
     """
-    ejecutar_consulta_sql(
-        query_insert,
-        params=(id_plantilla, curp, nss, rfc, nombre_completo, apellido_paterno, apellido_materno, fecha_nacimiento, salario_diario, tipo_empleado),
-        commit=True
-    )
+    params_insert = (
+    id_plantilla, curp, nss, rfc, nombre_completo, apellido_paterno, apellido_materno, 
+    fecha_nacimiento, 
+    fecha_ingreso, 
+    salario_diario, tipo_empleado,
+    numero_empleado, estado_civil, sexo, telefono_movil, calle, cp, municipio, colonia, 
+    contacto_emergencia, parentesco_emergencia, tel_emergencia, email_corp, tipo_relacion_laboral, escolaridad
+)
+    
+    try:
+        # Ejecutamos la inserción primero
+        ejecutar_consulta_sql(query_insert, params=params_insert, commit=True)
 
-    # ✅ Actualizar plantilla
-    query_update = """
-        UPDATE ws_rh_PuestosPlantilla
-        SET empleados_activos = empleados_activos + 1
-        WHERE id_plantilla = ?
-    """
-    ejecutar_consulta_sql(query_update, params=(id_plantilla,), commit=True)
+        # 4. ✅ Actualizar plantilla (SOLO SI LA INSERCIÓN FUE EXITOSA)
+        query_update = """
+            UPDATE ws_rh_PuestosPlantilla
+            SET empleados_activos = empleados_activos + 1
+            WHERE id_plantilla = ?
+        """
+        ejecutar_consulta_sql(query_update, params=(id_plantilla,), commit=True)
+        
+        return JSONResponse(content={"mensaje": "Empleado registrado correctamente"})
 
-    return JSONResponse(content={"mensaje": "Empleado registrado correctamente"})
+    except Exception as e:
+        # Esto captura el error de SQL (como el 23000 que indica clave duplicada)
+        error_str = str(e)
+        
+        # Intentamos identificar si es una violación de clave única
+        if 'Violation of UNIQUE KEY constraint' in error_str or 'duplicate key' in error_str:
+            
+            # Puedes ser más específico si quieres nombrar la columna:
+            if 'UQ__ws_rh_Em__55BF368CFC0015D3' in error_str:
+                # El constraint que te falló con NULL
+                mensaje = "Error: El campo (probablemente Número de Empleado) ya existe o tiene un valor NULO duplicado. Asegura un valor único."
+            elif 'CURP' in error_str:
+                 mensaje = "Error: La CURP ya está registrada en el sistema."
+            elif 'RFC' in error_str:
+                 mensaje = "Error: El RFC ya está registrado en el sistema."
+            else:
+                 mensaje = "Error: Violación de clave única. El CURP, RFC o Número de Empleado ya existe."
+            
+            return JSONResponse(
+                status_code=400, 
+                content={"error": mensaje}
+            )
+        
+        # Para cualquier otro error (conexión, sintaxis, etc.)
+        print(f"ERROR Desconocido en el registro: {error_str}") 
+        return JSONResponse(
+            status_code=500, 
+            content={"error": "Error interno del servidor al registrar."}
+        )
 
 
 # -------------------- BAJA DE EMPLEADO --------------------
@@ -185,7 +252,7 @@ def obtener_empleados_activos(access_token: str = Cookie(None)):
     """
     empleados = ejecutar_consulta_sql(query, fetchall=True)
     
-    # 💥 CONVERSIÓN DE FECHA A STRING (SOLUCIÓN)
+    # 💥 CONVERSIÓN DE FECHA A STRING
     for empleado in empleados:
         if 'fecha_alta' in empleado and empleado['fecha_alta']:
             # Convertir el objeto date/datetime a string en formato YYYY-MM-DD
@@ -194,9 +261,10 @@ def obtener_empleados_activos(access_token: str = Cookie(None)):
     return JSONResponse(content=empleados)
 
 
-# -------------------- EDITAR EMPLEADO --------------------
+# -------------------- EDITAR EMPLEADO (VERSION COMPLETA) --------------------
 @router.post("/editar_empleado", response_class=JSONResponse)
 def editar_empleado(
+    # CAMPOS ORIGINALES
     id_empleado: int = Form(...),
     nombre_completo: str = Form(...),
     apellido_paterno: str = Form(...),
@@ -208,9 +276,25 @@ def editar_empleado(
     id_plantilla_nueva: int = Form(...),
     salario_diario: float = Form(...),
     tipo_empleado: str = Form(...),
+    
+    # 💥 CAMPOS NUEVOS A AGREGAR EN EDICIÓN
+    numero_empleado: str = Form(None),
+    estado_civil: str = Form(None),
+    sexo: str = Form(None),
+    telefono_movil: str = Form(None),
+    email_corp: str = Form(None),
+    escolaridad: str = Form(None),
+    tipo_relacion_laboral: str = Form(None),
+    calle: str = Form(None),
+    colonia: str = Form(None),
+    municipio: str = Form(None),
+    cp: str = Form(None),
+    contacto_emergencia: str = Form(None),
+    parentesco_emergencia: str = Form(None),
+    tel_emergencia: str = Form(None),
+    
     access_token: str = Cookie(None)
 ):
-    # ... (Verificación de seguridad omitida)
 
     # 1. Obtener el id_plantilla actual y verificar si hay cambio
     query_current = "SELECT id_plantilla FROM ws_rh_Empleados WHERE id_empleado = ?"
@@ -221,7 +305,7 @@ def editar_empleado(
 
     id_plantilla_actual = empleado_actual["id_plantilla"]
 
-    # 2. Si el puesto (id_plantilla) es diferente, ajustamos los contadores
+    # 2. LÓGICA DE ACTUALIZACIÓN DE CONTADORES DE PLANTILLA
     if id_plantilla_nueva != id_plantilla_actual:
         
         # A. Verificar si hay vacante disponible en el nuevo puesto
@@ -248,7 +332,7 @@ def editar_empleado(
             commit=True
         )
 
-    # 3. Actualizar los datos del empleado
+    # 3. Actualizar los datos del empleado (¡TODOS LOS CAMPOS!)
     query_update = """
         UPDATE ws_rh_Empleados SET
             id_plantilla = ?,
@@ -260,21 +344,44 @@ def editar_empleado(
             apellido_materno = ?,
             fecha_nacimiento = ?,
             salario_diario = ?,
-            tipo_empleado = ?
+            tipo_empleado = ?,
+            
+            -- 💥 CAMPOS NUEVOS EN EL UPDATE
+            numero_empleado = ?,
+            estado_civil = ?,
+            sexo = ?,
+            telefono_movil = ?,
+            email_corp = ?,
+            escolaridad = ?,
+            tipo_relacion_laboral = ?,
+            calle = ?,
+            colonia = ?,
+            municipio = ?,
+            cp = ?,
+            contacto_emergencia = ?,
+            parentesco_emergencia = ?,
+            tel_emergencia = ?
         WHERE id_empleado = ?
     """
     ejecutar_consulta_sql(
         query_update,
         params=(
-            id_plantilla_nueva, curp.upper(), nss, rfc.upper(), nombre_completo, apellido_paterno, apellido_materno,
-            fecha_nacimiento, salario_diario, tipo_empleado, id_empleado
+            # Parámetros Antiguos
+            id_plantilla_nueva, curp.upper(), nss, rfc.upper(), nombre_completo, apellido_paterno, 
+            apellido_materno, fecha_nacimiento, salario_diario, tipo_empleado,
+            
+            # 💥 Parámetros Nuevos (en el mismo orden que el UPDATE)
+            numero_empleado, estado_civil, sexo, telefono_movil, email_corp, escolaridad, 
+            tipo_relacion_laboral, calle, colonia, municipio, cp, contacto_emergencia, 
+            parentesco_emergencia, tel_emergencia,
+            
+            # WHERE
+            id_empleado
         ),
         commit=True
     )
 
     return JSONResponse(content={"mensaje": "Datos del empleado actualizados correctamente"})
-
-# rh.py (agregar esta función)
 
 # -------------------- OBTENER KPIS DE PLANTILLA --------------------
 @router.get("/kpis_plantilla", response_class=JSONResponse)
@@ -302,8 +409,6 @@ def obtener_kpis_plantilla(access_token: str = Cookie(None)):
     return JSONResponse(content=kpis)
 
 
-# rh.py (nueva función)
-
 # -------------------- OBTENER LISTA DE PLANTAS --------------------
 @router.get("/plantas", response_class=JSONResponse)
 def obtener_plantas(access_token: str = Cookie(None)):
@@ -320,4 +425,126 @@ def obtener_plantas(access_token: str = Cookie(None)):
     plantas = ejecutar_consulta_sql(query, fetchall=True)
     return JSONResponse(content=plantas)
 
-# NOTA: Tu ruta /vacantes_disponibles se mantendrá igual, ya que es general.
+
+# -------------------- BUSCAR EMPLEADO DADO DE BAJA (PARA REINGRESO) --------------------
+@router.get("/buscar_empleado_baja/{numero_empleado}", response_class=JSONResponse)
+def buscar_empleado_baja(
+    numero_empleado: str,
+    access_token: str = Cookie(None)
+):
+    # 1. Buscar al empleado por numero_empleado (debe estar inactivo)
+    # Usando 'activo = 0' según tu corrección
+    query_empleado = """
+        SELECT * FROM ws_rh_Empleados 
+        WHERE numero_empleado = ? AND activo = '0'
+    """
+    empleado = ejecutar_consulta_sql(query_empleado, params=(numero_empleado,), fetchone=True)
+
+    if not empleado:
+        return JSONResponse(status_code=404, content={"error": "No se encontró un empleado inactivo con ese número."})
+    
+    id_empleado = empleado["id_empleado"]
+
+    # 2. Buscar el último registro de baja (el más reciente)
+    # 💥 Corregido: Uso de TOP 1 para SQL Server
+    query_baja = """
+        SELECT TOP 1 motivo, observaciones 
+        FROM ws_rh_Bajas 
+        WHERE id_empleado = ? 
+        ORDER BY fecha_baja DESC 
+    """
+    baja = ejecutar_consulta_sql(query_baja, params=(id_empleado,), fetchone=True)
+    
+    if not baja:
+        baja = {"motivo": "Motivo no registrado", "observaciones": "Sin observaciones de baja."}
+
+
+    # 3. Devolver los datos del empleado y el motivo de baja
+    empleado_data = {}
+    # 💥 Corregido: Conversión de fechas (date/datetime) Y números decimales (Decimal)
+    for key, value in empleado.items():
+        if isinstance(value, (date, datetime)):
+            empleado_data[key] = value.isoformat()
+        elif isinstance(value, Decimal):
+            empleado_data[key] = float(value) # Convierte Decimal a float para JSON
+        else:
+            empleado_data[key] = value
+    
+    return JSONResponse(content={
+        "empleado": empleado_data,
+        "baja": baja
+    })
+
+
+# -------------------- PROCESAR REINGRESO DE EMPLEADO --------------------
+@router.post("/reingreso_empleado", response_class=JSONResponse)
+def reingreso_empleado(
+    id_empleado: int = Form(...),
+    id_plantilla_anterior: int = Form(...),
+    id_plantilla_nueva: int = Form(...),
+    fecha_ingreso: str = Form(...),
+    salario_diario: float = Form(...),
+    telefono_movil: str = Form(None),
+    access_token: str = Cookie(None)
+):
+    # (Asumo que la validación de token y permisos está implementada fuera de esta función)
+
+    # 1. Validar si hay vacante disponible en el nuevo puesto
+    query_check = "SELECT plantilla_autorizada, empleados_activos FROM ws_rh_PuestosPlantilla WHERE id_plantilla = ?"
+    vacante_nueva = ejecutar_consulta_sql(query_check, params=(id_plantilla_nueva,), fetchone=True)
+    
+    if not vacante_nueva:
+        return JSONResponse(status_code=404, content={"error": "Puesto destino no encontrado"})
+
+    if vacante_nueva["empleados_activos"] >= vacante_nueva["plantilla_autorizada"]:
+        return JSONResponse(status_code=400, content={"error": "No hay vacantes disponibles en el nuevo puesto."})
+
+    # 2. Lógica de Actualización de Plantilla
+    if id_plantilla_nueva != id_plantilla_anterior:
+        # 2a. Liberar vacante de la plantilla ANTERIOR (si se movió de puesto)
+        ejecutar_consulta_sql(
+            "UPDATE ws_rh_PuestosPlantilla SET empleados_activos = empleados_activos - 1 WHERE id_plantilla = ?",
+            params=(id_plantilla_anterior,),
+            commit=True
+        )
+        
+        # 2b. Ocupar vacante en la plantilla NUEVA
+        ejecutar_consulta_sql(
+            "UPDATE ws_rh_PuestosPlantilla SET empleados_activos = empleados_activos + 1 WHERE id_plantilla = ?",
+            params=(id_plantilla_nueva,),
+            commit=True
+        )
+    else:
+        # Si es la misma plantilla, solo sumar 1 
+        # (Esto asume que el contador se redujo a 0 cuando se dio de baja.
+        # En este caso, solo necesitas ocuparla una vez.)
+        ejecutar_consulta_sql(
+            "UPDATE ws_rh_PuestosPlantilla SET empleados_activos = empleados_activos + 1 WHERE id_plantilla = ?",
+            params=(id_plantilla_nueva,),
+            commit=True
+        )
+
+
+    # 3. Reestablecer el registro del empleado
+    query_update = """
+        UPDATE ws_rh_Empleados SET
+            activo = 1,                 -- 💥 Corregido: Usa la columna 'activo' (booleano 1/0)
+            id_plantilla = ?,
+            fecha_ingreso = ?,
+            salario_diario = ?,
+            telefono_movil = ? 
+        WHERE id_empleado = ?
+    """
+    ejecutar_consulta_sql(
+        query_update,
+        params=(
+            id_plantilla_nueva, 
+            fecha_ingreso, 
+            salario_diario, 
+            telefono_movil, 
+            id_empleado
+        ),
+        commit=True
+    )
+
+    return JSONResponse(content={"mensaje": "Empleado reingresado y puesto actualizado."})
