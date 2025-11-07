@@ -152,7 +152,7 @@
                         <input type="text" x-model="form.telefono_movil" class="w-full p-2 border rounded-lg">
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600">Email Corporativo</label>
+                        <label class="block text-sm text-gray-600">Email</label>
                         <input type="email" x-model="form.email_corp" class="w-full p-2 border rounded-lg">
                     </div>
                     <div>
@@ -443,14 +443,14 @@ function rhDashboard() {
         },
 
         // MODALES
-        modal: { edicion: false, baja: false, reingreso: false }, // 💥 Agregado reingreso
+        modal: { edicion: false, baja: false, reingreso: false }, //  Agregado reingreso
         
         // FORMULARIO DE EDICIÓN
         formEdicion: {
             id_empleado: null, id_plantilla_original: null, id_plantilla_nueva: null, nombre_completo: '',
             apellido_paterno: '', apellido_materno: '', fecha_nacimiento: '', curp: '', nss: '', rfc: '',
             salario_diario: null, tipo_empleado: '',
-            // 💥 Campos adicionales para edición
+            //  Campos adicionales para edición
             numero_empleado: '', estado_civil: '', sexo: '', telefono_movil: '', email_corp: '', escolaridad: '',
             tipo_relacion_laboral: '', calle: '', colonia: '', municipio: '', cp: '', contacto_emergencia: '', 
             parentesco_emergencia: '', tel_emergencia: '',
@@ -461,7 +461,7 @@ function rhDashboard() {
             id_empleado: null, nombre_completo: '', motivo: '', observaciones: ''
         },
 
-        // 💥 Lógica de Reingreso
+        //  Lógica de Reingreso
         busqueda: { numero_empleado: '', error: '' }, 
         formReingreso: {
             id_empleado: null, id_plantilla_anterior: null, id_plantilla_nueva: '', nombre_completo: '', 
@@ -497,8 +497,7 @@ function rhDashboard() {
         // ==========================================
         //      CARGA DE DATOS
         // ==========================================
-        // ... (cargarPlantas, cargarVacantes, cargarEmpleados, cargarKpis, initData se mantienen igual)
-        
+
         async cargarPlantas() {
             const res = await fetch('/rh/plantas', { credentials: 'include' });
             if (!res.ok) throw new Error('Error al obtener plantas');
@@ -600,11 +599,11 @@ function rhDashboard() {
 
 
         // ==========================================
-        //      LÓGICA DE EDICIÓN (Todos los campos)
+        //      LÓGICA DE EDICIÓN
         // ==========================================
 
         abrirModalEdicion(empleado) {
-            // Cargar datos (incluyendo los nuevos campos)
+            // Cargar datos 
             this.formEdicion = {
                 id_empleado: empleado.id_empleado,
                 id_plantilla_original: empleado.id_plantilla,
@@ -619,7 +618,7 @@ function rhDashboard() {
                 salario_diario: empleado.salario_diario,
                 tipo_empleado: empleado.tipo_empleado,
                 
-                // 💥 Campos adicionales
+                //  Campos adicionales
                 numero_empleado: empleado.numero_empleado,
                 estado_civil: empleado.estado_civil,
                 sexo: empleado.sexo,
@@ -670,7 +669,7 @@ function rhDashboard() {
         },
         
         // ==========================================
-        //      LÓGICA DE BAJA (se mantiene igual)
+        //      LÓGICA DE BAJA
         // ==========================================
 
         abrirModalBaja(empleado) {
@@ -711,7 +710,7 @@ function rhDashboard() {
         },
         
         // ==========================================
-        //      💥 LÓGICA DE REINGRESO
+        //       LÓGICA DE REINGRESO
         // ==========================================
 
         abrirModalReingreso() {
@@ -797,6 +796,7 @@ function rhDashboard() {
         }
     }
 }
+
 </script>
 
 {% endblock %}
