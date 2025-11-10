@@ -48,6 +48,74 @@ def obtener_vacantes_disponibles(access_token: str = Cookie(None)):
     vacantes = ejecutar_consulta_sql(query, fetchall=True)
     return JSONResponse(content=vacantes)
 
+@router.get("/vacantes_organizadas", response_class=JSONResponse)
+def vacantes_organizadas(access_token: str = Cookie(None)):
+    if not access_token:
+        return JSONResponse(status_code=401, content={"error": "No autorizado"})
+    
+    token = access_token.replace("Bearer ", "")
+    payload = verificar_access_token(token)
+    if not payload or payload.get("K_Area") != 20:
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    # ✅ Consulta todos los puestos con vacantes
+    query = """
+        SELECT 
+            e.id_planta,
+            e.nombre_planta,
+            p.departamento,
+            p.id_plantilla,
+            p.nombre_puesto,
+            p.plantilla_autorizada,
+            p.empleados_activos,
+            p.vacantes_disponibles
+        FROM ws_rh_PuestosPlantilla AS p
+        INNER JOIN ws_rh_EmpresasPlantas AS e ON e.id_planta = p.id_planta
+        WHERE p.vacantes_disponibles > 0
+        ORDER BY e.nombre_planta, p.departamento, p.nombre_puesto
+    """
+    resultados = ejecutar_consulta_sql(query, fetchall=True)
+
+    # ✅ Organizar por planta -> departamento -> puestos
+    plantas = {}
+    for r in resultados:
+        planta_id = r["id_planta"]
+        depto = r["departamento"]
+        if planta_id not in plantas:
+            plantas[planta_id] = {
+                "id_planta": planta_id,
+                "nombre_planta": r["nombre_planta"],
+                "total_vacantes": 0,
+                "departamentos": {}
+            }
+        if depto not in plantas[planta_id]["departamentos"]:
+            plantas[planta_id]["departamentos"][depto] = {
+                "nombre_departamento": depto,
+                "total_vacantes": 0,
+                "puestos": []
+            }
+        
+        # Agregamos el puesto
+        plantas[planta_id]["departamentos"][depto]["puestos"].append({
+            "id_plantilla": r["id_plantilla"],
+            "nombre_puesto": r["nombre_puesto"],
+            "autorizada": r["plantilla_autorizada"],
+            "empleados_activos": r["empleados_activos"],
+            "vacantes": r["vacantes_disponibles"]
+        })
+        
+        # Sumamos vacantes
+        plantas[planta_id]["departamentos"][depto]["total_vacantes"] += r["vacantes_disponibles"]
+        plantas[planta_id]["total_vacantes"] += r["vacantes_disponibles"]
+
+    # Convertimos dict a lista para frontend
+    plantas_list = []
+    for p in plantas.values():
+        p["departamentos"] = list(p["departamentos"].values())
+        plantas_list.append(p)
+
+    return JSONResponse(content=plantas_list)
+
 
 # -------------------- REGISTRAR EMPLEADO --------------------
 @router.post("/registrar_empleado", response_class=JSONResponse)

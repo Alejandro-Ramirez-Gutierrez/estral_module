@@ -206,31 +206,95 @@
                 </form>
             </div>
             
-            <div class="bg-white p-6 rounded-2xl shadow">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">Vacantes Disponibles (Detalle)</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left border border-gray-200 rounded-xl">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2">Planta</th>
-                                <th class="px-4 py-2">Puesto</th>
-                                <th class="px-4 py-2 text-center">Autorizada</th>
-                                <th class="px-4 py-2 text-center">Vacantes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="v in vacantes.filter(v => v.vacantes_disponibles > 0)" :key="v.id_plantilla">
-                                <tr class="hover:bg-gray-50 border-b">
-                                    <td class="px-4 py-2" x-text="v.nombre_planta"></td>
-                                    <td class="px-4 py-2" x-text="v.nombre_puesto"></td>
-                                    <td class="px-4 py-2 text-center" x-text="v.plantilla_autorizada"></td>
-                                    <td class="px-4 py-2 text-center font-bold text-green-600" x-text="v.vacantes_disponibles"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+            <div class="bg-white p-6 rounded-2xl shadow" 
+                x-data="rhDashboard()" 
+                x-init="vacantesOrganizadas = []; cargarVacantesOrganizadas()">
+                
+                <h2 class="text-xl font-semibold mb-6 text-gray-700">Vacantes Disponibles por Planta 🏢</h2>
+
+                <template x-if="vacantesOrganizadas.length > 0">
+                    <div x-data="{ resumen: vacantesOrganizadas.map(p => ({ ...p, abierto: false, departamentos: p.departamentos.map(d => ({ ...d, abierto: false })) })) }">
+                        
+                        <template x-for="planta in resumen" :key="planta.id_planta">
+                            <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                
+                                <!-- Encabezado Planta -->
+                                <div @click="planta.abierto = !planta.abierto"
+                                    :class="{'bg-indigo-50 hover:bg-indigo-100': !planta.abierto, 'bg-indigo-100': planta.abierto}"
+                                    class="flex justify-between items-center p-4 cursor-pointer transition duration-150 ease-in-out">
+                                    
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-indigo-600 font-bold text-lg" x-text="planta.nombre_planta"></span>
+                                        <span class="bg-indigo-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                            Vacantes: <span x-text="planta.total_vacantes"></span>
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center space-x-4">
+                                        <svg class="w-5 h-5 transition-transform" 
+                                            :class="{'rotate-180': planta.abierto}" 
+                                            xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Contenido Planta -->
+                                <div x-show="planta.abierto" x-collapse>
+                                    <div class="p-4 bg-gray-50 border-t border-gray-200">
+                                        <template x-for="depto in planta.departamentos" :key="depto.nombre_departamento">
+                                            <div class="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                                                
+                                                <!-- Encabezado Departamento -->
+                                                <div @click="depto.abierto = !depto.abierto"
+                                                    :class="{'bg-gray-100 hover:bg-gray-200': !depto.abierto, 'bg-gray-200': depto.abierto}"
+                                                    class="flex justify-between items-center p-3 cursor-pointer transition duration-150 ease-in-out">
+                                                    <span class="font-semibold text-gray-700" x-text="depto.nombre_departamento"></span>
+                                                    <span class="text-green-700 font-bold" x-text="depto.total_vacantes"></span>
+                                                </div>
+
+                                                <!-- Contenido Departamento -->
+                                                <div x-show="depto.abierto" x-collapse>
+                                                    <div class="p-3 bg-white">
+                                                        <table class="w-full text-sm text-left">
+                                                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                                                <tr>
+                                                                    <th class="px-4 py-2">Puesto</th>
+                                                                    <th class="px-4 py-2 text-center">Plantilla Autorizada</th>
+                                                                    <th class="px-4 py-2 text-center">Vacantes Disponibles</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <template x-for="puesto in depto.puestos" :key="puesto.id_plantilla">
+                                                                    <tr class="border-b hover:bg-gray-50">
+                                                                        <td class="px-4 py-2 font-medium text-gray-900" x-text="puesto.nombre_puesto"></td>
+                                                                        <td class="px-4 py-2 text-center" x-text="puesto.autorizada"></td>
+                                                                        <td class="px-4 py-2 text-center font-bold text-green-600" x-text="puesto.vacantes"></td>
+                                                                    </tr>
+                                                                </template>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <div x-show="vacantesOrganizadas.length === 0" class="text-center p-8 text-gray-500 italic">
+                    🎉 ¡Todas las vacantes cubiertas!
                 </div>
+
             </div>
+
+
+
         </div>
 
         <div class="lg:col-span-1">
@@ -427,7 +491,8 @@ function rhDashboard() {
         kpis: { total_plantilla: 0, total_activos: 0, total_vacantes: 0, tasa_ocupacion: 0 },
         plantas: [], 
         vacantes: [], 
-        empleados: [], 
+        empleados: [],
+        vacantesOrganizadas: [],
         
         // FILTROS
         busquedaEmpleados: '',
@@ -497,6 +562,19 @@ function rhDashboard() {
                 v.vacantes_disponibles > 0 
             );
         },
+
+        async cargarVacantesOrganizadas() {
+            try {
+                const res = await fetch('/rh/vacantes_organizadas', { credentials: 'include' });
+                if (!res.ok) throw new Error('Error al obtener vacantes');
+                this.vacantesOrganizadas = await res.json();
+            } catch (e) {
+                alert('⚠️ Error al cargar vacantes organizadas');
+                console.error(e);
+            }
+        },
+
+
 
         // ==========================================
         //      CARGA DE DATOS
