@@ -534,3 +534,107 @@ def reingreso_empleado(
     )
 
     return JSONResponse(content={"mensaje": "Empleado reingresado y puesto actualizado."})
+
+
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+import io
+from fastapi.responses import StreamingResponse
+
+
+@router.get("/generar_kardex_pdf/{numero_empleado}")
+def generar_kardex_pdf(numero_empleado: int, access_token: str = Cookie(None)):
+    # Verificación de token
+    if not access_token:
+        return JSONResponse(status_code=401, content={"error": "No autorizado"})
+
+    token = access_token.replace("Bearer ", "")
+    payload = verificar_access_token(token)
+    if not payload or payload.get("K_Area") != 20:
+        return JSONResponse(status_code=403, content={"error": "Acceso denegado"})
+
+    # Obtener datos del empleado
+    query = """
+        SELECT e.*, p.nombre_puesto, p.departamento, planta.nombre_planta
+        FROM ws_rh_Empleados AS e
+        INNER JOIN ws_rh_PuestosPlantilla AS p ON e.id_plantilla = p.id_plantilla
+        INNER JOIN ws_rh_EmpresasPlantas AS planta ON planta.id_planta = p.id_planta
+        WHERE e.numero_empleado = ?
+    """
+    empleado = ejecutar_consulta_sql(query, params=(numero_empleado,), fetchone=True)
+
+    if not empleado:
+        return JSONResponse(status_code=404, content={"error": "Empleado no encontrado"})
+
+    # Crear PDF en memoria
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    # Logo
+    logo_path = "static/img/logo_kardex.png"
+    try:
+        logo = Image(logo_path, width=100, height=40)
+        elementos.append(logo)
+    except Exception:
+        elementos.append(Paragraph("Logo no disponible", styles["Normal"]))
+    elementos.append(Spacer(1, 12))
+
+    # Título
+    elementos.append(Paragraph("<b>KARDEX DEL EMPLEADO</b>", styles["Title"]))
+    elementos.append(Spacer(1, 12))
+
+    # Tabla de datos personales
+    datos_personales = [
+        ["Nombre completo", empleado["nombre_completo"]],
+        ["CURP", empleado["curp"]],
+        ["RFC", empleado["rfc"]],
+        ["NSS", empleado["nss"]],
+        ["Estado civil", empleado.get("estado_civil", "")],
+        ["Sexo", empleado.get("sexo", "")],
+        ["Fecha de nacimiento", str(empleado["fecha_nacimiento"]) if empleado["fecha_nacimiento"] else ""],
+        ["Teléfono móvil", empleado.get("telefono_movil", "")],
+        ["Domicilio", f"{empleado.get('calle', '')}, {empleado.get('colonia', '')}, CP {empleado.get('cp', '')}"],
+        ["Municipio", empleado.get("municipio", "")],
+    ]
+
+    tabla_personal = Table(datos_personales, colWidths=[150, 350])
+    tabla_personal.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elementos.append(Paragraph("<b>Datos personales</b>", styles["Heading2"]))
+    elementos.append(tabla_personal)
+    elementos.append(Spacer(1, 12))
+
+    # Datos laborales
+    datos_laborales = [
+        ["Planta", empleado["nombre_planta"]],
+        ["Departamento", empleado["departamento"]],
+        ["Puesto", empleado["nombre_puesto"]],
+        ["Fecha de alta", str(empleado["fecha_alta"]) if empleado["fecha_alta"] else ""],
+        ["Tipo empleado", empleado["tipo_empleado"]],
+        ["Tipo relación laboral", empleado.get("tipo_relacion_laboral", "")],
+        ["Escolaridad", empleado.get("escolaridad", "")],
+        ["Salario diario", f"${empleado['salario_diario']:.2f}" if empleado["salario_diario"] else ""],
+    ]
+
+    tabla_laboral = Table(datos_laborales, colWidths=[150, 350])
+    tabla_laboral.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elementos.append(Paragraph("<b>Datos laborales</b>", styles["Heading2"]))
+    elementos.append(tabla_laboral)
+
+    # Generar el PDF
+    doc.build(elementos)
+    buffer.seek(0)
+
+    return StreamingResponse(buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=Kardex_{empleado['nombre_completo']}.pdf"})

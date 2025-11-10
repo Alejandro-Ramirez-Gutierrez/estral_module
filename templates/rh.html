@@ -262,6 +262,10 @@
                                         <button @click="abrirModalBaja(e)" class="text-red-600 hover:text-red-800 text-lg" title="Dar de Baja">
                                             🗑️
                                         </button>
+                                        <button class="btn btn-outline-primary btn-sm" @click="generarPdfEmpleados(e.numero_empleado)">
+                                            📄 Kardex
+                                        </button>
+
                                     </td>
                                 </tr>
                             </template>
@@ -793,9 +797,58 @@ function rhDashboard() {
                 alert('⚠️ Error de conexión al procesar reingreso.');
                 console.error('Error en confirmarReingreso:', e);
             }
+        },
+                // ==========================================
+        //       GENERAR PDF DE EMPLEADOS
+        // ==========================================
+        async generarPdfEmpleados(numero_empleado) {
+            // Es mejor usar window.location.origin para la base
+            const baseUrl = window.location.origin; 
+            // Asegúrate que esta URL coincida EXACTAMENTE con tu ruta final en FastAPI
+            const url = `${baseUrl}/rh/generar_kardex_pdf/${numero_empleado}`; 
+
+            try {
+                const res = await fetch(url, { method: 'GET', credentials: 'include' });
+                
+                // Verifica que la respuesta sea 200 OK y tenga el tipo de contenido correcto
+                if (!res.ok) {
+                    // Intenta leer el mensaje de error si no es un PDF
+                    const errorText = await res.text();
+                    throw new Error(`Error ${res.status}: ${errorText || 'No se pudo generar el PDF'}`);
+                }
+
+                // Obtener el Blob del PDF
+                const blob = await res.blob();
+                
+                // **Nueva Lógica de Apertura**
+                const pdfUrl = window.URL.createObjectURL(blob);
+                
+                // Abrir el PDF en una nueva ventana/pestaña
+                const newWindow = window.open(pdfUrl, '_blank');
+                
+                // Opcional: enfocar la nueva ventana (si no es bloqueada)
+                if (newWindow) {
+                    newWindow.focus();
+                } else {
+                    // Aviso si el navegador bloquea la apertura
+                    alert('⚠️ El navegador bloqueó la apertura automática del PDF. Revisa la configuración de pop-ups.');
+                }
+
+                // Limpiar el objeto URL después de un corto tiempo
+                // setTimeout(() => window.URL.revokeObjectURL(pdfUrl), 10000); 
+
+            } catch (e) {
+                alert('⚠️ Error al generar o abrir el PDF. Revisa la consola para más detalles.');
+                console.error('Detalle del error:', e);
+            }
         }
+
+        
     }
 }
+
+
+
 
 </script>
 

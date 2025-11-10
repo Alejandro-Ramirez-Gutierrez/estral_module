@@ -144,7 +144,7 @@ def post_verificar_mfa(request: Request, login: str = Form(...), codigo: str = F
         token = crear_access_token(token_data)
 
         # 5. Redirección final
-        if user_info["K_Area"] == 20:
+        if user_info["K_Area"] == 200:
             response = RedirectResponse(url="/rh", status_code=303)
         else:
             response = RedirectResponse(url="/dashboard", status_code=303)
