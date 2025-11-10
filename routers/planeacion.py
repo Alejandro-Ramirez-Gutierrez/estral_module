@@ -29,7 +29,7 @@ def get_payload_from_cookie(access_token: str = Cookie(None)):
     token = access_token.replace("Bearer ", "")
     return verificar_access_token(token)
 
-## PÁGINAS HTML
+
 #----------------------------------------------------------------------
 # Página HTML del dashboard de planeación
 @router.get("/", response_class=HTMLResponse)

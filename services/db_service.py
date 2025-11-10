@@ -116,6 +116,7 @@ def login_user(username: str, password: str, aplicacion: str = "EstralWeb",
             "K_Departamento": getattr(user_row, "K_Departamento", None),
             "D_Departamento": getattr(user_row, "D_Departamento", None)
         }
+    
         return {"user": user_data}
     
     except Exception as e:
@@ -138,7 +139,6 @@ def obtener_datos_completos_usuario(login: str):
     a partir del login.
     """
     
-    # 🛑 CRÍTICO: Incluir mfa_secret y mfa_enabled en el query
     query = """
     SELECT 
         E.K_Empleado, 
@@ -148,7 +148,7 @@ def obtener_datos_completos_usuario(login: str):
         U.mfa_enabled 
     FROM Usuario U
     JOIN Empleado E ON U.K_Usuario = E.K_Usuario 
-    WHERE UPPER(LTRIM(RTRIM(U.D_Usuario))) = UPPER(LTRIM(RTRIM(?)))
+    WHERE UPPER(LTRIM(RTRIM(U.Login))) = UPPER(LTRIM(RTRIM(?)))
     """
     
     print(f"DEBUG: Ejecutando consulta de datos de usuario para: {login}")
@@ -168,10 +168,9 @@ def obtener_datos_completos_usuario(login: str):
 
 def actualizar_mfa_secret_seguro(login: str, secret: str):
     """Cifra el secreto MFA y lo guarda en la base de datos, habilitando el MFA."""
-    # 🛑 CRÍTICO: Ciframos el secreto antes de guardarlo
     secret_cifrado = cifrar_mfa_secret(secret)
     
-    query = "UPDATE Usuario SET mfa_secret = ?, mfa_enabled = 1 WHERE D_Usuario = ?"
+    query = "UPDATE Usuario SET mfa_secret = ?, mfa_enabled = 1 WHERE Login = ?"
     params = (secret_cifrado, login)
     
     # Usamos la función base para ejecutar la consulta, asumiendo commit=True por defecto o en los parámetros.

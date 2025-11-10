@@ -4,7 +4,7 @@
 # Windows PS: .\venv/Scripts/Activate.ps1
 # Levantar servidor: uvicorn main:app --reload
 from dotenv import load_dotenv
-load_dotenv() # <--- CRÍTICO: Carga la FERNET_KEY
+load_dotenv()
 from fastapi import FastAPI, Request, Form, Cookie, Body, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -20,10 +20,9 @@ from services.db_service import (
     obtener_motivos_cancelacion,
     autorizar_orden,
     ejecutar_consulta_sql,
-    # <--- NUEVOS IMPORTS SEGUROS
     obtener_datos_completos_usuario, # Ahora devuelve el secreto descifrado y B_Activo
     actualizar_mfa_secret_seguro, # Guarda el secreto CIFRADO
-    generar_mfa_secret, # Genera el secreto (pyotp)
+    generar_mfa_secret, # Genera el secreto 
     generar_qr_uri # Genera el QR
 )
 from datetime import datetime
@@ -62,13 +61,15 @@ def post_login(request: Request, login: str = Form(...), contrasenia: str = Form
         user = resultado["user"]
 
         # Revisamos MFA usando la función segura
-        # 🚨 CAMBIO CRÍTICO: Usamos obtener_datos_completos_usuario para centralizar la carga.
+        # Usamos obtener_datos_completos_usuario para centralizar la carga.
         user_data_mfa = obtener_datos_completos_usuario(login)
         mfa_enabled = user_data_mfa.get("mfa_enabled")
+
 
         if mfa_enabled:
             response = RedirectResponse(url=f"/verificar_mfa?login={login}", status_code=303)
             response.set_cookie("pending_login", login)
+    
             return response
 
         # Login normal
@@ -98,16 +99,16 @@ def get_verificar_mfa(request: Request, login: str = Query(...)):
     """Muestra la página donde el usuario ingresa el código TOTP."""
     return templates.TemplateResponse("verificar_mfa.html", {"request": request, "login": login})
 
+
 @app.post("/verificar_mfa", response_class=HTMLResponse)
 def post_verificar_mfa(request: Request, login: str = Form(...), codigo: str = Form(...)):
-    # 🚨 CAMBIOS CRÍTICOS: Eliminamos imports internos y la consulta SQL directa.
     
     # Limpiamos posibles espacios
     login = login.strip()
     codigo = codigo.strip()
 
-    # 1. Traemos los datos completos del usuario (incluye el secreto MFA ya DESCIFRADO)
-    user_data = obtener_datos_completos_usuario(login) # <--- USO DE FUNCIÓN SEGURA
+    # 1. Traemos los datos completos del usuario
+    user_data = obtener_datos_completos_usuario(login) 
     mfa_secret = user_data.get("mfa_secret") if user_data else None
     
 
@@ -173,7 +174,7 @@ def activar_mfa(request: Request, login: str = Query(...)):
         "request": request,
         "login": login,
         "qr_b64": qr_b64,
-        "secret_temporal": secret, # 👈 Asegúrate de pasar el secreto TEMPORAL al template
+        "secret_temporal": secret,
         "uri": uri
     })
 
@@ -204,8 +205,6 @@ def post_confirmar_mfa(request: Request, login: str = Form(...), secret: str = F
             {"request": request, "error": "**Código de verificación inválido. Intenta de nuevo.**", "login": login, "secret_temporal": secret}
         )
 
-# -------------------- DASHBOARD --------------------
-# ... (El resto de las rutas no relacionadas con MFA permanecen igual) ...
 # -------------------- DASHBOARD --------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, access_token: str = Cookie(None)):
