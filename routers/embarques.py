@@ -25,7 +25,7 @@ def validar_token_embarques(access_token: str):
         return payload
     return None
 
-# --- CONSULTAS SQL (CORREGIDAS Y PARAMETRIZADAS) ---
+
 
 def get_query_embarques_diarios(mes: int, anio: int) -> tuple[str, tuple]:
     """Query 1: Embarques realizados por día y Kgs totales (Estral y CIMSA).

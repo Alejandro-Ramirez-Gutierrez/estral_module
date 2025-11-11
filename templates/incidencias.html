@@ -1,0 +1,75 @@
+{% extends "base_operaciones.html" %}
+{% block title %}Incidencias{% endblock %}
+
+{% block content %}
+<h3>🕒 Registrar Incidencia</h3>
+
+<form action="/operaciones/incidencias/nueva" method="post" class="mb-4">
+  <div class="mb-3">
+    <label class="form-label">Empleado ID</label>
+    <input type="number" class="form-control" name="empleado_id" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Tipo de incidencia</label>
+    <select class="form-select" name="tipo_incidencia">
+      <option value="Ausencia">Ausencia</option>
+      <option value="Retardo">Retardo</option>
+      <option value="Salida temprana">Salida temprana</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Fecha</label>
+    <input type="date" class="form-control" name="fecha_incidencia" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Motivo</label>
+    <input type="text" class="form-control" name="motivo">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Observaciones</label>
+    <textarea class="form-control" name="observaciones" rows="2"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Guardar incidencia</button>
+</form>
+
+<hr>
+
+<h4>📋 Incidencias registradas</h4>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Empleado</th>
+      <th>Tipo</th>
+      <th>Fecha</th>
+      <th>Estatus</th>
+    </tr>
+  </thead>
+  <tbody id="tabla-incidencias">
+    <!-- Aquí puedes inyectar con fetch() -->
+  </tbody>
+</table>
+
+<script>
+async function cargarIncidencias() {
+  const res = await fetch("/operaciones/incidencias");
+  const data = await res.json();
+  const tbody = document.getElementById("tabla-incidencias");
+  tbody.innerHTML = data.data.map(i => `
+    <tr>
+      <td>${i.id_incidencia}</td>
+      <td>${i.nombre_completo}</td>
+      <td>${i.tipo_incidencia}</td>
+      <td>${i.fecha_incidencia}</td>
+      <td>${i.estatus}</td>
+    </tr>
+  `).join("");
+}
+cargarIncidencias();
+</script>
+{% endblock %}

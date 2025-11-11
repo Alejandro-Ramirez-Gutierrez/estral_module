@@ -1,0 +1,31 @@
+{% extends "base_operaciones.html" %}
+{% block title %}Vacaciones{% endblock %}
+
+{% block content %}
+<h3>🌴 Solicitud de Vacaciones</h3>
+
+<form action="/operaciones/vacaciones/nueva" method="post" class="mb-4">
+  <div class="mb-3">
+    <label class="form-label">Empleado ID</label>
+    <input type="number" name="empleado_id" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Fecha inicio</label>
+    <input type="date" name="fecha_inicio" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Fecha fin</label>
+    <input type="date" name="fecha_fin" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Motivo (opcional)</label>
+    <textarea class="form-control" name="motivo" rows="2"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-success">Enviar solicitud</button>
+</form>
+{% endblock %}
+ 

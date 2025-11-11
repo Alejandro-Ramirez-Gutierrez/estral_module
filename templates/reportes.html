@@ -1,0 +1,35 @@
+{% extends "base_operaciones.html" %}
+{% block title %}Reportes de Personal{% endblock %}
+
+{% block content %}
+<h3>📋 Nuevo Reporte de Personal</h3>
+
+<form action="/operaciones/reportes/nuevo" method="post" class="mb-4">
+  <div class="mb-3">
+    <label class="form-label">Empleado ID</label>
+    <input type="number" name="empleado_id" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Tipo de reporte</label>
+    <select name="tipo_reporte" class="form-select" required>
+      <option value="Disciplinario">Disciplinario</option>
+      <option value="Reconocimiento">Reconocimiento</option>
+      <option value="Accidente">Accidente</option>
+      <option value="Otro">Otro</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Descripción</label>
+    <textarea name="descripcion" class="form-control" rows="3" required></textarea>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Acciones tomadas</label>
+    <textarea name="acciones_tomadas" class="form-control" rows="2"></textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Registrar reporte</button>
+</form>
+{% endblock %}

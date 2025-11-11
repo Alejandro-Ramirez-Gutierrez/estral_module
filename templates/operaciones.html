@@ -1,0 +1,19 @@
+{% extends "base_operaciones.html" %}
+{% block title %}Inicio - Operaciones{% endblock %}
+
+{% block content %}
+<h2> Bienvenido, {{ usuario }}</h2>
+<p class="mb-4">Desde aquí puedes gestionar incidencias, vacaciones y reportes del personal a tu cargo.</p>
+
+<div class="list-group">
+  <a href="/operaciones/incidencias" class="list-group-item list-group-item-action">
+    🕒 Registrar o revisar incidencias
+  </a>
+  <a href="/operaciones/vacaciones" class="list-group-item list-group-item-action">
+    🌴 Solicitudes de vacaciones
+  </a>
+  <a href="/operaciones/reportes" class="list-group-item list-group-item-action">
+    📋 Reportes de personal
+  </a>
+</div>
+{% endblock %}

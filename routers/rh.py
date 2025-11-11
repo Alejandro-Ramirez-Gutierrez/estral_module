@@ -24,7 +24,7 @@ def dashboard_rh(request: Request, access_token: str = Cookie(None)):
     return templates.TemplateResponse("rh.html", {"request": request, "user": payload})
 
 
-# -------------------- OBTENER VACANTES DISPONIBLES (CORREGIDO) --------------------
+# -------------------- OBTENER VACANTES DISPONIBLES --------------------
 @router.get("/vacantes_disponibles", response_class=JSONResponse)
 def obtener_vacantes_disponibles(access_token: str = Cookie(None)):
 
@@ -104,7 +104,7 @@ def vacantes_organizadas(access_token: str = Cookie(None)):
             "vacantes": r["vacantes_disponibles"]
         })
         
-        # Sumamos vacantes
+        # Suma vacantes
         plantas[planta_id]["departamentos"][depto]["total_vacantes"] += r["vacantes_disponibles"]
         plantas[planta_id]["total_vacantes"] += r["vacantes_disponibles"]
 
@@ -120,7 +120,7 @@ def vacantes_organizadas(access_token: str = Cookie(None)):
 # -------------------- REGISTRAR EMPLEADO --------------------
 @router.post("/registrar_empleado", response_class=JSONResponse)
 def registrar_empleado(
-    # Campos ya existentes (Obligatorios)
+    # Campos ya existentes
     nombre_completo: str = Form(...),
     apellido_paterno: str = Form(...),
     apellido_materno: str = Form(None),
@@ -231,7 +231,7 @@ def registrar_empleado(
                 content={"error": mensaje}
             )
         
-        # Para cualquier otro error (conexión, sintaxis, etc.)
+        # Para cualquier otro error
         print(f"ERROR Desconocido en el registro: {error_str}") 
         return JSONResponse(
             status_code=500, 

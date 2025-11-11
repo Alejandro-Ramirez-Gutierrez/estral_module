@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from routers import auth_requisiciones, planeacion, fabricacion_mensual, fabricacion_mensual_partidas, quejas, embarques, cotizaciones
-from routers import asignacion_equipos, rh
+from routers import asignacion_equipos, rh, operaciones
 from utils.auth import crear_access_token, verificar_access_token
 import pyotp
 from services.db_service import (
@@ -33,7 +33,7 @@ from calendar import month_name
 app = FastAPI(title="Estral Módulo - Autorización Requisiciones")
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
+templates.env.globals["datetime"] = datetime
 # -------------------- ROUTERS --------------------
 app.include_router(auth_requisiciones.router, prefix="/auth", tags=["Autenticación"])
 app.include_router(planeacion.router, prefix="/planeacion", tags=["Planeación"])
@@ -44,7 +44,7 @@ app.include_router(embarques.router)
 app.include_router(cotizaciones.router, prefix="/cotizaciones", tags=["Cotizaciones"])
 app.include_router(asignacion_equipos.router, prefix="/asignacion_equipos", tags=["Asignación de Equipos"])
 app.include_router(rh.router, prefix="/rh", tags=["Recursos Humanos"])
-
+app.include_router(operaciones.router, prefix="/operaciones", tags=["Operaciones"])
 
 # -------------------- LOGIN --------------------
 @app.get("/", response_class=HTMLResponse)
@@ -160,7 +160,7 @@ def post_verificar_mfa(request: Request, login: str = Form(...), codigo: str = F
 
 
 
-# main.py @app.get("/activar_mfa") - MODIFICADO
+# Activador de MFA
 @app.get("/activar_mfa", response_class=HTMLResponse)
 def activar_mfa(request: Request, login: str = Query(...)):
     """Genera el secreto y el QR para vincular con Google Authenticator."""
@@ -179,7 +179,6 @@ def activar_mfa(request: Request, login: str = Query(...)):
     })
 
 
-# main.py (Añadir después de /activar_mfa)
 # -------------------- CONFIRMACIÓN MFA --------------------
 @app.post("/confirmar_mfa", response_class=HTMLResponse)
 def post_confirmar_mfa(request: Request, login: str = Form(...), secret: str = Form(...), codigo: str = Form(...)):
@@ -190,7 +189,7 @@ def post_confirmar_mfa(request: Request, login: str = Form(...), secret: str = F
     
     # 2. El código es válido. Ahora sí, lo guardamos permanentemente.
     if totp.verify(codigo.strip(), valid_window=1):
-        # 🚨 LA LÍNEA CRÍTICA: Guardar solo después de la verificación
+        #  LA LÍNEA CRÍTICA: Guardar solo después de la verificación
         actualizar_mfa_secret_seguro(login.strip(), secret.strip())
         
         # Opcional: Redireccionar a la página de login con mensaje de éxito o al dashboard
