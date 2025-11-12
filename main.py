@@ -29,6 +29,7 @@ from datetime import datetime
 from calendar import month_name
 
 
+
 # -------------------- APP --------------------
 app = FastAPI(title="Estral Módulo - Autorización Requisiciones")
 templates = Jinja2Templates(directory="templates")

@@ -8,6 +8,7 @@ from decimal import Decimal
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["datetime"] = datetime
 
 
 # -------------------- DASHBOARD RH --------------------

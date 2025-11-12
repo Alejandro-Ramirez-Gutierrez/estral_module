@@ -5,48 +5,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="{{ url_for('static', path='img/estral_loguito.png') }}">
   <title>{% block title %}Dashboard RH{% endblock %}</title>
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            estralBlue: '#1e90ff',
+            estralOrange: '#ff7a00',
+            estralDark: '#0d1b2a',
+            estralGray: '#f8fafc',
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     body {
-      background-color: #f8fafc;
       font-family: 'Inter', sans-serif;
     }
   </style>
 </head>
 
-<body class="text-gray-800">
+<body class="bg-estralGray text-gray-800 flex flex-col min-h-screen">
   <!-- Navbar superior -->
-  <header class="bg-white shadow-md py-3 px-6 flex items-center justify-between sticky top-0 z-50">
-    <h1 class="text-xl font-bold text-blue-700">Sistema RH - Estral</h1>
+  <header class="bg-white shadow-md py-3 px-6 flex items-center justify-between sticky top-0 z-50 border-b border-gray-100">
+    <div class="flex items-center gap-3">
+      <img src="{{ url_for('static', path='img/estral_loguito.png') }}" alt="Estral" class="w-8 h-8">
+      <h1 class="text-xl font-bold text-estralBlue">Sistema RH <span class="text-estralOrange">Estral</span></h1>
+    </div>
     <div class="flex items-center gap-4">
-      <span class="text-gray-600 text-sm">{{ user.Nombre if user else 'Usuario' }}</span>
+      <span class="text-gray-600 text-sm font-medium">
+        {{ user.Nombre if user else 'Usuario' }}
+      </span>
       <form action="/logout" method="post">
-        <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
-          Cerrar sesión
+        <button type="submit" class="bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 transition text-sm font-medium">
+          <i class="bi bi-box-arrow-right mr-1"></i> Cerrar sesión
         </button>
       </form>
     </div>
   </header>
 
   <!-- Layout principal -->
-  <div class="flex">
+  <div class="flex flex-1">
     <!-- Sidebar -->
-    <aside class="w-64 bg-gray-900 text-white min-h-screen hidden md:block">
-      <nav class="p-4 space-y-2">
-        <a href="/rh/" class="block px-3 py-2 rounded hover:bg-gray-800">🏢 Dashboard RH</a>
-        <a href="/rh/empleados" class="block px-3 py-2 rounded hover:bg-gray-800">👥 Empleados</a>
-        <a href="/rh/vacantes" class="block px-3 py-2 rounded hover:bg-gray-800">📋 Vacantes</a>
+    <aside class="w-64 bg-estralDark text-white hidden md:flex flex-col justify-between">
+      <nav class="p-4 space-y-1">
+        <a href="/rh/" 
+          class="flex items-center gap-2 px-3 py-2 rounded-md transition hover:bg-[#1b2739] {% if request.url.path == '/rh/' %}bg-[#1e2e47] border-l-4 border-estralOrange{% endif %}">
+          🏢 <span>Dashboard RH</span>
+        </a>
+        <a href="/rh/empleados" 
+          class="flex items-center gap-2 px-3 py-2 rounded-md transition hover:bg-[#1b2739] {% if '/rh/empleados' in request.url.path %}bg-[#1e2e47] border-l-4 border-estralOrange{% endif %}">
+          👥 <span>Empleados</span>
+        </a>
+        <a href="/rh/vacantes" 
+          class="flex items-center gap-2 px-3 py-2 rounded-md transition hover:bg-[#1b2739] {% if '/rh/vacantes' in request.url.path %}bg-[#1e2e47] border-l-4 border-estralOrange{% endif %}">
+          📋 <span>Vacantes</span>
+        </a>
       </nav>
+
+      <footer class="text-center text-gray-400 text-xs py-4 border-t border-gray-800">
+        &copy; {{ datetime.utcnow().year }} Estral RH
+      </footer>
     </aside>
 
     <!-- Contenido dinámico -->
-    <main class="flex-1 p-6">
+    <main class="flex-1 p-6 bg-white rounded-tl-3xl shadow-inner">
       {% block content %}
+      <div class="text-center py-20">
+        <h2 class="text-2xl font-semibold text-estralBlue mb-2">Bienvenido al módulo de Recursos Humanos</h2>
+        <p class="text-gray-600">Usa el menú lateral para gestionar empleados, vacantes y más.</p>
+      </div>
       {% endblock %}
     </main>
   </div>
-
 </body>
 </html>

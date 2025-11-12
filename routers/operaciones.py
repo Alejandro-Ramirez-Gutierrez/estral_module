@@ -139,6 +139,7 @@ def reportes(request: Request, access_token: str = Cookie(None)):
     return templates.TemplateResponse("reportes.html", {"request": request, "usuario": payload.get("D_Empleado")})
 
 
+
 # =================== ADMIN PERMISOS ===================
 @router.get("/ver_permisos")
 def ver_permisos():
