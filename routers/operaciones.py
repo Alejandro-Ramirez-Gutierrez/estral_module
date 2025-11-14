@@ -10,7 +10,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["datetime"] = datetime
 
-# =================== LISTAS DE PERMISOS ===================
+# =================== LISTAS DE PERMISOS =======================
 USUARIOS_SOLICITUDES = [8811, 8870]   # Pueden crear solicitudes 
 USUARIOS_APROBADORES = [8740, 5]       # Pueden aprobar o rechazar
 USUARIOS_VISUALIZADORES = [8811, 8661, 8870, 8740, 4, 5]  # Pueden entrar y ver
@@ -24,15 +24,19 @@ def validar_token_operaciones(access_token: str):
     payload = verificar_access_token(token)
     return payload if payload else None
 
+
 def agregar_usuario(lista: list, id_usuario: int):
     """Agrega un usuario a una lista si no está."""
     if id_usuario not in lista:
         lista.append(id_usuario)
 
+
 def quitar_usuario(lista: list, id_usuario: int):
     """Quita un usuario de una lista si está."""
     if id_usuario in lista:
         lista.remove(id_usuario)
+
+
 
 # =================== RUTAS PRINCIPALES ===================
 @router.get("/", response_class=HTMLResponse)
@@ -54,6 +58,7 @@ def dashboard_operaciones(request: Request, access_token: str = Cookie(None)):
     })
 
 
+
 # ======================== INCIDENCIAS ======================
 @router.get("/incidencias", response_class=HTMLResponse)
 def incidencias(request: Request, access_token: str = Cookie(None)):
@@ -65,6 +70,7 @@ def incidencias(request: Request, access_token: str = Cookie(None)):
         return JSONResponse(status_code=403, content={"error": "Sin permisos."})
 
     return templates.TemplateResponse("incidencias.html", {"request": request, "usuario": payload.get("D_Empleado")})
+
 
 
 @router.post("/incidencias/nueva")
@@ -91,6 +97,7 @@ def nueva_incidencia(
     ejecutar_consulta_sql(query, params=(empleado_id, tipo_incidencia, fecha_incidencia, motivo, observaciones), commit=True)
 
     return JSONResponse({"ok": "Incidencia registrada correctamente."})
+
 
 
 # ========================= VACACIONES =========================
@@ -127,6 +134,7 @@ def nueva_vacacion(
     ejecutar_consulta_sql(query, params=(empleado_id, fecha_inicio, fecha_fin, motivo), commit=True)
 
     return JSONResponse({"ok": "Solicitud de vacaciones enviada correctamente."})
+
 
 
 # ================== REPORTES =================================
@@ -181,3 +189,4 @@ def quitar_permiso(tipo: str = Query(...), id_usuario: int = Query(...)):
         return JSONResponse(status_code=400, content={"error": "Tipo no válido"})
 
     return {"ok": f"Usuario {id_usuario} removido de {tipo}"}
+

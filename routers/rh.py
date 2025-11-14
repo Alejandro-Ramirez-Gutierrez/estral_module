@@ -118,6 +118,7 @@ def vacantes_organizadas(access_token: str = Cookie(None)):
     return JSONResponse(content=plantas_list)
 
 
+
 # -------------------- REGISTRAR EMPLEADO --------------------
 @router.post("/registrar_empleado", response_class=JSONResponse)
 def registrar_empleado(

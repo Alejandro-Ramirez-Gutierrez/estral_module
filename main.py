@@ -29,7 +29,6 @@ from datetime import datetime
 from calendar import month_name
 
 
-
 # -------------------- APP --------------------
 app = FastAPI(title="Estral Módulo - Autorización Requisiciones")
 templates = Jinja2Templates(directory="templates")
@@ -95,10 +94,12 @@ def post_login(request: Request, login: str = Form(...), contrasenia: str = Form
         {"request": request, "error": resultado.get("error", "Usuario o contraseña incorrectos")}
     )
 
+
 @app.get("/verificar_mfa", response_class=HTMLResponse)
 def get_verificar_mfa(request: Request, login: str = Query(...)):
     """Muestra la página donde el usuario ingresa el código TOTP."""
     return templates.TemplateResponse("verificar_mfa.html", {"request": request, "login": login})
+
 
 
 @app.post("/verificar_mfa", response_class=HTMLResponse)
@@ -180,6 +181,7 @@ def activar_mfa(request: Request, login: str = Query(...)):
     })
 
 
+
 # -------------------- CONFIRMACIÓN MFA --------------------
 @app.post("/confirmar_mfa", response_class=HTMLResponse)
 def post_confirmar_mfa(request: Request, login: str = Form(...), secret: str = Form(...), codigo: str = Form(...)):
@@ -205,6 +207,7 @@ def post_confirmar_mfa(request: Request, login: str = Form(...), secret: str = F
             {"request": request, "error": "**Código de verificación inválido. Intenta de nuevo.**", "login": login, "secret_temporal": secret}
         )
 
+
 # -------------------- DASHBOARD --------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, access_token: str = Cookie(None)):
@@ -223,6 +226,7 @@ def dashboard(request: Request, access_token: str = Cookie(None)):
     )
 
 
+
 # -------------------- API: MOTIVOS CANCELACIÓN --------------------
 @app.get("/dashboard/motivos_cancelacion")
 def api_motivos_cancelacion(access_token: str = Cookie(None)):
@@ -233,6 +237,7 @@ def api_motivos_cancelacion(access_token: str = Cookie(None)):
     if not payload:
         return JSONResponse(status_code=401, content={"error": "No autorizado"})
     return {"motivos": obtener_motivos_cancelacion()}
+
 
 
 # -------------------- API: CANCELAR ORDEN --------------------
@@ -257,6 +262,7 @@ def api_cancelar_orden(k_orden_compra: int = Form(...), k_motivo: int = Form(1),
     return {"success": True, "ordenes": ordenes}
 
 
+
 # -------------------- API: AUTORIZAR ORDEN --------------------
 @app.post("/dashboard/autorizar_orden")
 def api_autorizar_orden(k_orden_compra: int = Body(..., embed=True), access_token: str = Cookie(None)):
@@ -279,6 +285,7 @@ def api_autorizar_orden(k_orden_compra: int = Body(..., embed=True), access_toke
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+
 # -------------------- VALANCE --------------------
 def validar_acceso_valance(payload):
     k_empleado = payload.get("K_Empleado")
@@ -296,6 +303,7 @@ def calcular_rango_mes(mes: str):
     else:
         fecha_fin = fecha_inicio.replace(year=fecha_inicio.year+1, month=1, day=1)
     return fecha_inicio, fecha_fin
+
 
 
 @app.get("/valance", response_class=HTMLResponse)
@@ -322,6 +330,7 @@ def valance(request: Request, access_token: str = Cookie(None)):
             "top_proveedores": []
         }
     )
+
 
 
 # -------------------- DATOS VALANCE --------------------
@@ -419,6 +428,8 @@ def valance_datos(mes: str = Query("", description="Mes en formato YYYY-MM"), ac
         "top_proveedores": top_proveedores_json
     }
 
+
+
 # -------------------- FRECUENCIA --------------------
 @app.get("/valance/frecuencia")
 def valance_frecuencia(mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
@@ -454,6 +465,8 @@ def valance_frecuencia(mes: str = Query("", description="Mes en formato YYYY-MM"
         "Cantidad_Compras":int(p["Cantidad_Compras"]),
         "Monto_Total":float(p["Monto_Total"])
     } for p in top_proveedores]}
+
+
 
 # -------------------- DETALLE PROVEEDOR --------------------
 @app.get("/valance/detalle_proveedor")
@@ -496,6 +509,8 @@ def detalle_proveedor(proveedor: str = Query(...), mes: str = Query("", descript
         } for d in detalle
     ]
 
+
+
 # -------------------- GRAFICA FAMILIA --------------------
 @app.get("/valance/familia")
 def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), access_token: str = Cookie(None)):
@@ -532,6 +547,8 @@ def valance_familia(mes: str = Query("", description="Mes en formato YYYY-MM"), 
     )
     
     return [{"Familia": d["Familia"].strip(), "Total": float(d["Total"])} for d in data]
+
+
 
 # -------------------- LOGOUT --------------------
 @app.get("/logout")
