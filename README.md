@@ -19,8 +19,17 @@ Designed to improve traceability and operational efficiency in manufacturing pro
 ## 🏗 Architecture
 Modular system with separation of concerns for scalability and maintainability.
 
-## 📸 Screenshots
-(pon imágenes aquí)
-
 ## 📌 Status
 MVP completed – continuous improvements in progress
+
+## 🔐 Security Considerations
+
+- No sensitive data or credentials are exposed in this repository
+- Environment variables are used for configuration
+- Designed following basic security best practices
+
+## 🔐 Security Features
+
+- Multi-Factor Authentication (MFA) for user login
+- Secure handling of user credentials
+- Environment-based configuration (no sensitive data exposed)
