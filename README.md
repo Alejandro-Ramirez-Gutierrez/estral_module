@@ -12,9 +12,9 @@ ERP system developed for a metal-mechanics company to manage operations such as 
 Designed to improve traceability and operational efficiency in manufacturing processes.
 
 ## 🛠 Tech Stack
-- Backend: (pon aquí lo que usaste)
-- Database: (MySQL, etc)
-- Frontend: (si aplica)
+- Backend: (FastAPI, Python)
+- Database: (MySQL, SqlServer)
+- Frontend: (HTML,CSS, JavaScript)
 
 ## 🏗 Architecture
 Modular system with separation of concerns for scalability and maintainability.
